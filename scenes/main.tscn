@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://155xx7s6y6ta"]
+
+[node name="Node2D" type="Node2D" unique_id=695057372]
+
+[node name="Label" type="Label" parent="." unique_id=1890056083]
+offset_left = 126.0
+offset_top = 130.0
+offset_right = 313.0
+offset_bottom = 193.0
+text = "Kwenta"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="." unique_id=2014360442]
+offset_left = 193.0
+offset_top = 76.0
+offset_right = 264.0
+offset_bottom = 109.0
+text = "Tap Me"
