@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = "vinegar"
+display_name = "Vinegar"
+price = 18
+shelf_location = "Shelf B"
+unlock_day = 6
+display_scale = 1.9

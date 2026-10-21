@@ -1,0 +1,147 @@
+class_name ShiftManager
+extends RefCounted
+
+signal customers_changed
+signal cash_changed(value: int)
+signal clock_changed(value: String)
+signal feedback_changed(message: String)
+signal shift_completed
+
+var campaign_state: CampaignState
+var products_by_id: Dictionary
+var rng: RandomNumberGenerator
+var active_customers: Array[CustomerState] = []
+var elapsed_seconds: float = 0.0
+var spawn_elapsed: float = 0.0
+var customer_sequence: int = 0
+var is_running: bool = false
+var did_emit_completion: bool = false
+var shift_earnings: int = 0
+
+func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGenerator) -> void:
+	campaign_state = state
+	products_by_id = product_map
+	rng = random
+
+func start_shift() -> void:
+	active_customers.clear()
+	elapsed_seconds = 0.0
+	spawn_elapsed = campaign_state.config.customer_spawn_interval
+	shift_earnings = 0
+	did_emit_completion = false
+	is_running = true
+	_spawn_customer()
+	_update_clock()
+
+func advance_time(delta_seconds: float) -> void:
+	if not is_running or delta_seconds <= 0.0:
+		return
+	elapsed_seconds = minf(campaign_state.config.shift_length_seconds, elapsed_seconds + delta_seconds)
+	if elapsed_seconds >= campaign_state.config.shift_length_seconds:
+		_update_clock()
+		finish_shift()
+		return
+	var customer_left := false
+	for customer in active_customers:
+		if customer.advance_time(delta_seconds):
+			customer_left = true
+			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
+			feedback_changed.emit("%s left before finishing. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
+	var remaining_customers: Array[CustomerState] = []
+	for customer in active_customers:
+		if customer.active:
+			remaining_customers.append(customer)
+	active_customers = remaining_customers
+	spawn_elapsed += delta_seconds
+	if active_customers.size() < campaign_state.get_active_customer_limit() and spawn_elapsed >= campaign_state.config.customer_spawn_interval:
+		spawn_elapsed = 0.0
+		_spawn_customer()
+	elif customer_left:
+		customers_changed.emit()
+	_update_clock()
+
+func deliver_product(customer_id: String, product_id: String) -> int:
+	for customer in active_customers:
+		if customer.instance_id != customer_id:
+			continue
+		var result := customer.receive_product(product_id)
+		if result == OrderState.DeliveryResult.WRONG_PRODUCT:
+			feedback_changed.emit("That isn't in this customer's order.")
+			return result
+		if result == OrderState.DeliveryResult.COMPLETED:
+			var prices := {}
+			for id in customer.order.delivered:
+				var product: ProductData = products_by_id.get(id)
+				if product != null:
+					prices[id] = campaign_state.get_product_price(product)
+			var order_total := customer.order.total_price(prices)
+			campaign_state.cash += order_total
+			shift_earnings += order_total
+			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
+			customer.finish_as_paid()
+			active_customers.erase(customer)
+			cash_changed.emit(campaign_state.cash)
+			feedback_changed.emit("Order complete! Customer paid and left.")
+			customers_changed.emit()
+		else:
+			feedback_changed.emit("Good! Keep going.")
+		return result
+	return CustomerState.DeliveryResult.INACTIVE
+
+func get_active_customers() -> Array[CustomerState]:
+	return active_customers.duplicate()
+
+func finish_shift() -> void:
+	if did_emit_completion:
+		return
+	did_emit_completion = true
+	is_running = false
+	active_customers.clear()
+	customers_changed.emit()
+	shift_completed.emit()
+
+func _spawn_customer() -> void:
+	if active_customers.size() >= campaign_state.get_active_customer_limit():
+		return
+	var ids := campaign_state.config.customer_ids
+	if ids.is_empty():
+		return
+	var id := _choose_customer_id()
+	var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
+	var order := OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
+	var customer := CustomerState.new(id, order, campaign_state.config.customer_patience_seconds, campaign_state.get_customer_trust(id))
+	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
+	customer_sequence += 1
+	customer.instance_id = "%s_%d" % [id, customer_sequence]
+	campaign_state.save_customer_trust(id, customer.trust)
+	active_customers.append(customer)
+	customers_changed.emit()
+
+func _choose_customer_id() -> String:
+	var ids: Array[String] = []
+	for candidate in campaign_state.config.customer_ids:
+		var already_here := false
+		for customer in active_customers:
+			if customer.customer_id == candidate:
+				already_here = true
+				break
+		if not already_here:
+			ids.append(candidate)
+	if ids.is_empty():
+		return campaign_state.config.customer_ids[0]
+	var total_weight := 0.0
+	for id in ids:
+		total_weight += maxf(0.05, campaign_state.get_customer_trust(id) / 100.0)
+	var choice := rng.randf() * total_weight
+	for id in ids:
+		choice -= maxf(0.05, campaign_state.get_customer_trust(id) / 100.0)
+		if choice <= 0.0:
+			return id
+	return ids[0]
+
+func _update_clock() -> void:
+	var game_minutes := int(floor(elapsed_seconds / campaign_state.config.shift_length_seconds * 720.0))
+	var hour := 8 + floori(float(game_minutes) / 60.0)
+	var minute := game_minutes % 60
+	var display_hour := hour if hour <= 12 else hour - 12
+	clock_changed.emit("%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"])

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/product_data.gd" id="1_product"]
+
+[resource]
+script = ExtResource("1_product")
+id = "instant_noodles"
+display_name = "Nissin Cup Noodles · Original"
+price = 15
+shelf_location = "Shelf A"
+display_scale = 1.9

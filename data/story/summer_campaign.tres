@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="CampaignConfig" load_steps=30 format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign_config.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/products/instant_noodles.tres" id="2_noodles"]
+[ext_resource type="Resource" path="res://data/products/soft_drink.tres" id="3_drink"]
+[ext_resource type="Resource" path="res://data/products/chips.tres" id="4_chips"]
+[ext_resource type="Resource" path="res://data/products/biscuits.tres" id="5_biscuits"]
+[ext_resource type="Resource" path="res://data/products/bottled_water.tres" id="6_water"]
+[ext_resource type="Resource" path="res://data/products/candy.tres" id="7_candy"]
+[ext_resource type="Resource" path="res://data/products/coffee_sachet.tres" id="8_coffee"]
+[ext_resource type="Resource" path="res://data/products/canned_sardines.tres" id="9_sardines"]
+[ext_resource type="Resource" path="res://data/products/laundry_sachet.tres" id="10_laundry"]
+[ext_resource type="Resource" path="res://data/orders/order_pool_day_01.tres" id="11_day1"]
+[ext_resource type="Resource" path="res://data/orders/order_pool_day_04.tres" id="12_day4"]
+[ext_resource type="Resource" path="res://data/orders/order_pool_day_07.tres" id="13_day7"]
+[ext_resource type="Resource" path="res://data/products/shampoo_sachet.tres" id="14_shampoo"]
+[ext_resource type="Resource" path="res://data/products/toothpaste_sachet.tres" id="15_toothpaste"]
+[ext_resource type="Resource" path="res://data/products/juice_sachet.tres" id="16_juice"]
+[ext_resource type="Resource" path="res://data/products/iced_tea_sachet.tres" id="17_tea"]
+[ext_resource type="Resource" path="res://data/products/gardenia_bread.tres" id="18_bread"]
+[ext_resource type="Resource" path="res://data/products/egg.tres" id="19_eggs"]
+[ext_resource type="Resource" path="res://data/products/datu_puti_soy_sauce.tres" id="20_soy"]
+[ext_resource type="Resource" path="res://data/products/datu_puti_vinegar.tres" id="21_vinegar"]
+[ext_resource type="Resource" path="res://data/products/datu_puti_fish_sauce.tres" id="22_fish"]
+[ext_resource type="Resource" path="res://data/products/golden_fiesta_oil.tres" id="23_oil"]
+[ext_resource type="Resource" path="res://data/products/princess_jasmine_rice.tres" id="24_rice"]
+[ext_resource type="Resource" path="res://data/upgrades/sachet_rail.tres" id="25_rail"]
+[ext_resource type="Resource" path="res://data/upgrades/drink_cooler.tres" id="26_cooler"]
+[ext_resource type="Resource" path="res://data/upgrades/extra_shelf.tres" id="27_shelf"]
+[ext_resource type="Resource" path="res://data/upgrades/condiment_rack.tres" id="28_condiments"]
+[ext_resource type="Resource" path="res://data/upgrades/bulk_crates.tres" id="29_crates"]
+
+[resource]
+script = ExtResource("1_script")
+product_catalog = Array[Resource]([ExtResource("2_noodles"), ExtResource("3_drink"), ExtResource("4_chips"), ExtResource("5_biscuits"), ExtResource("6_water"), ExtResource("7_candy"), ExtResource("8_coffee"), ExtResource("9_sardines"), ExtResource("10_laundry"), ExtResource("14_shampoo"), ExtResource("15_toothpaste"), ExtResource("16_juice"), ExtResource("17_tea"), ExtResource("18_bread"), ExtResource("19_eggs"), ExtResource("20_soy"), ExtResource("21_vinegar"), ExtResource("22_fish"), ExtResource("23_oil"), ExtResource("24_rice")])
+store_upgrades = Array[Resource]([ExtResource("25_rail"), ExtResource("26_cooler"), ExtResource("27_shelf"), ExtResource("28_condiments"), ExtResource("29_crates")])
+day_order_pools = Array[Resource]([ExtResource("11_day1"), ExtResource("12_day4"), ExtResource("13_day7")])
+order_pool_start_days = Array[int]([1, 4, 7])
+customer_ids = Array[String]( ["aleng_mila", "kuya_ben", "ate_liza", "jun", "manong_tomas", "nina"] )
+initial_cash = 150
+shift_length_seconds = 480.0
+customer_spawn_interval = 18.0
+customer_patience_seconds = 55.0
+trust_loss_on_timeout = 25.0
+shelf_replacement_goal = 1500
+trusted_regular_goal = 3
+trusted_regular_minimum = 80.0
+story_intro = "Your report card is still on the kitchen table: missed classes, unfinished work, and grades you could have improved. This summer, your parents put you in charge of the family sari-sari store. They want the worn shelves replaced before school starts. You think it sounds like an easy punishment—until the first customer arrives."
+story_transition_texts = Array[String](["The first shift was longer than you expected. Tomorrow, you decide, you'll be faster.", "Aleng Mila comes back. She remembers your name—and the snack her grandson likes.", "More neighbors arrive at once. You start learning where everything belongs.", "A rush feels different when several neighbors need you at once. You begin to understand how much patience and trust matter.", "Your parents ask what you learned, not just what you earned. You think about how your choices affect neighbors who rely on the store.", "You prepare the shelves before opening. The work is starting to feel like yours.", "A busy afternoon tests everything you've practiced. Your regulars are counting on you.", "You notice the store is more than a way to earn money; neighbors depend on it.", "The last day of summer is almost here. You look at the shelves—and at how far you've come.", "The new school year is close. Your family gathers to see what you built this summer."])
+ending_balanced_success = "The new shelves are ready, and the regulars still trust the store. You haven't solved everything at school, but you understand that showing up—for your work, your learning, and other people—is a choice you can keep making."
+ending_mixed_progress = "Some of the summer goal is still unfinished, but you can see what your effort changed: in the store, in your relationships, and in yourself. Your family makes a plan to keep going together as school begins."
+ending_hopeful_second_chance = "The shelves still need work and some neighbors stopped coming, but the summer wasn't wasted. You learned what your choices can cost—and that you can take responsibility, rebuild trust, and keep trying when school starts."

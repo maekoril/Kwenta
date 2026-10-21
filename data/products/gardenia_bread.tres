@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = "bread"
+display_name = "Wheat Bread"
+price = 35
+shelf_location = "Shelf A"
+unlock_day = 5
+display_scale = 1.85
