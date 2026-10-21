@@ -4,4 +4,7 @@
 
 [node name="ProductDragItem" type="Control"]
 custom_minimum_size = Vector2(34, 42)
+mouse_filter = 0
+focus_mode = 0
+texture_filter = 1
 script = ExtResource("1")

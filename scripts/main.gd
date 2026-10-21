@@ -1,7 +1,5 @@
 extends Control
 
-const STORE_BACKGROUND: Texture2D = preload("res://assets/backgrounds/kwenta_store_interior_clean.png")
-const COOLER_TEXTURE: Texture2D = preload("res://assets/sprites/fixtures/cooler_empty.png")
 const CAMPAIGN_CONFIG: CampaignConfig = preload("res://data/story/summer_campaign.tres")
 const PRODUCT_DRAG_ITEM_SCENE: PackedScene = preload("res://scenes/product_drag_item.tscn")
 const CUSTOMER_ACTOR_SCENE: PackedScene = preload("res://scenes/customer_slot.tscn")
@@ -19,8 +17,6 @@ var day_label: Label
 var goal_label: Label
 var product_layer: Control
 var product_items_by_id: Dictionary = {}
-var cooler_fixture: Control
-var cooler_front: Control
 var upgrade_buttons: Dictionary = {}
 var customer_layer: Control
 var customer_actors: Dictionary = {}
@@ -34,6 +30,7 @@ var ui_refresh_elapsed: float = 0.0
 var campaign_started: bool = false
 var shift_start_cash: int = 0
 var shift_start_trust: Dictionary = {}
+var displayed_cash: int = -1
 
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -41,11 +38,8 @@ func _ready() -> void:
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
 		products_by_id[product.id] = product
-	_build_background()
-	_build_cooler_fixture()
 	_build_customer_area()
 	_build_product_layer()
-	_build_cooler_front()
 	_build_hud()
 	_build_summary_panel()
 	_update_cash(campaign.cash)
@@ -67,45 +61,9 @@ func _process(delta: float) -> void:
 			if child is Control and child.has_method("refresh_patience"):
 				child.refresh_patience()
 
-func _build_background() -> void:
-	var background := TextureRect.new()
-	background.texture = STORE_BACKGROUND
-	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	background.stretch_mode = TextureRect.STRETCH_SCALE
-	background.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
-
-func _build_cooler_fixture() -> void:
-	var cooler := _fixture_texture_rect(COOLER_TEXTURE, Rect2(0.0, 260.0, 195.0, 100.0))
-	cooler.name = "CoolerFixture"
-	add_child(cooler)
-	cooler_fixture = cooler
-
-func _build_cooler_front() -> void:
-	# The front of the cooler covers the lower edge of the Coke stock.
-	var front_texture := AtlasTexture.new()
-	front_texture.atlas = COOLER_TEXTURE
-	front_texture.region = Rect2(0.0, 400.0, 1536.0, 624.0)
-	var front := _fixture_texture_rect(front_texture, Rect2(0.0, 299.0, 195.0, 61.0))
-	front.name = "CoolerFront"
-	add_child(front)
-	cooler_front = front
-
-func _fixture_texture_rect(texture: Texture2D, bounds: Rect2) -> TextureRect:
-	var fixture := TextureRect.new()
-	fixture.texture = texture
-	fixture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	fixture.stretch_mode = TextureRect.STRETCH_SCALE
-	fixture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	fixture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fixture.position = bounds.position
-	fixture.size = bounds.size
-	return fixture
-
 func _build_hud() -> void:
 	var hud := PanelContainer.new()
+	hud.z_index = 30
 	hud.position = Vector2(4, 2)
 	hud.size = Vector2(632, 20)
 	hud.add_theme_stylebox_override("panel", _make_box(Color(0.13, 0.08, 0.06, 0.96), Color("e7b779")))
@@ -133,26 +91,30 @@ func _build_hud() -> void:
 
 func _build_product_layer() -> void:
 	product_layer = Control.new()
+	product_layer.z_index = 20
 	product_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	product_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(product_layer)
 
 func _build_customer_area() -> void:
-	# Customers occupy the actual storefront lane in front of the shelves.
-	# Their drop zones move with their character sprites; there are no empty cards.
+	# Customers sit in the street window. The scene-owned sill sits above this
+	# layer so their lower edge reads as being outside the shop.
 	customer_layer = Control.new()
+	customer_layer.z_index = 5
 	customer_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	customer_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(customer_layer)
 
 func _build_summary_panel() -> void:
 	summary_backdrop = ColorRect.new()
+	summary_backdrop.z_index = 40
 	summary_backdrop.color = Color(0.04, 0.025, 0.02, 0.62)
 	summary_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	summary_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	summary_backdrop.visible = false
 	add_child(summary_backdrop)
 	summary_panel = PanelContainer.new()
+	summary_panel.z_index = 41
 	summary_panel.position = Vector2(80, 43)
 	summary_panel.size = Vector2(480, 274)
 	summary_panel.add_theme_stylebox_override("panel", _make_box(Color(0.16, 0.09, 0.07, 0.98), Color("f0c17b")))
@@ -192,7 +154,12 @@ func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	shift = ShiftManager.new(campaign, products_by_id, rng)
-	shift.customers_changed.connect(_rebuild_customer_slots)
+	shift.active_customer_limit_override = STOREFRONT_LAYOUT.MAX_ACTIVE_WINDOW_CUSTOMERS
+	shift.spawn_delay_min_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MIN_SECONDS
+	shift.spawn_delay_max_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MAX_SECONDS
+	shift.patience_seconds_override = STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
+	shift.customers_changed.connect(_on_customers_changed)
+	shift.customer_timed_out.connect(_on_customer_timed_out)
 	shift.cash_changed.connect(_update_cash)
 	shift.clock_changed.connect(_update_clock)
 	shift.shift_completed.connect(_show_shift_summary)
@@ -210,23 +177,28 @@ func _rebuild_product_shelf() -> void:
 		if slot.size == Vector2.ZERO or display_size == Vector2.ZERO:
 			continue
 		var drag_item := PRODUCT_DRAG_ITEM_SCENE.instantiate() as Control
-		var item_texture: Texture2D = COUNTER_ART.product_single_texture(product.id)
+		var single_texture_key: String = product.single_unit_texture_key if not product.single_unit_texture_key.is_empty() else product.id
+		var stacked_texture_key: String = product.stacked_texture_key if not product.stacked_texture_key.is_empty() else product.id
+		var item_texture: Texture2D = COUNTER_ART.product_single_texture(single_texture_key)
 		if item_texture == null:
 			item_texture = COUNTER_ART.product_icon(product.id, PRODUCT_ATLAS)
-		var display_texture: Texture2D = COUNTER_ART.product_display_texture(product.id)
+		var display_texture: Texture2D = COUNTER_ART.product_display_texture(stacked_texture_key)
 		if display_texture == null:
 			display_texture = item_texture
 		drag_item.call("configure", product, item_texture, true, display_size, STOREFRONT_LAYOUT.is_product_rotated(product.id), display_texture, STOREFRONT_LAYOUT.get_stock_count(product.id), product.display_scale)
 		drag_item.position = slot.position
 		drag_item.size = slot.size
 		product_layer.add_child(drag_item)
+		drag_item.connect("product_released", _on_product_drag_released)
 		product_items_by_id[product.id] = drag_item
-	if cooler_fixture != null:
-		var show_empty_cooler: bool = not product_items_by_id.has("soft_drink")
-		cooler_fixture.visible = show_empty_cooler
-		if cooler_front != null:
-			cooler_front.visible = show_empty_cooler
 
+func _on_customers_changed() -> void:
+	_rebuild_customer_slots()
+
+func _on_customer_timed_out(customer_instance_id: String) -> void:
+	var actor: Control = customer_actors.get(customer_instance_id)
+	if is_instance_valid(actor):
+		actor.call("play_annoyed")
 func _rebuild_customer_slots() -> void:
 	if customer_layer == null or shift == null:
 		return
@@ -278,25 +250,52 @@ func _purchase_upgrade(upgrade: StoreUpgradeData) -> void:
 
 func _on_product_dropped(customer_id: String, product_id: String) -> void:
 	var source: Control = product_items_by_id.get(product_id)
+	if not _resolve_product_delivery(customer_id, product_id):
+		if is_instance_valid(source):
+			source.call("play_reject")
+
+func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
+	var actor := _customer_actor_at(viewport_position)
+	if actor == null:
+		source.call("finish_drag", false)
+		return
+	var customer: CustomerState = actor.get("customer")
+	source.call("finish_drag", customer != null and _resolve_product_delivery(customer.instance_id, product_id))
+
+func _customer_actor_at(viewport_position: Vector2) -> Control:
+	for instance_id in customer_actors:
+		var actor: Control = customer_actors[instance_id]
+		if is_instance_valid(actor) and bool(actor.call("contains_drop_point", viewport_position)):
+			return actor
+	return null
+
+func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
+	if shift == null:
+		return false
 	var actor: Control = customer_actors.get(customer_id)
 	var result := shift.deliver_product(customer_id, product_id)
 	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
-		if is_instance_valid(source):
-			source.call("play_reject")
 		if is_instance_valid(actor):
 			actor.call("play_wrong_drop")
-		return
+		return false
 	if is_instance_valid(actor):
 		actor.call("refresh_display")
 		actor.call("play_correct_drop")
 		if result == OrderState.DeliveryResult.COMPLETED:
 			actor.call("play_happy")
+	return true
 
 func _update_clock(value: String) -> void:
 	clock_label.text = value
 
 func _update_cash(value: int) -> void:
 	cash_label.text = "₱%d" % value
+	if displayed_cash >= 0 and value > displayed_cash:
+		cash_label.pivot_offset = cash_label.size * 0.5
+		var pop_tween := create_tween()
+		pop_tween.tween_property(cash_label, "scale", Vector2(1.18, 1.18), 0.10)
+		pop_tween.tween_property(cash_label, "scale", Vector2.ONE, 0.16)
+	displayed_cash = value
 	goal_label.text = "SHELVES  %d/%d" % [mini(campaign.get_shelf_goal_progress(), CAMPAIGN_CONFIG.shelf_replacement_goal), CAMPAIGN_CONFIG.shelf_replacement_goal]
 	_update_unlock_buttons()
 

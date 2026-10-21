@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://dlnyktugwsem4"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
 [resource]
 script = ExtResource("1")
 id = "bottled_water"
-display_name = "Water Bottle"
+stacked_texture_key = "bottled_water"
+single_unit_texture_key = "bottled_water"
+display_name = "Bato Spring Water"
 price = 12
-shelf_location = "Shelf A"
+shelf_location = "Shelf Row B"
 display_scale = 1.8
-unlock_day = 1

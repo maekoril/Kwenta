@@ -1,6 +1,11 @@
 extends Control
 
 const DEFAULT_STORE_DISPLAY_SCALE: float = 1.6
+const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
+
+signal product_released(product_id: String, viewport_position: Vector2, source: Control)
+
+static var _active_drag_owner: Control
 
 var product_id: String = ""
 var drag_enabled: bool = true
@@ -10,6 +15,9 @@ var _display_size: Vector2 = Vector2.ZERO
 var _rotated: bool = false
 var _stock_count: int = 1
 var _display_scale: float = DEFAULT_STORE_DISPLAY_SCALE
+var _drag_preview: Control
+var _drag_active: bool = false
+var _drag_touch_index: int = -1
 
 func configure(product: ProductData, icon_texture: Texture2D, can_drag: bool, display_size: Vector2, rotated: bool, display_texture: Texture2D = null, stock_count: int = 1, display_scale: float = DEFAULT_STORE_DISPLAY_SCALE) -> void:
 	product_id = product.id
@@ -27,15 +35,12 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_NONE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	tooltip_text = "Drag this product to the customer who ordered it."
+	set_process_input(false)
 
 func _draw() -> void:
 	var display_texture := _display_texture if _display_texture != null else _item_icon
-	if product_id == "candy":
-		_draw_combined_display("candy")
-		return
-	if product_id == "soft_drink":
-		_draw_combined_display("soft_drink")
+	if STOREFRONT_LAYOUT.is_hanging_rail_product(product_id):
+		_draw_hanging_sachet_strip()
 		return
 	if display_texture == null or _display_size == Vector2.ZERO:
 		return
@@ -61,6 +66,22 @@ func _draw() -> void:
 		else:
 			draw_texture_rect(display_texture, sprite_rect, false, CounterArt.get_product_display_tint())
 
+func _draw_hanging_sachet_strip() -> void:
+	if _item_icon == null:
+		return
+	var packet_count := 4
+	var packet_bounds := Vector2(minf(18.0, size.x - 4.0), minf(14.0, size.y / float(packet_count)))
+	var strip_width := minf(3.0, packet_bounds.x * 0.2)
+	var strip_x := (size.x - strip_width) * 0.5
+	draw_rect(Rect2(strip_x, 0.0, strip_width, size.y), Color(0.22, 0.16, 0.11, 0.55), true)
+	for packet_index in range(packet_count):
+		var packet_y := float(packet_index) * packet_bounds.y
+		var packet_rect := Rect2((size.x - packet_bounds.x) * 0.5, packet_y, packet_bounds.x, packet_bounds.y)
+		var fitted := CounterArt.fit_texture_rect(Vector2(_item_icon.get_size()), packet_rect.size)
+		var sprite_rect := Rect2(packet_rect.position + fitted.position, fitted.size)
+		draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
+		draw_texture_rect(_item_icon, sprite_rect, false, CounterArt.get_product_display_tint())
+
 func _draw_combined_display(combined_product_id: String) -> void:
 	var combined_texture: Texture2D = CounterArt.product_fixture_texture(combined_product_id)
 	if combined_texture == null:
@@ -70,16 +91,111 @@ func _draw_combined_display(combined_product_id: String) -> void:
 	draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
 	draw_texture_rect(combined_texture, sprite_rect, false, CounterArt.get_product_display_tint())
 
-func _get_drag_data(_at_position: Vector2) -> Variant:
-	if product_id.is_empty() or not drag_enabled:
-		return null
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_begin_drag(mouse_event.position, -1)
+			accept_event()
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_begin_drag(touch_event.position, touch_event.index)
+			accept_event()
+
+func _input(event: InputEvent) -> void:
+	if not _drag_active:
+		return
+	if event is InputEventMouseMotion and _drag_touch_index == -1:
+		_move_drag_preview((event as InputEventMouseMotion).position)
+	elif event is InputEventScreenDrag and (event as InputEventScreenDrag).index == _drag_touch_index:
+		_move_drag_preview((event as InputEventScreenDrag).position)
+	elif event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if _drag_touch_index == -1 and mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
+			_release_drag(mouse_event.position)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.index == _drag_touch_index and not touch_event.pressed:
+			_release_drag(touch_event.position)
+
+func _begin_drag(viewport_position: Vector2, touch_index: int) -> void:
+	if _drag_active or _another_drag_is_active() or product_id.is_empty() or not drag_enabled:
+		return
+	_drag_active = true
+	_drag_touch_index = touch_index
+	_active_drag_owner = self
 	var preview := ProductDragPreview.new()
 	preview.preview_texture = _item_icon
 	preview.preview_size = _get_drag_preview_size()
 	preview.rotated = _rotated
 	preview.size = preview.preview_size + Vector2(8.0, 8.0)
-	set_drag_preview(preview)
-	return {"product_id": product_id}
+	preview.scale = Vector2.ONE * 1.15
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.z_index = 100
+	var preview_parent: Node = get_tree().current_scene
+	if preview_parent == null:
+		preview_parent = get_tree().root
+	preview_parent.add_child(preview)
+	_drag_preview = preview
+	_move_drag_preview(viewport_position)
+	set_process_input(true)
+
+func _move_drag_preview(viewport_position: Vector2) -> void:
+	if is_instance_valid(_drag_preview):
+		_drag_preview.global_position = viewport_position - _drag_preview.size * 0.5
+
+func _release_drag(viewport_position: Vector2) -> void:
+	if not _drag_active:
+		return
+	_drag_active = false
+	_drag_touch_index = -1
+	set_process_input(false)
+	product_released.emit(product_id, viewport_position, self)
+
+func finish_drag(accepted: bool) -> void:
+	if not is_instance_valid(_drag_preview):
+		_drag_active = false
+		_clear_active_drag_owner()
+		return
+	var preview := _drag_preview
+	_drag_preview = null
+	_drag_active = false
+	_drag_touch_index = -1
+	set_process_input(false)
+	if accepted:
+		preview.queue_free()
+		_clear_active_drag_owner()
+		return
+	play_reject()
+	var return_tween := preview.create_tween()
+	return_tween.set_trans(Tween.TRANS_SPRING)
+	return_tween.set_ease(Tween.EASE_OUT)
+	return_tween.tween_property(preview, "global_position", get_global_rect().get_center() - preview.size * 0.5, 0.28)
+	return_tween.tween_callback(_finish_returned_preview.bind(preview))
+
+func is_drag_active() -> bool:
+	return _drag_active or is_instance_valid(_drag_preview)
+
+func get_drag_preview_texture() -> Texture2D:
+	return _item_icon
+
+func _another_drag_is_active() -> bool:
+	return is_instance_valid(_active_drag_owner) and _active_drag_owner != self
+
+func _clear_active_drag_owner() -> void:
+	if _active_drag_owner == self:
+		_active_drag_owner = null
+
+func _finish_returned_preview(preview: Control) -> void:
+	if is_instance_valid(preview):
+		preview.queue_free()
+	_clear_active_drag_owner()
+
+func _exit_tree() -> void:
+	if is_instance_valid(_drag_preview):
+		_drag_preview.queue_free()
+	_clear_active_drag_owner()
 
 func _get_store_display_size() -> Vector2:
 	return _display_size * _display_scale

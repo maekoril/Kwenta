@@ -1,10 +1,12 @@
-[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://1fiw8cl4vvxc"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
 [resource]
 script = ExtResource("1")
 id = "candy"
-display_name = "Max Yellow Gum"
+stacked_texture_key = "candy"
+single_unit_texture_key = "candy"
+display_name = "Maximo"
 price = 5
-shelf_location = "Shelf A"
-display_scale = 1.6
-unlock_day = 1
+shelf_location = "Shelf Row A"

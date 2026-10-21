@@ -3,5 +3,7 @@
 [ext_resource type="Script" path="res://scripts/customer_slot.gd" id="1"]
 
 [node name="CustomerActor" type="Control"]
-custom_minimum_size = Vector2(68, 146)
+layout_mode = 0
+offset_right = 68.0
+offset_bottom = 175.0
 script = ExtResource("1")

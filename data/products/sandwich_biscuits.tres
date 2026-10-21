@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ProductData" format=3]
+
+[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "sandwich_biscuits"
+stacked_texture_key = "sandwich_biscuits"
+single_unit_texture_key = "sandwich_biscuits"
+display_name = "Wemby"
+price = 8
+shelf_location = "Shelf Row A"
+display_scale = 1.8
+unlock_day = 1

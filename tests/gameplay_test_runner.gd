@@ -259,13 +259,15 @@ func _test_storefront_slots_are_visible_unique_and_non_overlapping() -> void:
 	_assert(StorefrontLayoutScript.get_product_slot("not_a_product").size == Vector2.ZERO, "unknown products have no draggable slot")
 
 func _test_product_display_sizes_follow_the_reference() -> void:
-	for product_id in ["coffee_sachet", "juice_sachet", "iced_tea_sachet"]:
-		_assert(StorefrontLayoutScript.get_product_slot(product_id).position.y == 26.0, "%s hangs from the upper rail" % product_id)
-		_assert(CounterArtScript.product_display_texture(product_id) is AtlasTexture, "%s uses trimmed stacked stock art" % product_id)
-	_assert(StorefrontLayoutScript.get_product_slot("candy").position.y > 200.0, "Max Yellow packs sit in the separate counter jar")
+	for product_id in ["coffee_sachet", "juice_sachet", "iced_tea_sachet", "shampoo_sachet", "toothpaste_sachet", "laundry_sachet"]:
+		_assert(StorefrontLayoutScript.get_product_slot(product_id).position.y == 24.0, "%s hangs from the upper rail" % product_id)
+		var strip: Texture2D = CounterArtScript.product_display_texture(product_id)
+		_assert(strip is AtlasTexture and strip.get_size().y > strip.get_size().x * 2.0, "%s is a tightly stacked vertical sachet strip" % product_id)
+	_assert(StorefrontLayoutScript.get_storefront_zone("shelf_row_a").encloses(StorefrontLayoutScript.get_product_slot("candy")), "Max Yellow packs sit on the right shelf plank")
 	_assert(StorefrontLayoutScript.get_product_slot("soft_drink").position.y >= 260.0, "Coke stock sits inside the cooler")
-	for product_id in ["biscuits", "canned_sardines", "soft_drink", "bottled_water"]:
-		_assert(StorefrontLayoutScript.get_stock_count(product_id) == 3, "%s repeats grouped stock across its bay" % product_id)
+	for product_id in ["biscuits", "canned_sardines", "bottled_water"]:
+		_assert(StorefrontLayoutScript.get_stock_count(product_id) == 1, "%s renders once as a composite group sprite" % product_id)
+	_assert(StorefrontLayoutScript.get_stock_count("soft_drink") == 3, "Coke keeps its configured stock count")
 
 func _test_product_display_style_matches_the_store() -> void:
 	var shadow: PackedVector2Array = CounterArtScript.get_display_shadow_polygon(Rect2(10.0, 20.0, 40.0, 30.0))
@@ -310,7 +312,7 @@ func _test_two_customers_keep_separate_orders_and_capacity() -> void:
 	var manager := _make_test_shift(2, 100.0, ["regular", "neighbor"])
 	manager.campaign_state.config.shift_length_seconds = 100.0
 	manager.start_shift()
-	manager.advance_time(0.01)
+	manager.advance_time(10.01)
 	var customers := manager.get_active_customers()
 	_assert(customers.size() == 2, "second customer fills an available slot")
 	if customers.size() != 2:

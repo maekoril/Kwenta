@@ -6,6 +6,7 @@ signal cash_changed(value: int)
 signal clock_changed(value: String)
 signal feedback_changed(message: String)
 signal shift_completed
+signal customer_timed_out(customer_instance_id: String)
 
 var campaign_state: CampaignState
 var products_by_id: Dictionary
@@ -13,10 +14,15 @@ var rng: RandomNumberGenerator
 var active_customers: Array[CustomerState] = []
 var elapsed_seconds: float = 0.0
 var spawn_elapsed: float = 0.0
+var current_spawn_delay: float = 0.0
 var customer_sequence: int = 0
 var is_running: bool = false
 var did_emit_completion: bool = false
 var shift_earnings: int = 0
+var active_customer_limit_override: int = 0
+var spawn_delay_min_seconds: float = 0.0
+var spawn_delay_max_seconds: float = 0.0
+var patience_seconds_override: float = 0.0
 
 func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGenerator) -> void:
 	campaign_state = state
@@ -26,7 +32,8 @@ func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGe
 func start_shift() -> void:
 	active_customers.clear()
 	elapsed_seconds = 0.0
-	spawn_elapsed = campaign_state.config.customer_spawn_interval
+	spawn_elapsed = 0.0
+	current_spawn_delay = _next_spawn_delay()
 	shift_earnings = 0
 	did_emit_completion = false
 	is_running = true
@@ -47,16 +54,21 @@ func advance_time(delta_seconds: float) -> void:
 			customer_left = true
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 			feedback_changed.emit("%s left before finishing. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
+			customer_timed_out.emit(customer.instance_id)
 	var remaining_customers: Array[CustomerState] = []
 	for customer in active_customers:
 		if customer.active:
 			remaining_customers.append(customer)
 	active_customers = remaining_customers
-	spawn_elapsed += delta_seconds
-	if active_customers.size() < campaign_state.get_active_customer_limit() and spawn_elapsed >= campaign_state.config.customer_spawn_interval:
-		spawn_elapsed = 0.0
-		_spawn_customer()
-	elif customer_left:
+	var spawned_customer := false
+	if active_customers.size() < _active_customer_limit():
+		spawn_elapsed += delta_seconds
+		if spawn_elapsed >= current_spawn_delay:
+			spawn_elapsed = 0.0
+			current_spawn_delay = _next_spawn_delay()
+			_spawn_customer()
+			spawned_customer = true
+	if customer_left and not spawned_customer:
 		customers_changed.emit()
 	_update_clock()
 
@@ -80,6 +92,8 @@ func deliver_product(customer_id: String, product_id: String) -> int:
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 			customer.finish_as_paid()
 			active_customers.erase(customer)
+			spawn_elapsed = 0.0
+			current_spawn_delay = _next_spawn_delay()
 			cash_changed.emit(campaign_state.cash)
 			feedback_changed.emit("Order complete! Customer paid and left.")
 			customers_changed.emit()
@@ -101,7 +115,7 @@ func finish_shift() -> void:
 	shift_completed.emit()
 
 func _spawn_customer() -> void:
-	if active_customers.size() >= campaign_state.get_active_customer_limit():
+	if active_customers.size() >= _active_customer_limit():
 		return
 	var ids := campaign_state.config.customer_ids
 	if ids.is_empty():
@@ -109,13 +123,22 @@ func _spawn_customer() -> void:
 	var id := _choose_customer_id()
 	var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
 	var order := OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
-	var customer := CustomerState.new(id, order, campaign_state.config.customer_patience_seconds, campaign_state.get_customer_trust(id))
+	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
+	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer_sequence += 1
 	customer.instance_id = "%s_%d" % [id, customer_sequence]
 	campaign_state.save_customer_trust(id, customer.trust)
 	active_customers.append(customer)
 	customers_changed.emit()
+
+func _active_customer_limit() -> int:
+	return active_customer_limit_override if active_customer_limit_override > 0 else campaign_state.get_active_customer_limit()
+
+func _next_spawn_delay() -> float:
+	if spawn_delay_min_seconds > 0.0 and spawn_delay_max_seconds >= spawn_delay_min_seconds:
+		return rng.randf_range(spawn_delay_min_seconds, spawn_delay_max_seconds)
+	return campaign_state.config.customer_spawn_interval
 
 func _choose_customer_id() -> String:
 	var ids: Array[String] = []
@@ -140,7 +163,7 @@ func _choose_customer_id() -> String:
 	return ids[0]
 
 func _update_clock() -> void:
-	var game_minutes := int(floor(elapsed_seconds / campaign_state.config.shift_length_seconds * 720.0))
+	var game_minutes := int(floor(elapsed_seconds / campaign_state.config.shift_length_seconds * 600.0))
 	var hour := 8 + floori(float(game_minutes) / 60.0)
 	var minute := game_minutes % 60
 	var display_hour := hour if hour <= 12 else hour - 12

@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1")
-product_ids = Array[String](["instant_noodles", "soft_drink", "chips", "biscuits", "bottled_water", "candy", "coffee_sachet", "shampoo_sachet", "toothpaste_sachet"])
+product_ids = Array[String](["instant_noodles", "soft_drink", "chips", "biscuits", "sandwich_biscuits", "bottled_water", "candy", "coffee_sachet", "shampoo_sachet", "toothpaste_sachet"])
 minimum_units = 1
 maximum_units = 3

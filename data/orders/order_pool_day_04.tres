@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="OrderData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/order_data.gd" id="1"]
+[gd_resource type="Resource" script_class="OrderData" format=3 uid="uid://dgbg27gjtte53"]
+
+[ext_resource type="Script" uid="uid://cqa124lp6ih6" path="res://scripts/order_data.gd" id="1"]
+
 [resource]
 script = ExtResource("1")
-product_ids = Array[String](["instant_noodles", "soft_drink", "chips", "biscuits", "bottled_water", "candy", "coffee_sachet", "canned_sardines", "juice_sachet", "shampoo_sachet", "toothpaste_sachet", "bread", "eggs", "soy_sauce", "vinegar", "fish_sauce"])
-minimum_units = 1
+product_ids = Array[String](["instant_noodles", "noodle_pack", "soft_drink", "chips", "biscuits", "sandwich_biscuits", "bottled_water", "candy", "coffee_sachet", "canned_sardines", "juice_sachet", "shampoo_sachet", "toothpaste_sachet", "bread", "eggs", "soy_sauce", "vinegar", "fish_sauce"])
 maximum_units = 4

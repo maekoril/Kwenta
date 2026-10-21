@@ -1,10 +1,14 @@
-[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://c3imfsuufgytf"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
 [resource]
 script = ExtResource("1")
 id = "cooking_oil"
-display_name = "Cooking Oil"
+stacked_texture_key = "cooking_oil"
+single_unit_texture_key = "cooking_oil"
+display_name = "Golden State Warriors Oil"
 price = 40
-shelf_location = "Shelf B"
-unlock_day = 8
+shelf_location = "Shelf Row B"
 display_scale = 1.9
+unlock_day = 8

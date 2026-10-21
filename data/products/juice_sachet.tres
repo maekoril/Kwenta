@@ -1,10 +1,14 @@
-[gd_resource type="Resource" script_class="ProductData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://dp5usm2ddvm2a"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
 [resource]
 script = ExtResource("1")
 id = "juice_sachet"
-display_name = "Tang Orange"
+stacked_texture_key = "juice_sachet"
+single_unit_texture_key = "juice_sachet"
+display_name = "Thang"
 price = 12
-shelf_location = "Hanging Rail"
-unlock_day = 4
+shelf_location = "Top Left Rail"
 display_scale = 1.45
+unlock_day = 4
