@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "juice_sachet"
-stacked_texture_key = "juice_sachet"
-single_unit_texture_key = "juice_sachet"
 display_name = "Thang"
 price = 12
 shelf_location = "Top Left Rail"
+stacked_texture_key = "juice_sachet"
+single_unit_texture_key = "juice_sachet"
 display_scale = 1.45
 unlock_day = 4

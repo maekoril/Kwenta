@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "cooking_oil"
-stacked_texture_key = "cooking_oil"
-single_unit_texture_key = "cooking_oil"
 display_name = "Golden State Warriors Oil"
 price = 40
 shelf_location = "Shelf Row B"
+stacked_texture_key = "cooking_oil"
+single_unit_texture_key = "cooking_oil"
 display_scale = 1.9
 unlock_day = 8

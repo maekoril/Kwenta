@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "soy_sauce"
-stacked_texture_key = "soy_sauce"
-single_unit_texture_key = "soy_sauce"
 display_name = "Boss Toyo"
 price = 18
 shelf_location = "Shelf Row B"
+stacked_texture_key = "soy_sauce"
+single_unit_texture_key = "soy_sauce"
 display_scale = 1.9
 unlock_day = 6

@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "eggs"
-stacked_texture_key = "eggs"
-single_unit_texture_key = "eggs"
 display_name = "Egg Large"
 price = 12
 shelf_location = "Countertop"
+stacked_texture_key = "eggs"
+single_unit_texture_key = "eggs"
 display_scale = 1.8
 unlock_day = 5

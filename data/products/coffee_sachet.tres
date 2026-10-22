@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "coffee_sachet"
-stacked_texture_key = "coffee_sachet"
-single_unit_texture_key = "coffee_sachet"
 display_name = "Kapeko Blanca"
 price = 7
 shelf_location = "Top Left Rail"
+stacked_texture_key = "coffee_sachet"
+single_unit_texture_key = "coffee_sachet"
 display_scale = 1.45
 unlock_day = 2

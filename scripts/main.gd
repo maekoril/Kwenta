@@ -61,38 +61,40 @@ func _process(delta: float) -> void:
 			if child is Control and child.has_method("refresh_patience"):
 				child.refresh_patience()
 
+# All pixel values in this file are the old 640x360 values x3 (1920x1080 viewport).
 func _build_hud() -> void:
 	var hud := PanelContainer.new()
 	hud.z_index = 30
-	hud.position = Vector2(4, 2)
-	hud.size = Vector2(632, 20)
+	hud.position = Vector2(12, 6)
+	hud.size = Vector2(1896, 60)
 	hud.add_theme_stylebox_override("panel", _make_box(Color(0.13, 0.08, 0.06, 0.96), Color("e7b779")))
 	add_child(hud)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 9)
-	row.add_theme_constant_override("margin_left", 5)
-	row.add_theme_constant_override("margin_right", 5)
+	row.add_theme_constant_override("separation", 27)
+	row.add_theme_constant_override("margin_left", 15)
+	row.add_theme_constant_override("margin_right", 15)
 	hud.add_child(row)
-	day_label = _label("SUMMER · DAY 1", 8, Color("ffe1a7"))
-	day_label.custom_minimum_size.x = 112
+	day_label = _label("SUMMER · DAY 1", 24, Color("ffe1a7"))
+	day_label.custom_minimum_size.x = 336
 	row.add_child(day_label)
-	clock_label = _label("8:00 AM", 9, Color("fff0cf"))
+	clock_label = _label("8:00 AM", 27, Color("fff0cf"))
 	clock_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(clock_label)
-	cash_label = _label("₱150", 9, Color("d9efaa"))
-	cash_label.custom_minimum_size.x = 50
+	cash_label = _label("₱150", 27, Color("d9efaa"))
+	cash_label.custom_minimum_size.x = 150
 	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(cash_label)
-	goal_label = _label("SHELVES  150/1500", 7, Color("e4bd87"))
-	goal_label.custom_minimum_size.x = 94
+	goal_label = _label("SHELVES  150/1500", 21, Color("e4bd87"))
+	goal_label.custom_minimum_size.x = 282
 	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(goal_label)
 
 func _build_product_layer() -> void:
 	product_layer = Control.new()
 	product_layer.z_index = 20
-	product_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	product_layer.position = Vector2.ZERO
+	product_layer.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	product_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(product_layer)
 
@@ -101,7 +103,8 @@ func _build_customer_area() -> void:
 	# layer so their lower edge reads as being outside the shop.
 	customer_layer = Control.new()
 	customer_layer.z_index = 5
-	customer_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	customer_layer.position = Vector2.ZERO
+	customer_layer.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	customer_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(customer_layer)
 
@@ -109,43 +112,44 @@ func _build_summary_panel() -> void:
 	summary_backdrop = ColorRect.new()
 	summary_backdrop.z_index = 40
 	summary_backdrop.color = Color(0.04, 0.025, 0.02, 0.62)
-	summary_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	summary_backdrop.position = Vector2.ZERO
+	summary_backdrop.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	summary_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	summary_backdrop.visible = false
 	add_child(summary_backdrop)
 	summary_panel = PanelContainer.new()
 	summary_panel.z_index = 41
-	summary_panel.position = Vector2(80, 43)
-	summary_panel.size = Vector2(480, 274)
+	summary_panel.position = Vector2(240, 129)
+	summary_panel.size = Vector2(1440, 822)
 	summary_panel.add_theme_stylebox_override("panel", _make_box(Color(0.16, 0.09, 0.07, 0.98), Color("f0c17b")))
 	summary_panel.visible = false
 	add_child(summary_panel)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
+	column.add_theme_constant_override("separation", 18)
 	summary_panel.add_child(column)
-	summary_title = _label("SHIFT COMPLETE", 14, Color("ffe1a7"))
+	summary_title = _label("SHIFT COMPLETE", 42, Color("ffe1a7"))
 	summary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(summary_title)
-	summary_text = _label("", 10, Color("fff0cf"))
+	summary_text = _label("", 30, Color("fff0cf"))
 	summary_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(summary_text)
 	summary_unlock_row = HBoxContainer.new()
-	summary_unlock_row.add_theme_constant_override("separation", 6)
+	summary_unlock_row.add_theme_constant_override("separation", 18)
 	column.add_child(summary_unlock_row)
 	for upgrade_resource in CAMPAIGN_CONFIG.store_upgrades:
 		var upgrade: StoreUpgradeData = upgrade_resource
 		var unlock_button := Button.new()
-		unlock_button.custom_minimum_size.y = 24
+		unlock_button.custom_minimum_size.y = 72
 		unlock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		unlock_button.add_theme_font_size_override("font_size", 7)
+		unlock_button.add_theme_font_size_override("font_size", 21)
 		unlock_button.pressed.connect(_purchase_upgrade.bind(upgrade))
 		summary_unlock_row.add_child(unlock_button)
 		upgrade_buttons[upgrade.id] = unlock_button
 	summary_button = Button.new()
 	summary_button.text = "NEXT SHIFT"
-	summary_button.custom_minimum_size.y = 26
-	summary_button.add_theme_font_size_override("font_size", 10)
+	summary_button.custom_minimum_size.y = 78
+	summary_button.add_theme_font_size_override("font_size", 30)
 	summary_button.pressed.connect(_on_summary_button_pressed)
 	column.add_child(summary_button)
 	_update_unlock_buttons()
@@ -211,9 +215,9 @@ func _rebuild_customer_slots() -> void:
 			continue
 		var leaving: Control = customer_actors[instance_id]
 		customer_actors.erase(instance_id)
-		var moving_right := leaving.position.x < 320.0
+		var moving_right := leaving.position.x < 960.0
 		var exit_tween := create_tween()
-		exit_tween.tween_property(leaving, "position:x", 660.0 if moving_right else -140.0, 0.32)
+		exit_tween.tween_property(leaving, "position:x", 1980.0 if moving_right else -420.0, 0.32)
 		exit_tween.parallel().tween_property(leaving, "modulate:a", 0.0, 0.32)
 		exit_tween.tween_callback(leaving.queue_free)
 	var count: int = mini(active.size(), STOREFRONT_LAYOUT.MAX_CUSTOMERS)
@@ -228,7 +232,7 @@ func _rebuild_customer_slots() -> void:
 			actor.call("set_customer", customer, products_by_id)
 			actor.connect("product_dropped", _on_product_dropped)
 			var from_right := randf() < 0.5
-			actor.position = Vector2(660.0 if from_right else -90.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
+			actor.position = Vector2(1980.0 if from_right else -270.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
 			actor.modulate.a = 0.0
 			customer_layer.add_child(actor)
 			actor.call("set_facing_right", from_right)
@@ -369,10 +373,10 @@ func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = fill_color
 	box.border_color = border_color
-	box.set_border_width_all(2)
-	box.set_corner_radius_all(3)
-	box.content_margin_left = 6.0
-	box.content_margin_top = 4.0
-	box.content_margin_right = 6.0
-	box.content_margin_bottom = 4.0
+	box.set_border_width_all(6)
+	box.set_corner_radius_all(9)
+	box.content_margin_left = 18.0
+	box.content_margin_top = 12.0
+	box.content_margin_right = 18.0
+	box.content_margin_bottom = 12.0
 	return box

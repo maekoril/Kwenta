@@ -5,9 +5,9 @@
 [resource]
 script = ExtResource("1_product")
 id = "soft_drink"
-stacked_texture_key = "soft_drink"
-single_unit_texture_key = "soft_drink"
 display_name = "Cola-Coca"
 price = 20
 shelf_location = "Shelf Row B"
+stacked_texture_key = "soft_drink"
+single_unit_texture_key = "soft_drink"
 unlock_day = 3

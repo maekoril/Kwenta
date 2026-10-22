@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1")
 id = "candy"
-stacked_texture_key = "candy"
-single_unit_texture_key = "candy"
 display_name = "Maximo"
 price = 5
 shelf_location = "Shelf Row A"
+stacked_texture_key = "candy"
+single_unit_texture_key = "candy"

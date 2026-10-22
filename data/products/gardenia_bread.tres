@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "bread"
-stacked_texture_key = "bread"
-single_unit_texture_key = "bread"
 display_name = "Bread-winner"
 price = 35
 shelf_location = "Countertop"
+stacked_texture_key = "bread"
+single_unit_texture_key = "bread"
 display_scale = 1.85
 unlock_day = 5

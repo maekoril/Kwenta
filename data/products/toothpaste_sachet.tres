@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1")
 id = "toothpaste_sachet"
-stacked_texture_key = "toothpaste_sachet"
-single_unit_texture_key = "toothpaste_sachet"
 display_name = "Rizz-Up Toothpaste"
 price = 10
 shelf_location = "Top Right Rail"
+stacked_texture_key = "toothpaste_sachet"
+single_unit_texture_key = "toothpaste_sachet"
 display_scale = 1.45
 unlock_day = 0
