@@ -67,20 +67,15 @@ func _draw() -> void:
 			draw_texture_rect(display_texture, sprite_rect, false, CounterArt.get_product_display_tint())
 
 func _draw_hanging_sachet_strip() -> void:
-	if _item_icon == null:
+	# Rails use the authored connected strip; the isolated packet is reserved for
+	# drag previews and order bubbles. This keeps the shelf state visually distinct.
+	var strip_texture := _display_texture if _display_texture != null else _item_icon
+	if strip_texture == null:
 		return
-	var packet_count := 4
-	var packet_bounds := Vector2(minf(18.0, size.x - 4.0), minf(14.0, size.y / float(packet_count)))
-	var strip_width := minf(3.0, packet_bounds.x * 0.2)
-	var strip_x := (size.x - strip_width) * 0.5
-	draw_rect(Rect2(strip_x, 0.0, strip_width, size.y), Color(0.22, 0.16, 0.11, 0.55), true)
-	for packet_index in range(packet_count):
-		var packet_y := float(packet_index) * packet_bounds.y
-		var packet_rect := Rect2((size.x - packet_bounds.x) * 0.5, packet_y, packet_bounds.x, packet_bounds.y)
-		var fitted := CounterArt.fit_texture_rect(Vector2(_item_icon.get_size()), packet_rect.size)
-		var sprite_rect := Rect2(packet_rect.position + fitted.position, fitted.size)
-		draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
-		draw_texture_rect(_item_icon, sprite_rect, false, CounterArt.get_product_display_tint())
+	var fitted := CounterArt.fit_texture_rect(Vector2(strip_texture.get_size()), size)
+	var sprite_rect := Rect2(fitted.position, fitted.size)
+	draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
+	draw_texture_rect(strip_texture, sprite_rect, false, CounterArt.get_product_display_tint())
 
 func _draw_combined_display(combined_product_id: String) -> void:
 	var combined_texture: Texture2D = CounterArt.product_fixture_texture(combined_product_id)

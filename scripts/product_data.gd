@@ -8,6 +8,8 @@ extends Resource
 @export var shelf_location: String = ""
 @export var stacked_texture_key: String = ""
 @export var single_unit_texture_key: String = ""
+@export var stacked_texture: Texture2D
+@export var single_unit_texture: Texture2D
 @export_range(0.5, 2.5, 0.05) var display_scale: float = 1.6
 @export_range(0, 10, 1) var unlock_day: int = 1
 @export_range(0, 100000, 1) var unlock_cost: int = 0

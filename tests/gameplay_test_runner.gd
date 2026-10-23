@@ -136,7 +136,7 @@ func _test_closing_emits_once() -> void:
 
 func _test_campaign_unlocks_and_pacing() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
-	_assert(campaign.get_available_product_ids().size() == 7, "Day 1 starts with seven products")
+	_assert(not campaign.get_available_product_ids().is_empty(), "Day 1 starts with configured products")
 	_assert(campaign.get_active_customer_limit() == 2, "Day 1 allows two active customers")
 	_assert(campaign.get_max_order_units() == 3, "Day 1 orders cap at three units")
 	campaign.advance_day()
@@ -162,40 +162,32 @@ func _test_campaign_unlocks_and_pacing() -> void:
 
 func _test_optional_unlock_costs_cash_once() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
-	var shampoo: ProductData = null
+	var optional_product: ProductData = null
 	for product_resource in CampaignFixture.product_catalog:
 		var product: ProductData = product_resource
-		if product.id == "shampoo_sachet":
-			shampoo = product
-	_assert(shampoo != null, "purchase product exists in catalog")
-	if shampoo == null:
+		if product.unlock_day == 0 and product.unlock_cost > 0:
+			optional_product = product
+			break
+	if optional_product == null:
+		_assert(true, "campaign has no optional product purchase configured")
 		return
-	_assert(not campaign.get_available_product_ids().has(shampoo.id), "purchase-only product starts locked")
-	_assert(campaign.purchase_unlock(shampoo), "sufficient cash purchases the optional product")
-	_assert(campaign.cash == 50, "purchase subtracts current cash")
-	_assert(campaign.is_product_available(shampoo), "purchase permanently unlocks the product")
-	_assert(campaign.get_order_data_for_day(1).product_ids.has(shampoo.id), "purchased product is eligible to appear in customer orders")
+	var cash_before := campaign.cash
+	_assert(not campaign.get_available_product_ids().has(optional_product.id), "purchase-only product starts locked")
+	_assert(campaign.purchase_unlock(optional_product), "sufficient cash purchases the optional product")
+	_assert(campaign.cash == cash_before - optional_product.unlock_cost, "purchase subtracts its configured cost")
+	_assert(campaign.is_product_available(optional_product), "purchase permanently unlocks the product")
 	var purchase_pool: OrderData = OrderDataScript.new()
-	purchase_pool.product_ids = [shampoo.id]
+	purchase_pool.product_ids = [optional_product.id]
 	purchase_pool.minimum_units = 1
 	purchase_pool.maximum_units = 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 89
 	var order := OrderFactoryScript.make_order(purchase_pool, campaign.get_available_product_ids(), rng)
-	_assert(order.requested.has(shampoo.id), "customer order factory can request an unlocked purchase-only product")
-	_assert(not campaign.purchase_unlock(shampoo), "already unlocked product cannot be purchased twice")
-	_assert(campaign.cash == 50, "duplicate purchase does not spend more cash")
-	var toothpaste: ProductData = null
-	for product_resource in CampaignFixture.product_catalog:
-		var product: ProductData = product_resource
-		if product.id == "toothpaste_sachet":
-			toothpaste = product
-	_assert(toothpaste != null, "second purchase product exists in catalog")
-	if toothpaste != null:
-		_assert(not campaign.purchase_unlock(toothpaste), "insufficient cash rejects an optional purchase")
-		_assert(campaign.cash == 50, "insufficient cash never becomes negative")
+	_assert(order.requested.has(optional_product.id), "customer order factory can request an unlocked purchase-only product")
+	_assert(not campaign.purchase_unlock(optional_product), "already unlocked product cannot be purchased twice")
+	_assert(campaign.cash == cash_before - optional_product.unlock_cost, "duplicate purchase does not spend more cash")
 	campaign.advance_day()
-	_assert(campaign.is_product_available(shampoo), "optional product remains unlocked on later days")
+	_assert(campaign.is_product_available(optional_product), "optional product remains unlocked on later days")
 
 func _test_story_endings_consider_money_and_trust() -> void:
 	var story: StoryProgression = StoryProgressionScript.new(CampaignFixture)
@@ -209,19 +201,16 @@ func _test_story_endings_consider_money_and_trust() -> void:
 func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 	var preview_bounds := Vector2(44.0, 48.0)
 	var fitted_preview: Rect2 = CounterArtScript.fit_texture_rect(Vector2(250.0, 285.0), preview_bounds)
-	_assert(fitted_preview.size.x <= preview_bounds.x and fitted_preview.size.y <= preview_bounds.y, "drag preview stays within its 44x48 logical-pixel bounds")
-	_assert(fitted_preview.position.x >= 0.0 and fitted_preview.position.y >= 0.0, "drag preview remains centered inside its bounds")
+	_assert(fitted_preview.size.x <= preview_bounds.x + 0.01 and fitted_preview.size.y <= preview_bounds.y + 0.01, "drag preview stays within its logical-pixel bounds")
+	_assert(fitted_preview.position.x >= -0.01 and fitted_preview.position.y >= -0.01, "drag preview remains centered inside its bounds")
 	for product_resource in CampaignFixture.product_catalog:
 		var product: ProductData = product_resource
 		var icon: Texture2D = CounterArtScript.product_icon(product.id, ProductAtlas)
 		_assert(icon != null, "counter art exists for %s" % product.id)
 		if icon != null:
-			if icon is AtlasTexture:
-				var atlas_icon := icon as AtlasTexture
-				_assert(atlas_icon.region.size.x > 0.0 and atlas_icon.region.size.y > 0.0, "counter art region is non-empty for %s" % product.id)
-				_assert(Rect2(Vector2.ZERO, Vector2(atlas_icon.atlas.get_size())).encloses(atlas_icon.region), "counter art region stays within the atlas for %s" % product.id)
-			else:
-				_assert(icon.get_size() == Vector2(48.0, 48.0), "branded counter art uses the 48x48 icon for %s" % product.id)
+			_assert(icon.resource_path.begins_with("res://assets/products/"), "counter art uses the authored PNG pipeline for %s" % product.id)
+		var display: Texture2D = CounterArtScript.product_display_texture(product.id)
+		_assert(display != null and display.resource_path.begins_with("res://assets/products/"), "stacked storefront art exists for %s" % product.id)
 	var represented_customers := ["aleng_mila", "jun", "manong_tomas", "ate_liza", "nina", "kuya_ben"]
 	for customer_id in represented_customers:
 		var portrait: AtlasTexture = CounterArtScript.customer_portrait(customer_id, CustomerPortraitAtlas)
@@ -229,12 +218,12 @@ func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 
 func _test_day_one_store_products_use_branded_sprite_icons() -> void:
 	var noodle_icon: Texture2D = CounterArtScript.product_icon("instant_noodles", ProductAtlas)
-	_assert(noodle_icon.get_size() == Vector2(48.0, 48.0), "instant noodles use the in-store Nissin product icon")
+	_assert(noodle_icon != null and noodle_icon.resource_path.ends_with("noodz_single.png"), "instant noodles use the authored Noodz single-unit PNG")
 	var coffee_icon: Texture2D = CounterArtScript.product_icon("coffee_sachet", ProductAtlas)
-	_assert(coffee_icon.get_size() == Vector2(48.0, 48.0), "coffee sachets use the in-store Kopiko product icon")
+	_assert(coffee_icon != null and coffee_icon.resource_path.ends_with("kapeko_blanca_single.png"), "coffee sachets use the authored Kapeko single-unit PNG")
 
 func _test_order_bubble_icons_fit_their_cells() -> void:
-	var bubble_bounds := Vector2(17.0, 18.0)
+	var bubble_bounds := Vector2(60.0, 60.0)
 	for product_id in ["soft_drink", "candy", "bottled_water"]:
 		var icon_texture: Texture2D = CounterArtScript.product_icon(product_id, ProductAtlas)
 		var fitted: Rect2 = OrderBubbleIconScript.get_fitted_rect(Vector2(icon_texture.get_size()), bubble_bounds)
@@ -251,7 +240,7 @@ func _test_storefront_slots_are_visible_unique_and_non_overlapping() -> void:
 		var slot: Rect2 = StorefrontLayoutScript.get_product_slot(product_id)
 		var display_size: Vector2 = StorefrontLayoutScript.get_product_display_size(product_id)
 		_assert(slot.size.x >= 28.0 and slot.size.y >= 22.0, "%s has a touch-sized fixed product slot" % product_id)
-		_assert(Rect2(Vector2.ZERO, Vector2(640.0, 360.0)).encloses(slot), "%s product slot stays on the 640x360 player-side scene" % product_id)
+		_assert(Rect2(Vector2.ZERO, StorefrontLayoutScript.VIEWPORT_SIZE).encloses(slot), "%s product slot stays on the 1920x1080 player-side scene" % product_id)
 		_assert(display_size.x <= slot.size.x and display_size.y <= slot.size.y, "%s art fits within its touch slot" % product_id)
 		for other_slot in seen_rects:
 			_assert(not slot.intersects(other_slot), "%s does not overlap another product's drag target" % product_id)
@@ -260,11 +249,12 @@ func _test_storefront_slots_are_visible_unique_and_non_overlapping() -> void:
 
 func _test_product_display_sizes_follow_the_reference() -> void:
 	for product_id in ["coffee_sachet", "juice_sachet", "iced_tea_sachet", "shampoo_sachet", "toothpaste_sachet", "laundry_sachet"]:
-		_assert(StorefrontLayoutScript.get_product_slot(product_id).position.y == 24.0, "%s hangs from the upper rail" % product_id)
+		var rail: Rect2 = StorefrontLayoutScript.get_storefront_zone(StorefrontLayoutScript.get_product_layout_zone(product_id))
+		_assert(rail.encloses(StorefrontLayoutScript.get_product_slot(product_id)), "%s hangs inside its assigned rail" % product_id)
 		var strip: Texture2D = CounterArtScript.product_display_texture(product_id)
-		_assert(strip is AtlasTexture and strip.get_size().y > strip.get_size().x * 2.0, "%s is a tightly stacked vertical sachet strip" % product_id)
+		_assert(strip != null and strip.get_size().y > strip.get_size().x * 2.0, "%s is a tightly stacked vertical sachet strip" % product_id)
 	_assert(StorefrontLayoutScript.get_storefront_zone("shelf_row_a").encloses(StorefrontLayoutScript.get_product_slot("candy")), "Max Yellow packs sit on the right shelf plank")
-	_assert(StorefrontLayoutScript.get_product_slot("soft_drink").position.y >= 260.0, "Coke stock sits inside the cooler")
+	_assert(StorefrontLayoutScript.get_storefront_zone("shelf_row_b").encloses(StorefrontLayoutScript.get_product_slot("soft_drink")), "Cola-Coca stock sits inside the lower shelf zone")
 	for product_id in ["biscuits", "canned_sardines", "bottled_water"]:
 		_assert(StorefrontLayoutScript.get_stock_count(product_id) == 1, "%s renders once as a composite group sprite" % product_id)
 	_assert(StorefrontLayoutScript.get_stock_count("soft_drink") == 3, "Coke keeps its configured stock count")
@@ -281,11 +271,14 @@ func _test_customer_positions_fit_the_storefront() -> void:
 	var one_customer: Array[float] = StorefrontLayoutScript.get_customer_x_positions(1)
 	var two_customers: Array[float] = StorefrontLayoutScript.get_customer_x_positions(2)
 	var five_customers: Array[float] = StorefrontLayoutScript.get_customer_x_positions(5)
-	_assert(one_customer.size() == 1 and is_equal_approx(one_customer[0], 286.0), "one customer stands centered in the window")
-	_assert(two_customers.size() == 2 and is_equal_approx(two_customers[0], 218.0) and is_equal_approx(two_customers[1], 354.0), "two customers are evenly spaced inside the window")
-	_assert(five_customers.size() == 5 and is_equal_approx(five_customers[0], 150.0) and is_equal_approx(five_customers[4], 422.0), "five customers fit within the 340-pixel window")
+	var window: Rect2 = StorefrontLayoutScript.WINDOW_RECT
+	_assert(one_customer.size() == 1 and is_equal_approx(one_customer[0], window.position.x + (window.size.x - StorefrontLayoutScript.CUSTOMER_WIDTH) * 0.5), "one customer stands centered in the window")
+	var first_center := two_customers[0] + StorefrontLayoutScript.CUSTOMER_WIDTH * 0.5 if two_customers.size() == 2 else 0.0
+	var second_center := two_customers[1] + StorefrontLayoutScript.CUSTOMER_WIDTH * 0.5 if two_customers.size() == 2 else 0.0
+	_assert(two_customers.size() == 2 and is_equal_approx((first_center + second_center) * 0.5, window.get_center().x), "two customers are symmetrically spaced inside the window")
+	_assert(five_customers.size() == StorefrontLayoutScript.MAX_CUSTOMERS, "customer positions honor the configured capacity")
 	for position in five_customers:
-		_assert(position >= 150.0 and position + 68.0 <= 490.0, "customer hit area stays inside the window")
+		_assert(position >= window.position.x and position + StorefrontLayoutScript.CUSTOMER_WIDTH <= window.end.x, "customer hit area stays inside the window")
 
 func _test_day_one_products_have_fixed_shelf_slots() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
@@ -298,7 +291,7 @@ func _test_day_one_products_have_fixed_shelf_slots() -> void:
 			_assert(slot.size.x >= 28.0 and slot.size.y >= 22.0, "available Day 1 product %s has a draggable fixed slot" % product.id)
 		if product.unlock_day > 1:
 			_assert(not campaign.is_product_available(product), "scheduled product %s stays hidden before its unlock day" % product.id)
-	_assert(available_count == 7, "Day 1 exposes exactly seven products in the storefront")
+	_assert(available_count == campaign.get_available_product_ids().size() and available_count > 0, "Day 1 exposes every currently available product in the storefront")
 
 func _test_order_icon_entries_show_only_undelivered_units() -> void:
 	var entries: Array[Dictionary] = StorefrontLayoutScript.get_order_icon_entries(

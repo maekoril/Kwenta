@@ -2,8 +2,13 @@
 
 [ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
 
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/ticnap_notnac_stack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/ticnap_notnac_single.png" id="3_single"]
+
 [resource]
 script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
 id = "noodle_pack"
 stacked_texture_key = "noodle_pack"
 single_unit_texture_key = "noodle_pack"

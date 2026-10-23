@@ -181,14 +181,11 @@ func _rebuild_product_shelf() -> void:
 		if slot.size == Vector2.ZERO or display_size == Vector2.ZERO:
 			continue
 		var drag_item := PRODUCT_DRAG_ITEM_SCENE.instantiate() as Control
-		var single_texture_key: String = product.single_unit_texture_key if not product.single_unit_texture_key.is_empty() else product.id
-		var stacked_texture_key: String = product.stacked_texture_key if not product.stacked_texture_key.is_empty() else product.id
-		var item_texture: Texture2D = COUNTER_ART.product_single_texture(single_texture_key)
-		if item_texture == null:
-			item_texture = COUNTER_ART.product_icon(product.id, PRODUCT_ATLAS)
-		var display_texture: Texture2D = COUNTER_ART.product_display_texture(stacked_texture_key)
-		if display_texture == null:
-			display_texture = item_texture
+		var item_texture: Texture2D = product.single_unit_texture
+		var display_texture: Texture2D = product.stacked_texture
+		if item_texture == null or display_texture == null:
+			push_error("Product %s is missing its assigned PNG textures." % product.id)
+			continue
 		drag_item.call("configure", product, item_texture, true, display_size, STOREFRONT_LAYOUT.is_product_rotated(product.id), display_texture, STOREFRONT_LAYOUT.get_stock_count(product.id), product.display_scale)
 		drag_item.position = slot.position
 		drag_item.size = slot.size
