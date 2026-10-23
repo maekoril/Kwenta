@@ -14,7 +14,7 @@ const CounterArtScript = preload("res://scripts/counter_art.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
 const OrderBubbleIconScript = preload("res://scripts/order_bubble_icon.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
-const CustomerPortraitAtlas = preload("res://assets/sprites/customer_portraits.png")
+const CustomerPortraitAtlas = preload("res://assets/sprites/customer_portraits_v2.png")
 
 var failures: int = 0
 var shift_completion_count: int = 0
@@ -32,7 +32,7 @@ func _initialize() -> void:
 	_test_two_customers_keep_separate_orders_and_capacity()
 	_test_campaign_unlocks_and_pacing()
 	_test_optional_unlock_costs_cash_once()
-	_test_story_endings_consider_money_and_trust()
+	_test_seven_day_story_remembers_choices_and_callbacks()
 	_test_counter_sprite_atlases_cover_the_campaign_catalog()
 	_test_day_one_store_products_use_branded_sprite_icons()
 	_test_order_bubble_icons_fit_their_cells()
@@ -152,9 +152,8 @@ func _test_campaign_unlocks_and_pacing() -> void:
 	_assert(campaign.day == 7, "campaign advances into Day 7")
 	_assert(campaign.get_available_product_ids().has("laundry_sachet"), "Day 7 scheduled product unlocks")
 	_assert(campaign.get_available_product_ids().has("iced_tea_sachet"), "Nestea Lemon joins the hanging rail on Day 7")
-	for _day in range(7, 10):
-		campaign.advance_day()
-	_assert(campaign.day == 10, "campaign reaches its final shift")
+	campaign.advance_day()
+	_assert(campaign.day == 7, "campaign stops at its seventh and final shift")
 	campaign.save_customer_trust("regular", 79.0)
 	_assert(campaign.count_trusted_regulars() == 0, "trust below configured threshold is not counted as a regular")
 	campaign.save_customer_trust("regular", 80.0)
@@ -189,14 +188,28 @@ func _test_optional_unlock_costs_cash_once() -> void:
 	campaign.advance_day()
 	_assert(campaign.is_product_available(optional_product), "optional product remains unlocked on later days")
 
-func _test_story_endings_consider_money_and_trust() -> void:
+func _test_seven_day_story_remembers_choices_and_callbacks() -> void:
 	var story: StoryProgression = StoryProgressionScript.new(CampaignFixture)
-	_assert(story.get_ending_variant(1500, 3, 1500, 3) == StoryProgressionScript.EndingVariant.BALANCED_SUCCESS, "meeting both goals gives balanced ending")
-	_assert(story.get_ending_variant(1500, 1, 1500, 3) == StoryProgressionScript.EndingVariant.MIXED_PROGRESS, "meeting one goal gives mixed ending")
-	_assert(story.get_ending_variant(0, 0, 1500, 3) == StoryProgressionScript.EndingVariant.HOPEFUL_SECOND_CHANCE, "missing both goals keeps a hopeful ending")
-	_assert(not story.get_intro_text().is_empty(), "story intro is data-driven and present")
-	_assert(not story.get_day_transition_text(4).contains("wrong person"), "story does not claim the player caused a rejected wrong-item delivery")
-	_assert(not story.get_day_transition_text(4).contains("leaves with only part"), "story doesn't force a timeout after a perfect shift")
+	_assert(story.get_campaign_day_count() == 7, "the approved story has seven days")
+	_assert(not story.get_prologue_beats().is_empty(), "the Ang Susi prologue is data-driven and present")
+	_assert(story.get_day_title(1) == "Ayoko Nito" and story.get_day_title(7) == "Kwenta", "the first and final approved day titles are present")
+	_assert(story.get_day_choices(2).size() == 2, "Day 2 includes the haggling beat and the overpayment choice")
+	_assert(story.record_choice("day2_overpayment", "return"), "a valid story choice is remembered")
+	_assert(story.get_choice("day2_overpayment") == "return", "the selected choice flag can be read later")
+	var day_three_intro := story.get_day_intro_beats(3)
+	var returned_money_callback := false
+	for beat in day_three_intro:
+		returned_money_callback = returned_money_callback or str(beat.get("text", "")).contains("sobra po")
+	_assert(returned_money_callback, "returning the ₱50 produces the Day 3 Mang Berting callback")
+	_assert(not story.record_choice("day2_overpayment", "missing"), "an unknown option cannot overwrite a story flag")
+	story.record_choice("day1_play", "stay")
+	story.record_choice("day3_candy", "credit")
+	story.record_choice("day4_rain", "shelter")
+	story.record_choice("day5_debt", "installments")
+	story.record_choice("day6_help", "ask")
+	_assert(story.get_day_callback_beats(7).size() >= 10, "the finale includes choice-specific notebook reactions and the epilogue")
+	story.reset()
+	_assert(story.get_choice("day1_play").is_empty(), "replay clears remembered choices")
 
 func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 	var preview_bounds := Vector2(44.0, 48.0)
@@ -211,10 +224,16 @@ func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 			_assert(icon.resource_path.begins_with("res://assets/products/"), "counter art uses the authored PNG pipeline for %s" % product.id)
 		var display: Texture2D = CounterArtScript.product_display_texture(product.id)
 		_assert(display != null and display.resource_path.begins_with("res://assets/products/"), "stacked storefront art exists for %s" % product.id)
-	var represented_customers := ["aleng_mila", "jun", "manong_tomas", "ate_liza", "nina", "kuya_ben"]
+	var represented_customers := ["aling_nena", "mang_berting", "bea", "paolo", "kuya_dodong", "jun_jun"]
 	for customer_id in represented_customers:
 		var portrait: AtlasTexture = CounterArtScript.customer_portrait(customer_id, CustomerPortraitAtlas)
 		_assert(portrait != null and portrait.region.size.x > 0.0, "customer portrait exists for %s" % customer_id)
+	var story_portraits := ["tonyo_bored", "tonyo_flustered", "tonyo_determined", "tonyo_smiling_tired", "aling_cora", "aling_cora_smiling", "aling_cora_reading", "jun_jun_tara", "mikay_smug", "bogs_small_smile", "aling_nena_haggling", "aling_nena_happy", "aling_nena_impatient", "aling_nena_embarrassed", "mang_berting_happy", "mang_berting_impatient", "bea_happy", "bea_sad", "paolo_happy", "paolo_sad", "kuya_dodong_thoughtful", "kuya_dodong_soaked"]
+	for portrait_id in story_portraits:
+		var story_portrait: AtlasTexture = CounterArtScript.customer_portrait(portrait_id, CustomerPortraitAtlas)
+		_assert(story_portrait != null and story_portrait.region.size == Vector2(512.0, 512.0), "story portrait exists for %s" % portrait_id)
+	_assert(CounterArtScript.customer_portrait("jun_jun", CustomerPortraitAtlas).region != CounterArtScript.customer_portrait("bogs", CustomerPortraitAtlas).region, "Jun-jun and Bogs use distinct portrait cells")
+	_assert(CounterArtScript.customer_portrait("bogs", CustomerPortraitAtlas).region != CounterArtScript.customer_portrait("paolo", CustomerPortraitAtlas).region, "Bogs and Paolo use distinct portrait cells")
 
 func _test_day_one_store_products_use_branded_sprite_icons() -> void:
 	var noodle_icon: Texture2D = CounterArtScript.product_icon("instant_noodles", ProductAtlas)

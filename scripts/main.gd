@@ -4,6 +4,7 @@ const CAMPAIGN_CONFIG: CampaignConfig = preload("res://data/story/summer_campaig
 const PRODUCT_DRAG_ITEM_SCENE: PackedScene = preload("res://scenes/product_drag_item.tscn")
 const CUSTOMER_ACTOR_SCENE: PackedScene = preload("res://scenes/customer_slot.tscn")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
+const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 
@@ -23,14 +24,24 @@ var customer_actors: Dictionary = {}
 var summary_panel: PanelContainer
 var summary_backdrop: ColorRect
 var summary_title: Label
+var summary_portrait: TextureRect
+var summary_speaker: Label
 var summary_text: Label
 var summary_unlock_row: HBoxContainer
+var story_choice_column: VBoxContainer
 var summary_button: Button
 var ui_refresh_elapsed: float = 0.0
 var campaign_started: bool = false
 var shift_start_cash: int = 0
 var shift_start_trust: Dictionary = {}
 var displayed_cash: int = -1
+var story_beats: Array[Dictionary] = []
+var story_beat_index: int = 0
+var story_after_action: String = ""
+var pending_story_choices: Array[Dictionary] = []
+var pending_choice_index: int = 0
+var showing_shift_results: bool = false
+var story_complete: bool = false
 
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -45,11 +56,7 @@ func _ready() -> void:
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
-	summary_backdrop.visible = true
-	summary_panel.visible = true
-	summary_title.text = "SUMMER BREAK"
-	summary_text.text = story.get_intro_text()
-	summary_button.text = "OPEN THE STORE"
+	_present_prologue()
 
 func _process(delta: float) -> void:
 	if shift != null:
@@ -74,7 +81,7 @@ func _build_hud() -> void:
 	row.add_theme_constant_override("margin_left", 15)
 	row.add_theme_constant_override("margin_right", 15)
 	hud.add_child(row)
-	day_label = _label("SUMMER · DAY 1", 24, Color("ffe1a7"))
+	day_label = _label("KWENTA · DAY 1", 24, Color("ffe1a7"))
 	day_label.custom_minimum_size.x = 336
 	row.add_child(day_label)
 	clock_label = _label("8:00 AM", 27, Color("fff0cf"))
@@ -85,7 +92,7 @@ func _build_hud() -> void:
 	cash_label.custom_minimum_size.x = 150
 	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(cash_label)
-	goal_label = _label("SHELVES  150/1500", 21, Color("e4bd87"))
+	goal_label = _label("STORY  1/7", 21, Color("e4bd87"))
 	goal_label.custom_minimum_size.x = 282
 	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(goal_label)
@@ -130,10 +137,32 @@ func _build_summary_panel() -> void:
 	summary_title = _label("SHIFT COMPLETE", 42, Color("ffe1a7"))
 	summary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(summary_title)
+	var story_row := HBoxContainer.new()
+	story_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	story_row.add_theme_constant_override("separation", 27)
+	column.add_child(story_row)
+	summary_portrait = TextureRect.new()
+	summary_portrait.custom_minimum_size = Vector2(300, 450)
+	summary_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	summary_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	summary_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	summary_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	story_row.add_child(summary_portrait)
+	var dialogue_column := VBoxContainer.new()
+	dialogue_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dialogue_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dialogue_column.add_theme_constant_override("separation", 12)
+	story_row.add_child(dialogue_column)
+	summary_speaker = _label("", 30, Color("f0c17b"))
+	dialogue_column.add_child(summary_speaker)
 	summary_text = _label("", 30, Color("fff0cf"))
 	summary_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(summary_text)
+	dialogue_column.add_child(summary_text)
+	story_choice_column = VBoxContainer.new()
+	story_choice_column.add_theme_constant_override("separation", 9)
+	story_choice_column.visible = false
+	dialogue_column.add_child(story_choice_column)
 	summary_unlock_row = HBoxContainer.new()
 	summary_unlock_row.add_theme_constant_override("separation", 18)
 	column.add_child(summary_unlock_row)
@@ -297,14 +326,14 @@ func _update_cash(value: int) -> void:
 		pop_tween.tween_property(cash_label, "scale", Vector2(1.18, 1.18), 0.10)
 		pop_tween.tween_property(cash_label, "scale", Vector2.ONE, 0.16)
 	displayed_cash = value
-	goal_label.text = "SHELVES  %d/%d" % [mini(campaign.get_shelf_goal_progress(), CAMPAIGN_CONFIG.shelf_replacement_goal), CAMPAIGN_CONFIG.shelf_replacement_goal]
+	goal_label.text = "STORY  %d/%d" % [campaign.day, CAMPAIGN_CONFIG.campaign_day_count]
 	_update_unlock_buttons()
 
 func _update_unlock_buttons() -> void:
 	if summary_unlock_row == null:
 		return
-	var can_offer_unlocks: bool = campaign_started and campaign != null and campaign.day < 10
-	summary_unlock_row.visible = can_offer_unlocks
+	var can_offer_unlocks: bool = campaign_started and campaign != null and campaign.day < CAMPAIGN_CONFIG.campaign_day_count
+	summary_unlock_row.visible = can_offer_unlocks and showing_shift_results and story_beat_index == 0
 	for upgrade_resource in CAMPAIGN_CONFIG.store_upgrades:
 		var upgrade: StoreUpgradeData = upgrade_resource
 		if not upgrade_buttons.has(upgrade.id):
@@ -316,46 +345,161 @@ func _update_unlock_buttons() -> void:
 		button.disabled = purchased or campaign.cash < upgrade.purchase_cost
 
 func _show_shift_summary() -> void:
-	summary_backdrop.visible = true
-	summary_panel.visible = true
-	_update_unlock_buttons()
-	if campaign.day < 10:
-		summary_title.text = "DAY %d COMPLETE" % campaign.day
-		var trust_lost := 0.0
-		for customer_id in campaign.customer_trust:
-			var starting_trust := float(shift_start_trust.get(customer_id, 100.0))
-			trust_lost += maxf(0.0, starting_trust - campaign.get_customer_trust(customer_id))
-		var trust_line := "Regulars kept their trust today." if trust_lost <= 0.0 else "Regulars' trust lost: %d points." % int(trust_lost)
-		summary_text.text = "%s\n\nSales today: ₱%d\nShelf progress: ₱%d / ₱%d\n%s" % [story.get_day_transition_text(campaign.day), shift.shift_earnings, campaign.get_shelf_goal_progress(), CAMPAIGN_CONFIG.shelf_replacement_goal, trust_line]
-		summary_button.text = "START DAY %d" % (campaign.day + 1)
-	else:
-		summary_title.text = "SUMMER'S END"
-		var ending_variant := story.get_ending_variant(campaign.get_shelf_goal_progress(), campaign.count_trusted_regulars(), CAMPAIGN_CONFIG.shelf_replacement_goal, CAMPAIGN_CONFIG.trusted_regular_goal)
-		summary_text.text = story.get_ending_text(ending_variant)
-		summary_button.text = "SUMMER COMPLETE"
-		summary_button.disabled = true
+	showing_shift_results = true
+	var beats: Array[Dictionary] = [{
+		"speaker": "Kuwaderno",
+		"portrait": "",
+		"text": "Tapos ang Day %d.\n\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [campaign.day, shift.shift_earnings, campaign.cash],
+	}]
+	beats.append_array(story.get_day_outro_beats(campaign.day))
+	_show_story_beats(beats, "DAY %d COMPLETE · %s" % [campaign.day, story.get_day_title(campaign.day)], "day_choices")
 
 func _on_summary_button_pressed() -> void:
-	if not campaign_started:
-		campaign_started = true
-		summary_backdrop.visible = false
-		summary_panel.visible = false
-		_begin_shift()
+	if story_complete:
+		_restart_story()
 		return
-	if campaign.day >= 10:
+	if not story_choice_column.visible:
+		story_beat_index += 1
+		_show_current_story_beat()
+
+func _present_prologue() -> void:
+	var beats := story.get_prologue_beats()
+	beats.append_array(story.get_day_intro_beats(1))
+	_show_story_beats(beats, "PROLOGUE · ANG SUSI", "start_shift")
+
+func _present_day_intro() -> void:
+	_show_story_beats(story.get_day_intro_beats(campaign.day), "DAY %d · %s" % [campaign.day, story.get_day_title(campaign.day)], "start_shift")
+
+func _show_story_beats(beats: Array[Dictionary], title: String, after_action: String) -> void:
+	story_beats = beats
+	story_beat_index = 0
+	story_after_action = after_action
+	summary_title.text = title
+	summary_backdrop.visible = true
+	summary_panel.visible = true
+	summary_button.visible = true
+	summary_button.disabled = false
+	story_choice_column.visible = false
+	_clear_story_choice_buttons()
+	_show_current_story_beat()
+
+func _show_current_story_beat() -> void:
+	if story_beat_index >= story_beats.size():
+		_complete_story_beats()
 		return
+	var beat: Dictionary = story_beats[story_beat_index]
+	var speaker: String = str(beat.get("speaker", "Narrator"))
+	var portrait_id: String = str(beat.get("portrait", ""))
+	summary_speaker.text = speaker
+	summary_text.text = str(beat.get("text", ""))
+	summary_button.text = "CONTINUE" if story_beat_index < story_beats.size() - 1 else "CONTINUE"
+	summary_portrait.visible = not portrait_id.is_empty()
+	if summary_portrait.visible:
+		summary_portrait.texture = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+	_update_unlock_buttons()
+
+func _complete_story_beats() -> void:
+	match story_after_action:
+		"start_shift":
+			campaign_started = true
+			showing_shift_results = false
+			summary_backdrop.visible = false
+			summary_panel.visible = false
+			_begin_shift()
+		"day_choices":
+			showing_shift_results = false
+			pending_story_choices = story.get_day_choices(campaign.day)
+			pending_choice_index = 0
+			_show_next_story_choice()
+		"next_choice":
+			pending_choice_index += 1
+			_show_next_story_choice()
+		"finish_day":
+			_finish_story_day()
+
+func _show_next_story_choice() -> void:
+	if pending_choice_index >= pending_story_choices.size():
+		var callbacks := story.get_day_callback_beats(campaign.day)
+		_show_story_beats(callbacks, "DAY %d · %s" % [campaign.day, story.get_day_title(campaign.day)], "finish_day")
+		return
+	var choice_data: Dictionary = pending_story_choices[pending_choice_index]
+	summary_title.text = "PILIIN · DAY %d" % campaign.day
+	summary_speaker.text = "Tonyo"
+	summary_text.text = str(choice_data.get("prompt", "Ano ang gagawin?"))
+	summary_portrait.visible = true
+	summary_portrait.texture = COUNTER_ART.customer_portrait("tonyo", PORTRAIT_ATLAS)
+	summary_button.visible = false
 	summary_unlock_row.visible = false
+	story_choice_column.visible = true
+	_clear_story_choice_buttons()
+	for option_value in choice_data.get("options", []):
+		if not option_value is Dictionary:
+			continue
+		var option: Dictionary = option_value
+		var button := Button.new()
+		button.text = str(option.get("label", option.get("id", "Choice")))
+		button.custom_minimum_size.y = 57
+		button.add_theme_font_size_override("font_size", 24)
+		button.pressed.connect(_select_story_choice.bind(choice_data, str(option.get("id", ""))))
+		story_choice_column.add_child(button)
+
+func _select_story_choice(choice_data: Dictionary, option_id: String) -> void:
+	var choice_id: String = str(choice_data.get("id", ""))
+	if not story.record_choice(choice_id, option_id):
+		return
+	story_choice_column.visible = false
+	_clear_story_choice_buttons()
+	var response := story.get_choice_response(choice_data, option_id)
+	if response.is_empty():
+		pending_choice_index += 1
+		_show_next_story_choice()
+		return
+	_show_story_beats(response, "PILIIN · DAY %d" % campaign.day, "next_choice")
+
+func _clear_story_choice_buttons() -> void:
+	if story_choice_column == null:
+		return
+	for child in story_choice_column.get_children():
+		story_choice_column.remove_child(child)
+		child.queue_free()
+
+func _finish_story_day() -> void:
+	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
+		story_complete = true
+		summary_title.text = "KWENTA · WAKAS"
+		summary_speaker.text = ""
+		summary_text.text = "Kumpleto na ang pitong araw ni Tonyo. Maaari mong ulitin ang kuwento at pumili ng ibang mga sagot."
+		summary_portrait.visible = false
+		summary_button.visible = true
+		summary_button.text = "REPLAY STORY"
+		summary_unlock_row.visible = false
+		return
 	campaign.advance_day()
-	summary_backdrop.visible = false
-	summary_panel.visible = false
-	day_label.text = "SUMMER · DAY %d" % campaign.day
+	day_label.text = "KWENTA · DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
-	_begin_shift()
+	_present_day_intro()
+
+func _restart_story() -> void:
+	for actor in customer_actors.values():
+		if is_instance_valid(actor):
+			actor.queue_free()
+	customer_actors.clear()
+	campaign = CampaignState.new(CAMPAIGN_CONFIG)
+	story = StoryProgression.new(CAMPAIGN_CONFIG)
+	story_complete = false
+	campaign_started = false
+	displayed_cash = -1
+	_create_shift_manager()
+	_rebuild_product_shelf()
+	day_label.text = "KWENTA · DAY 1"
+	_update_cash(campaign.cash)
+	_present_prologue()
 
 func _begin_shift() -> void:
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
+	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
 	shift.start_shift()
 
 func _label(text_value: String, font_size: int, color: Color) -> Label:

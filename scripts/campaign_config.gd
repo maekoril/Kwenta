@@ -14,10 +14,7 @@ extends Resource
 @export var shelf_replacement_goal: int = 1500
 @export var trusted_regular_goal: int = 3
 @export_range(0.0, 100.0, 1.0) var trusted_regular_minimum: float = 80.0
-@export_multiline var story_intro: String = ""
-@export var story_transition_texts: Array[String] = []
-@export_multiline var ending_balanced_success: String = ""
-@export_multiline var ending_mixed_progress: String = ""
-@export_multiline var ending_hopeful_second_chance: String = ""
-@export var customer_caps: Array[int] = [2, 2, 2, 3, 3, 4, 4, 5, 5, 5]
-@export var max_order_sizes: Array[int] = [3, 3, 3, 4, 4, 4, 5, 5, 5, 5]
+@export_range(1, 30, 1) var campaign_day_count: int = 7
+@export_file("*.json") var story_source_path: String = "res://data/story/kwenta_7_day_story.json"
+@export var customer_caps: Array[int] = [2, 2, 2, 3, 3, 4, 4]
+@export var max_order_sizes: Array[int] = [3, 3, 3, 4, 4, 4, 5]

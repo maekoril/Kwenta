@@ -2,7 +2,7 @@
 
 **Purpose:** Give teammates and coding agents one reliable place to understand the game, agreed decisions, current implementation, and next steps.
 
-**Last updated:** 2026-10-20  
+**Last updated:** 2026-10-23
 **Project:** Kwenta — Sari-Sari Store Simulator  
 **Status:** Gameplay prototype in progress; the current storefront build still needs to be run and visually checked in Godot.
 
@@ -18,11 +18,11 @@ The target feel is warm, lived-in, readable pixel art, in the general spirit of 
 
 ## 2. Story premise — agreed
 
-The protagonist is a high-school student who has been skipping school, earning poor grades, and not taking responsibilities seriously. During summer break, their parents put them in charge of the family sari-sari store so they can experience the effort and accountability of real work.
+The approved story is the seven-day Tonyo campaign. Tonyo is 12 years old and has been skipping school to play with his friends. When his mother, Aling Cora, must spend one week in the province caring for his sick Lola, she leaves Tonyo responsible for the family sari-sari store and gives him the notebook containing its prices, instructions, and utang.
 
-The family wants to replace the store's worn shelves before the next school year. The teen initially sees the shifts as punishment and expects the work to be easy. Across ten shifts, they learn that neighbors rely on the store and that their choices affect both earnings and individual customer trust. The intended growth is gradual: the protagonist does not become perfect or decide school is unimportant; they begin to understand that school, work, money, and relationships all require follow-through.
+Each day has a short scene before and after the playable store shift. Six key choices are remembered as flags rather than scored as right or wrong: playing on Day 1, returning Mang Berting's extra ₱50, helping Paolo with the missing ₱3, responding to the rainy-day invitation, handling Aling Nena's utang, and asking the kalaro for fiesta help. A smaller Day 2 haggling choice also receives a Day 6 callback.
 
-The ending should be hopeful in every case. Store savings and trusted regulars can change the ending's tone, but one mistake must not cause a harsh failure ending.
+The story ends with Tonyo choosing to play after finishing his work, then returning to class to present “Ang Tindahan ni Nanay.” The full campaign can be replayed to explore other choices. `data/story/kwenta_7_day_story.json` is the editable narrative source of truth and supersedes the older ten-shift summer/shelf-replacement story in historical specs and plans.
 
 ## 3. Core gameplay — agreed
 
@@ -35,7 +35,7 @@ The ending should be hopeful in every case. Store savings and trusted regulars c
 7. If patience expires, that customer leaves, loses trust, and any units already given to them are lost. Trust belongs to each customer and affects how likely they are to return.
 8. Day 1 has a maximum of two active customers. Later days raise the cap, up to five, to create busier shifts.
 9. Product stock is unlimited. The available product range expands as the summer progresses. Optional store fixture upgrades can be bought between shifts with earnings.
-10. The campaign has ten summer shifts and ends with a narrative scene that reflects money saved toward the shelf goal and the number of trusted regulars.
+10. The campaign has seven story shifts. Day 7 removes customer patience pressure and ends with notebook callbacks, the epilogue, final stats, and a replay option.
 
 ### Order and progression choices
 
@@ -92,7 +92,7 @@ Product names, prices, unlocks, order pools, customer caps, and story text shoul
 
 ### Customers
 
-The current campaign has six neighbors: Aleng Mila, Kuya Ben, Ate Liza, Jun, Manong Tomas, and Nina. Trust is tracked per neighbor. Lower trust lowers that neighbor's return weight; an absent or new trust value starts at 100%.
+The playable customer roster uses the approved cast: Aling Nena, Mang Berting, Bea, Paolo, Kuya Dodong, and Jun-jun. Mikay, Bogs, Tonyo, and Aling Cora appear in dialogue scenes. Existing portrait art is reused for simple static poses. Trust remains tracked per playable customer.
 
 ## 6. Current campaign configuration snapshot
 
@@ -105,8 +105,9 @@ Values currently in `data/story/summer_campaign.tres` and `scripts/campaign_conf
 - Trust loss on timeout: **25 points**
 - Shelf replacement goal: **₱1,500**
 - Trusted regular goal: **3 customers** at **80% trust or more**
-- Active customer caps by day: **2, 2, 2, 3, 3, 4, 4, 5, 5, 5**
-- Maximum order units by day: **3, 3, 3, 4, 4, 4, 5, 5, 5, 5**
+- Campaign length: **7 days**
+- Active customer caps by day: **2, 2, 2, 3, 3, 4, 4**
+- Maximum order units by day: **3, 3, 3, 4, 4, 4, 5**
 
 These are tunable prototype values, not immutable design laws.
 
@@ -116,9 +117,10 @@ The project currently contains the model and prototype for:
 
 - `OrderState` and `OrderFactory`: randomized order creation, duplicate quantities, correct/wrong item validation, completion, and totals.
 - `CustomerState`: individual order, patience, timeout, and trust behavior.
-- `CampaignState` / `CampaignConfig`: ten-day pacing, product unlocks, optional purchases, trust thresholds, and shelf goal.
+- `CampaignState` / `CampaignConfig`: seven-day pacing, product unlocks, optional purchases, and customer trust.
+- `StoryProgression`: data-driven dialogue beats, validated choice flags, conditional callbacks, and replay reset support.
 - `ShiftManager`: customer arrivals, timer, direct delivery validation, payment on completion, timeout handling, and shift close.
-- `scripts/main.gd`: HUD, campaign/summary flow, fixed product sprites, customer arrival/departure, and between-shift cash unlocks.
+- `scripts/main.gd`: HUD, seven-day dialogue/choice flow, simple portrait poses, campaign replay, fixed product sprites, customer arrival/departure, and between-shift cash unlocks.
 - `scripts/storefront_layout.gd`: inside-window customer positions, player-side product slots, and icon-only order entry data.
 - `scripts/product_drag_item.gd`: fixed-slot product sprite, scaled preview, and rejection shake.
 - `scripts/customer_slot.gd`: compact window customer, icon-only bubble, patience meter, and drop feedback.
@@ -128,12 +130,12 @@ The project currently contains the model and prototype for:
 - Older exterior/open-lane backgrounds remain in the project as unused prototype art.
 - The previous `kwenta_store_background.png` has a baked-in person and is not the intended backdrop for moving customer actors.
 
-The current source now uses the seller-side composition: product sprites sit on the player's lower shelves/edge strips, while customers and icon order bubbles fit inside the center window. Runtime parsing, alignment, and touch behavior are not yet confirmed. Track remaining verification in `docs/superpowers/plans/2026-10-20-kwenta-inside-store-rebuild.md`.
+The current source uses the seller-side composition: product sprites sit on the player's lower shelves/edge strips, while customers and icon order bubbles fit inside the center window. The seven-day story overlay reuses the same palette, panels, and portrait atlas; it does not replace the established storefront or product art direction.
 
 ### Verification status
 
-- Static checks must be rerun after the in-store rebuild. Godot is not available on PATH in this shell; the updated scene has not been run in the Godot runtime.
-- The Godot executable was not available in the coding shell, so the updated scene has **not yet been confirmed in the Godot runtime**. GDScript parse, import, visual layout, and mouse/touch behavior still need editor verification.
+- All six automated Godot test suites passed on 2026-10-23 after the seven-day story integration.
+- The dialogue overlay and static portrait layout were rendered at 1920×1080 in Godot 4.7.2 and visually checked for clipping and alignment.
 - On first open after adding the new images, let Godot import them before running the scene.
 
 ## 8. Project setup and technical constraints
@@ -165,7 +167,7 @@ Read `README.md` for the full setup walkthrough. Key project constraints:
 - Product drag control: `scripts/product_drag_item.gd`, `scenes/product_drag_item.tscn`
 - Customer drop-target scene/script: `scenes/customer_slot.tscn`, `scripts/customer_slot.gd` (the script/node is now being used as a moving customer actor, despite the legacy “slot” filename)
 - Shift/customer/order logic: `scripts/shift_manager.gd`, `scripts/customer_state.gd`, `scripts/order_state.gd`, `scripts/order_factory.gd`
-- Campaign/story logic and data: `scripts/campaign_state.gd`, `scripts/campaign_config.gd`, `scripts/story_progression.gd`, `data/story/summer_campaign.tres`
+- Campaign/story logic and data: `scripts/campaign_state.gd`, `scripts/campaign_config.gd`, `scripts/story_progression.gd`, `data/story/summer_campaign.tres`, `data/story/kwenta_7_day_story.json`
 - Product/order data: `data/products/`, `data/orders/`
 - Gameplay checks: `tests/gameplay_test_runner.gd`
 - Approved design: `docs/superpowers/specs/2026-10-19-kwenta-gameplay-design.md`

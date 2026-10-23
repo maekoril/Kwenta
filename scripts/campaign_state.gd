@@ -89,7 +89,7 @@ func purchase_unlock(product: ProductData) -> bool:
 func purchase_upgrade(upgrade: StoreUpgradeData) -> bool:
 	if upgrade == null or upgrade.id.is_empty() or purchased_upgrade_ids.has(upgrade.id):
 		return false
-	if day < upgrade.offer_after_day or day >= 10 or cash < upgrade.purchase_cost:
+	if day < upgrade.offer_after_day or day >= config.campaign_day_count or cash < upgrade.purchase_cost:
 		return false
 	cash -= upgrade.purchase_cost
 	upgrade_investment += upgrade.purchase_cost
@@ -102,7 +102,7 @@ func purchase_upgrade(upgrade: StoreUpgradeData) -> bool:
 	return true
 
 func advance_day() -> void:
-	day = mini(10, day + 1)
+	day = mini(config.campaign_day_count, day + 1)
 	for product_resource in config.product_catalog:
 		var product: ProductData = product_resource
 		if product.unlock_day == day and not unlocked_product_ids.has(product.id):

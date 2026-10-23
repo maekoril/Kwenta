@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await _test_customer_patience_colours_use_discrete_thresholds()
 	await _test_product_drag_reports_mouse_and_touch_release()
 	await _test_only_one_shelf_drag_preview_can_be_active()
+	await _test_story_replay_resets_the_campaign()
 	await _test_main_routes_bubble_drops_to_immediate_cash()
 	if failures > 0:
 		push_error("%d core gameplay loop assertion(s) failed." % failures)
@@ -157,7 +158,7 @@ func _test_main_routes_bubble_drops_to_immediate_cash() -> void:
 	var main := MainScene.instantiate() as Control
 	root.add_child(main)
 	await process_frame
-	main.call("_on_summary_button_pressed")
+	main.call("_begin_shift")
 	await process_frame
 	var manager: ShiftManager = main.get("shift")
 	var active: Array[CustomerState] = manager.get_active_customers()
@@ -189,6 +190,22 @@ func _test_main_routes_bubble_drops_to_immediate_cash() -> void:
 	_assert(manager.campaign_state.cash > cash_before, "a completed bubble drop pays the global cash balance immediately")
 	var cash_label := main.get("cash_label") as Label
 	_assert(cash_label.text == "₱%d" % manager.campaign_state.cash, "the cash HUD updates in the same delivery transaction")
+	main.queue_free()
+
+func _test_story_replay_resets_the_campaign() -> void:
+	var main := MainScene.instantiate() as Control
+	root.add_child(main)
+	await process_frame
+	var old_story: StoryProgression = main.get("story")
+	old_story.record_choice("day1_play", "stay")
+	var old_campaign: CampaignState = main.get("campaign")
+	old_campaign.day = old_campaign.config.campaign_day_count
+	main.set("story_complete", true)
+	main.call("_restart_story")
+	var replay_campaign: CampaignState = main.get("campaign")
+	var replay_story: StoryProgression = main.get("story")
+	_assert(replay_campaign.day == 1, "replay returns the campaign to Day 1")
+	_assert(replay_story.get_choice("day1_play").is_empty(), "replay starts with fresh choice flags")
 	main.queue_free()
 
 func _simulate_mouse_drag(item: Control, start: Vector2, finish: Vector2) -> void:

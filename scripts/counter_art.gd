@@ -9,9 +9,38 @@ const DISPLAY_TINT := Color.WHITE
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
 const CUSTOMER_REGIONS := {
-	"aleng_mila": Rect2(0.0, 0.0, 512.0, 512.0), "jun": Rect2(512.0, 0.0, 512.0, 512.0),
-	"manong_tomas": Rect2(1024.0, 0.0, 512.0, 512.0), "ate_liza": Rect2(0.0, 512.0, 512.0, 512.0),
-	"nina": Rect2(512.0, 512.0, 512.0, 512.0), "kuya_ben": Rect2(1024.0, 512.0, 512.0, 512.0),
+	"tonyo": Rect2(0.0, 0.0, 512.0, 512.0),
+	"tonyo_bored": Rect2(0.0, 0.0, 512.0, 512.0),
+	"tonyo_flustered": Rect2(512.0, 0.0, 512.0, 512.0),
+	"tonyo_determined": Rect2(1024.0, 0.0, 512.0, 512.0),
+	"tonyo_smiling_tired": Rect2(1536.0, 0.0, 512.0, 512.0),
+	"tonyo_counter": Rect2(2048.0, 0.0, 512.0, 512.0),
+	"aling_cora": Rect2(2560.0, 0.0, 512.0, 512.0),
+	"aling_cora_smiling": Rect2(3072.0, 0.0, 512.0, 512.0),
+	"aling_cora_reading": Rect2(0.0, 512.0, 512.0, 512.0),
+	"jun_jun": Rect2(512.0, 512.0, 512.0, 512.0),
+	"jun_jun_tara": Rect2(1024.0, 512.0, 512.0, 512.0),
+	"mikay": Rect2(1536.0, 512.0, 512.0, 512.0),
+	"mikay_smug": Rect2(2048.0, 512.0, 512.0, 512.0),
+	"bogs": Rect2(2560.0, 512.0, 512.0, 512.0),
+	"bogs_small_smile": Rect2(3072.0, 512.0, 512.0, 512.0),
+	"aling_nena": Rect2(0.0, 1024.0, 512.0, 512.0),
+	"aling_nena_haggling": Rect2(512.0, 1024.0, 512.0, 512.0),
+	"aling_nena_happy": Rect2(1024.0, 1024.0, 512.0, 512.0),
+	"aling_nena_impatient": Rect2(1536.0, 1024.0, 512.0, 512.0),
+	"aling_nena_embarrassed": Rect2(2048.0, 1024.0, 512.0, 512.0),
+	"mang_berting": Rect2(2560.0, 1024.0, 512.0, 512.0),
+	"mang_berting_happy": Rect2(3072.0, 1024.0, 512.0, 512.0),
+	"mang_berting_impatient": Rect2(0.0, 1536.0, 512.0, 512.0),
+	"bea": Rect2(512.0, 1536.0, 512.0, 512.0),
+	"bea_happy": Rect2(1024.0, 1536.0, 512.0, 512.0),
+	"bea_sad": Rect2(1536.0, 1536.0, 512.0, 512.0),
+	"paolo": Rect2(2048.0, 1536.0, 512.0, 512.0),
+	"paolo_happy": Rect2(2560.0, 1536.0, 512.0, 512.0),
+	"paolo_sad": Rect2(3072.0, 1536.0, 512.0, 512.0),
+	"kuya_dodong": Rect2(0.0, 2048.0, 512.0, 512.0),
+	"kuya_dodong_thoughtful": Rect2(512.0, 2048.0, 512.0, 512.0),
+	"kuya_dodong_soaked": Rect2(1024.0, 2048.0, 512.0, 512.0),
 }
 
 static func product_icon(product_id: String, _product_atlas: Texture2D = null) -> Texture2D:
@@ -33,7 +62,7 @@ static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) ->
 		return null
 	var portrait := AtlasTexture.new()
 	portrait.atlas = portrait_atlas
-	portrait.region = CUSTOMER_REGIONS.get(customer_id, Rect2(0.0, 0.0, 512.0, 512.0))
+	portrait.region = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
 	return portrait
 
 static func fit_texture_rect(texture_size: Vector2, bounds: Vector2) -> Rect2:

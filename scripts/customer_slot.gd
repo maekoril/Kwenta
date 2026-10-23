@@ -2,7 +2,7 @@ extends Control
 
 signal product_dropped(customer_id: String, product_id: String)
 
-const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits.png")
+const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const ORDER_BUBBLE_ICON = preload("res://scripts/order_bubble_icon.gd")
@@ -58,7 +58,7 @@ func _ready() -> void:
 	portrait.size = PORTRAIT_SIZE
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
 	name_tag = PanelContainer.new()
@@ -221,7 +221,9 @@ func _draw() -> void:
 func _display_name(customer_id: String) -> String:
 	var names := {
 		"aleng_mila": "Mila", "kuya_ben": "Ben", "ate_liza": "Liza",
-		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina"
+		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina",
+		"aling_nena": "Aling Nena", "mang_berting": "Mang Berting",
+		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun"
 	}
 	return str(names.get(customer_id, customer_id.capitalize()))
 
