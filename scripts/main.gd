@@ -30,6 +30,9 @@ var summary_text: Label
 var summary_unlock_row: HBoxContainer
 var story_choice_column: VBoxContainer
 var summary_button: Button
+var bubble: DialogueBubble
+var current_choice_data: Dictionary = {}
+var current_choice_ids: Array[String] = []
 var ui_refresh_elapsed: float = 0.0
 var campaign_started: bool = false
 var shift_start_cash: int = 0
@@ -39,6 +42,9 @@ var story_beats: Array[Dictionary] = []
 var story_beat_index: int = 0
 var story_after_action: String = ""
 var pending_story_choices: Array[Dictionary] = []
+const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for the upgrade shop after skipping
+var shift_in_progress: bool = false
+var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
@@ -53,6 +59,8 @@ func _ready() -> void:
 	_build_product_layer()
 	_build_hud()
 	_build_summary_panel()
+	_build_bubble()
+	_build_debug_tools() 
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
@@ -96,6 +104,41 @@ func _build_hud() -> void:
 	goal_label.custom_minimum_size.x = 282
 	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(goal_label)
+
+func _build_debug_tools() -> void:
+	if not OS.is_debug_build():
+		return
+	debug_skip_button = Button.new()
+	debug_skip_button.text = "SKIP DAY  >>"
+	debug_skip_button.z_index = 35        # above the HUD (30), below the bubble (50)
+	debug_skip_button.position = Vector2(1648, 78)
+	debug_skip_button.size = Vector2(260, 56)
+	debug_skip_button.focus_mode = Control.FOCUS_NONE
+	debug_skip_button.add_theme_font_size_override("font_size", 24)
+	for state in ["normal", "hover", "pressed"]:
+		debug_skip_button.add_theme_stylebox_override(state, _make_box(Color(0.35, 0.09, 0.09, 0.92), Color("ff8a7a")))
+	debug_skip_button.visible = false
+	debug_skip_button.pressed.connect(_debug_skip_day)
+	add_child(debug_skip_button)
+
+func _debug_skip_day() -> void:
+	if shift == null or not shift_in_progress:
+		return
+	if DEBUG_SKIP_BONUS_CASH > 0:
+		campaign.cash += DEBUG_SKIP_BONUS_CASH
+		_update_cash(campaign.cash)
+	# Run the shift's own clock forward in 5-second steps. When it finishes it emits
+	# shift_completed, which calls _show_shift_summary and clears shift_in_progress.
+	var guard := 0
+	while shift_in_progress and guard < 2000:
+		shift.advance_time(5.0)
+		guard += 1
+	if shift_in_progress:
+		push_warning("Skip day: the shift did not complete after fast-forwarding. Check ShiftManager's end condition.")
+
+func _unhandled_input(event: InputEvent) -> void:
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F10:
+		_debug_skip_day()
 
 func _build_product_layer() -> void:
 	product_layer = Control.new()
@@ -182,6 +225,24 @@ func _build_summary_panel() -> void:
 	summary_button.pressed.connect(_on_summary_button_pressed)
 	column.add_child(summary_button)
 	_update_unlock_buttons()
+
+func _build_bubble() -> void:
+	bubble = DialogueBubble.new()
+	bubble.z_index = 50      # above HUD (30) and the summary panel (40/41)
+	bubble.position = Vector2.ZERO
+	bubble.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	add_child(bubble)
+	bubble.advanced.connect(_on_bubble_advanced)
+	bubble.choice_made.connect(_on_bubble_choice) 
+
+func _on_bubble_choice(index: int) -> void:
+	if index < 0 or index >= current_choice_ids.size():
+		return
+	_select_story_choice(current_choice_data, current_choice_ids[index])
+	
+func _on_bubble_advanced() -> void:
+	story_beat_index += 1
+	_show_current_story_beat()
 
 func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -345,6 +406,9 @@ func _update_unlock_buttons() -> void:
 		button.disabled = purchased or campaign.cash < upgrade.purchase_cost
 
 func _show_shift_summary() -> void:
+	shift_in_progress = false                 
+	if debug_skip_button != null:             
+		debug_skip_button.visible = false     
 	showing_shift_results = true
 	var beats: Array[Dictionary] = [{
 		"speaker": "Kuwaderno",
@@ -375,12 +439,15 @@ func _show_story_beats(beats: Array[Dictionary], title: String, after_action: St
 	story_beat_index = 0
 	story_after_action = after_action
 	summary_title.text = title
-	summary_backdrop.visible = true
-	summary_panel.visible = true
 	summary_button.visible = true
 	summary_button.disabled = false
 	story_choice_column.visible = false
 	_clear_story_choice_buttons()
+	if after_action == "start_shift":
+		# Prologue and day intros get the title card ("PROLOGUE · ANG SUSI").
+		summary_backdrop.visible = false
+		summary_panel.visible = false
+		await bubble.title_card(title)
 	_show_current_story_beat()
 
 func _show_current_story_beat() -> void:
@@ -390,17 +457,33 @@ func _show_current_story_beat() -> void:
 	var beat: Dictionary = story_beats[story_beat_index]
 	var speaker: String = str(beat.get("speaker", "Narrator"))
 	var portrait_id: String = str(beat.get("portrait", ""))
-	summary_speaker.text = speaker
-	summary_text.text = str(beat.get("text", ""))
-	summary_button.text = "CONTINUE" if story_beat_index < story_beats.size() - 1 else "CONTINUE"
-	summary_portrait.visible = not portrait_id.is_empty()
-	if summary_portrait.visible:
-		summary_portrait.texture = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+	var text: String = str(beat.get("text", ""))
+
+	# The first beat after a shift is the earnings notebook + upgrade shop.
+	# That stays on the panel for now; everything else is a bubble.
+	if showing_shift_results and story_beat_index == 0:
+		bubble.close()
+		summary_backdrop.visible = true
+		summary_panel.visible = true
+		summary_speaker.text = speaker
+		summary_text.text = text
+		summary_button.text = "CONTINUE"
+		summary_portrait.visible = false
+		_update_unlock_buttons()
+		return
+
+	summary_backdrop.visible = false
+	summary_panel.visible = false
+	var portrait_tex: Texture2D = null
+	if not portrait_id.is_empty():
+		portrait_tex = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+	bubble.show_beat(speaker, text, portrait_tex, portrait_id)
 	_update_unlock_buttons()
 
 func _complete_story_beats() -> void:
 	match story_after_action:
 		"start_shift":
+			bubble.close()   
 			campaign_started = true
 			showing_shift_results = false
 			summary_backdrop.visible = false
@@ -423,25 +506,24 @@ func _show_next_story_choice() -> void:
 		_show_story_beats(callbacks, "DAY %d · %s" % [campaign.day, story.get_day_title(campaign.day)], "finish_day")
 		return
 	var choice_data: Dictionary = pending_story_choices[pending_choice_index]
-	summary_title.text = "PILIIN · DAY %d" % campaign.day
-	summary_speaker.text = "Tonyo"
-	summary_text.text = str(choice_data.get("prompt", "Ano ang gagawin?"))
-	summary_portrait.visible = true
-	summary_portrait.texture = COUNTER_ART.customer_portrait("tonyo", PORTRAIT_ATLAS)
-	summary_button.visible = false
-	summary_unlock_row.visible = false
-	story_choice_column.visible = true
-	_clear_story_choice_buttons()
+	var labels: Array = []
+	var ids: Array[String] = []
 	for option_value in choice_data.get("options", []):
 		if not option_value is Dictionary:
 			continue
 		var option: Dictionary = option_value
-		var button := Button.new()
-		button.text = str(option.get("label", option.get("id", "Choice")))
-		button.custom_minimum_size.y = 57
-		button.add_theme_font_size_override("font_size", 24)
-		button.pressed.connect(_select_story_choice.bind(choice_data, str(option.get("id", ""))))
-		story_choice_column.add_child(button)
+		labels.append(str(option.get("label", option.get("id", "Choice"))))
+		ids.append(str(option.get("id", "")))
+	if labels.is_empty():
+		pending_choice_index += 1
+		_show_next_story_choice()
+		return
+	summary_backdrop.visible = false
+	summary_panel.visible = false
+	current_choice_data = choice_data
+	current_choice_ids = ids
+	var portrait_tex: Texture2D = COUNTER_ART.customer_portrait("tonyo", PORTRAIT_ATLAS)
+	bubble.ask("Narrator", str(choice_data.get("prompt", "Ano ang gagawin?")), labels, portrait_tex, "tonyo")
 
 func _select_story_choice(choice_data: Dictionary, option_id: String) -> void:
 	var choice_id: String = str(choice_data.get("id", ""))
@@ -466,6 +548,9 @@ func _clear_story_choice_buttons() -> void:
 func _finish_story_day() -> void:
 	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
 		story_complete = true
+		bubble.close()                         
+		summary_backdrop.visible = true        
+		summary_panel.visible = true
 		summary_title.text = "KWENTA · WAKAS"
 		summary_speaker.text = ""
 		summary_text.text = "Kumpleto na ang pitong araw ni Tonyo. Maaari mong ulitin ang kuwento at pumili ng ibang mga sagot."
@@ -497,6 +582,9 @@ func _restart_story() -> void:
 	_present_prologue()
 
 func _begin_shift() -> void:
+	shift_in_progress = true                  
+	if debug_skip_button != null:             
+		debug_skip_button.visible = true  
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
 	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
