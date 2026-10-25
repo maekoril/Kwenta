@@ -14,6 +14,7 @@ func _initialize() -> void:
 		var entry: Dictionary = products.get(product_id, {})
 		_assert(str(entry.get("texture_path", "")).ends_with("layers/%s.png" % product_id), "%s maps directly to its authored layer texture" % product_id)
 		_assert(str(entry.get("slot_id", "")) == product_id, "%s maps directly to its authored slot" % product_id)
+		_assert(not str(entry.get("game_product_id", "")).is_empty(), "%s maps to its gameplay product" % product_id)
 	var day_one_stocked := StoreConfig.get_stocked_ids(config, 1, [])
 	_assert(day_one_stocked == ["feeta", "noodz", "thang", "cola_coca", "egg_large"], "Day 1 stocks only the requested five products")
 	var condiments: Dictionary = products.get("boss_toyo", {})

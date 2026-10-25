@@ -17,6 +17,7 @@ func _ready() -> void:
 	name = "LayeredStore"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	resized.connect(_on_resized)
 	_load_slots()
 	_build_backgrounds()
 
@@ -25,6 +26,7 @@ func configure(day: int, cash: int, bought_groups: Array = []) -> void:
 	current_cash = cash
 	purchased_groups = bought_groups
 	store_config = CONFIG.load_config("res://data/store_config.json")
+	_load_slots()
 	stock = CONFIG.get_stocked_ids(store_config, day, bought_groups)
 	var old_slots := get_node_or_null("Slots")
 	if old_slots != null:
@@ -40,6 +42,7 @@ func get_slot_rect(id: String) -> Rect2:
 	return slots.get(id, {}).get("rect", Rect2())
 
 func _load_slots() -> void:
+	slots.clear()
 	var f := FileAccess.open("res://assets/store/kwenta_layer_pack/slots.json", FileAccess.READ)
 	if f == null: return
 	var j := JSON.new(); if j.parse(f.get_as_text()) != OK: return
@@ -47,6 +50,11 @@ func _load_slots() -> void:
 	for raw in j.data.get("layers", []):
 		var r: Array = raw.slot_rect
 		slots[raw.id] = {"id":raw.id, "rect":Rect2(Vector2(r[0],r[1])*s, Vector2(r[2],r[3])*s), "raw":raw, "scale":s}
+
+func _on_resized() -> void:
+	if store_config.is_empty():
+		return
+	configure(current_day, current_cash, purchased_groups)
 
 func _build_backgrounds() -> void:
 	for pair in [["EmptyBackground","res://assets/store/kwenta_layer_pack/bg_empty.png",0],["FrontBackground","res://assets/store/kwenta_layer_pack/bg_front.png",10]]:

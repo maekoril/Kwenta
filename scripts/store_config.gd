@@ -17,10 +17,20 @@ static func load_config(path: String) -> Dictionary:
 
 static func get_stocked_ids(config: Dictionary, day: int, purchased_groups: Array) -> Array[String]:
 	var stocked: Array[String] = []
+	for entry in get_stocked_entries(config, day, purchased_groups):
+		stocked.append(str(entry.get("id", "")))
+	return stocked
+
+static func get_stocked_entries(config: Dictionary, day: int, purchased_groups: Array) -> Array[Dictionary]:
+	var stocked: Array[Dictionary] = []
 	for product_id in config.get("products", {}):
 		var entry: Dictionary = config.products[product_id]
 		if entry.get("unlock_type") == "story" and day >= int(entry.get("unlock_day", 1)):
-			stocked.append(product_id)
+			var stocked_entry := entry.duplicate()
+			stocked_entry["id"] = product_id
+			stocked.append(stocked_entry)
 		elif entry.get("unlock_type") == "buyable" and purchased_groups.has(str(entry.get("purchase_group", product_id))):
-			stocked.append(product_id)
+			var purchased_entry := entry.duplicate()
+			purchased_entry["id"] = product_id
+			stocked.append(purchased_entry)
 	return stocked

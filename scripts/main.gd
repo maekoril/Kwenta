@@ -50,8 +50,6 @@ var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
-const STORE_TO_GAME := {"feeta":"biscuits","giga_sardines":"canned_sardines","wemby":"sandwich_biscuits","ticnap_notnac":"noodle_pack","noodz":"instant_noodles","bfresh_gum":"bubble_gum","golden_oil":"cooking_oil","bato_spring_water":"bottled_water","cola_coca":"soft_drink","boss_toyo":"soy_sauce","pating":"fish_sauce","real_suka":"vinegar","jasmine_rice":"rice","egg_large":"eggs","maximo":"candy","bread_winner":"bread","thang":"juice_sachet","zesty":"iced_tea_sachet","patos":"chips","champ_powder":"laundry_sachet","kapeko_blanca":"coffee_sachet","clean":"shampoo_sachet","rizz_up":"toothpaste_sachet"}
-
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
@@ -269,14 +267,19 @@ func _rebuild_product_shelf() -> void:
 		child.queue_free()
 	product_items_by_id.clear()
 	var config := StoreConfig.load_config("res://data/store_config.json")
-	var stocked := StoreConfig.get_stocked_ids(config, campaign.day, campaign.purchased_store_groups)
-	for store_id in STORE_TO_GAME:
-		if not stocked.has(store_id):
+	var stocked_entries := StoreConfig.get_stocked_entries(config, campaign.day, campaign.purchased_store_groups)
+	var stocked_game_ids: Array[String] = []
+	for entry in stocked_entries:
+		var store_id := str(entry.get("id", ""))
+		var game_id := str(entry.get("game_product_id", ""))
+		if game_id.is_empty():
+			push_warning("Store product %s has no gameplay product mapping." % store_id)
 			continue
-		var game_id: String = STORE_TO_GAME[store_id]
 		var product: ProductData = products_by_id.get(game_id)
 		if product == null:
+			push_warning("Store product %s maps to missing gameplay product %s." % [store_id, game_id])
 			continue
+		stocked_game_ids.append(game_id)
 		var slot: Rect2 = store_layer_renderer.get_slot_rect(store_id)
 		var drag_item := PRODUCT_DRAG_ITEM_SCENE.instantiate() as Control
 		drag_item.call("configure", product, product.single_unit_texture, true, slot.size, false, product.single_unit_texture, 1, 1.0)
@@ -286,6 +289,7 @@ func _rebuild_product_shelf() -> void:
 		product_layer.add_child(drag_item)
 		drag_item.connect("product_released", _on_product_drag_released)
 		product_items_by_id[game_id] = drag_item
+	campaign.set_stocked_product_ids(stocked_game_ids)
 	return
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
