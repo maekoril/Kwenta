@@ -9,6 +9,14 @@ var purchased_upgrade_ids: Array[String] = []
 var upgrade_investment: int = 0
 var product_price_bonuses: Dictionary = {}
 var customer_trust: Dictionary = {}
+var purchased_store_groups: Array[String] = []
+
+func purchase_store_group(group_id: String, price: int) -> bool:
+	if group_id.is_empty() or purchased_store_groups.has(group_id) or cash < price:
+		return false
+	cash -= price
+	purchased_store_groups.append(group_id)
+	return true
 
 func _init(campaign_config: CampaignConfig) -> void:
 	config = campaign_config
