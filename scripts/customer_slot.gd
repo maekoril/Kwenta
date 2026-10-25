@@ -11,14 +11,14 @@ const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const ORDER_ICON_CELL_SIZE := 84.0
 const ORDER_BUBBLE_PADDING := 8.0
 const ORDER_BUBBLE_COLUMNS := 3
+const ORDER_BUBBLE_MIN_WIDTH := 152.0
+const ORDER_BUBBLE_ROW_GAP := 2
 const PORTRAIT_POSITION := Vector2(18.0, 160.0)
 const PORTRAIT_SIZE := Vector2(144.0, 288.0)
 const BUBBLE_RIGHT_OFFSET := 10.0
 const BUBBLE_TOP_OFFSET := 105.0
-const BUBBLE_FOOTER_HEIGHT := 30.0
-const PATIENCE_BAR_HEIGHT := 8.0
-const NAME_TAG_HEIGHT := 16.0
-const NAME_TAG_MAX_WIDTH := 152.0
+const PATIENCE_BAR_HEIGHT := 10.0
+const NAME_TAG_HEIGHT := 20.0
 const NAME_TAG_MIN_FONT_SIZE := 10
 const PATIENCE_GREEN := Color("4caa56")
 const PATIENCE_YELLOW := Color("e3bd39")
@@ -26,6 +26,7 @@ const PATIENCE_RED := Color("d94536")
 
 var customer: CustomerState
 var order_bubble: PanelContainer
+var bubble_content: VBoxContainer
 var order_grid: GridContainer
 var bubble_tail: Polygon2D
 var patience_bar: ProgressBar
@@ -44,6 +45,11 @@ func _ready() -> void:
 	order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
 	order_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(order_bubble)
+	bubble_content = VBoxContainer.new()
+	bubble_content.name = "BubbleContent"
+	bubble_content.add_theme_constant_override("separation", ORDER_BUBBLE_ROW_GAP)
+	bubble_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	order_bubble.add_child(bubble_content)
 	bubble_tail = Polygon2D.new()
 	bubble_tail.name = "OrderBubbleTail"
 	bubble_tail.color = Color("f2dfb9")
@@ -52,19 +58,23 @@ func _ready() -> void:
 	order_grid.columns = ORDER_BUBBLE_COLUMNS
 	order_grid.add_theme_constant_override("h_separation", 0)
 	order_grid.add_theme_constant_override("v_separation", 0)
+	order_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	order_grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	order_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	order_bubble.add_child(order_grid)
+	bubble_content.add_child(order_grid)
 	patience_bar = ProgressBar.new()
 	patience_bar.name = "PatienceBar"
-	patience_bar.custom_minimum_size = Vector2.ZERO
+	patience_bar.custom_minimum_size = Vector2(0.0, PATIENCE_BAR_HEIGHT)
 	patience_bar.max_value = 100.0
 	patience_bar.show_percentage = false
+	patience_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	patience_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	patience_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	patience_bar.add_theme_stylebox_override("background", _make_box(Color("30261f"), Color("30261f"), 0, 0.0, 3))
 	patience_fill = StyleBoxFlat.new()
 	patience_fill.set_corner_radius_all(3)
 	patience_bar.add_theme_stylebox_override("fill", patience_fill)
-	add_child(patience_bar)
+	bubble_content.add_child(patience_bar)
 	portrait_shadow = TextureRect.new()
 	portrait_shadow.name = "PortraitShadow"
 	portrait_shadow.position = PORTRAIT_POSITION + Vector2(5.0, 7.0)
@@ -86,14 +96,18 @@ func _ready() -> void:
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
 	name_tag = PanelContainer.new()
-	name_tag.name = "NameTrustTag"
+	name_tag.name = "NameTag"
 	# Keep identity information on the visible upper body; the concrete sill
 	# occludes everything from viewport y=528 downward.
-	name_tag.size = Vector2(100, 22)
+	name_tag.custom_minimum_size = Vector2(0.0, NAME_TAG_HEIGHT)
+	name_tag.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_tag.add_theme_stylebox_override("panel", _make_box(Color(0.06, 0.07, 0.08, 0.86), Color(0.06, 0.07, 0.08, 0.86), 0, 1.5, 12))
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(name_tag)
+	bubble_content.add_child(name_tag)
+	bubble_content.move_child(patience_bar, 2)
 	name_label = Label.new()
+	name_label.name = "NameLabel"
 	name_label.clip_text = false
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", Color.WHITE)
@@ -126,7 +140,7 @@ func refresh_display() -> void:
 	var entries: Array[Dictionary] = STOREFRONT_LAYOUT.get_order_icon_entries(customer.order.requested, customer.order.delivered)
 	for entry in entries:
 		order_grid.add_child(_make_order_item(entry))
-	_layout_order_bubble(entries.size())
+		_layout_order_bubble(entries.size())
 	refresh_patience()
 	queue_redraw()
 
@@ -134,9 +148,11 @@ func _layout_order_bubble(entry_count: int) -> void:
 	var columns: int = 2 if entry_count > 3 else ORDER_BUBBLE_COLUMNS
 	var visible_columns: int = mini(columns, maxi(1, entry_count))
 	var rows: int = maxi(1, int(ceil(float(entry_count) / float(columns))))
+	var icon_grid_size := Vector2(float(visible_columns) * ORDER_ICON_CELL_SIZE, float(rows) * ORDER_ICON_CELL_SIZE)
+	order_grid.custom_minimum_size = icon_grid_size
 	var bubble_size := Vector2(
-		float(visible_columns) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0,
-		float(rows) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0 + BUBBLE_FOOTER_HEIGHT
+		maxf(_minimum_readable_bubble_width(), icon_grid_size.x + ORDER_BUBBLE_PADDING * 2.0),
+		icon_grid_size.y + NAME_TAG_HEIGHT + PATIENCE_BAR_HEIGHT + float(ORDER_BUBBLE_ROW_GAP * 2) + ORDER_BUBBLE_PADDING * 2.0
 	)
 	order_bubble.size = bubble_size
 	order_grid.columns = columns
@@ -145,17 +161,13 @@ func _layout_order_bubble(entry_count: int) -> void:
 	order_bubble.position = Vector2(bubble_x, bubble_y)
 	order_bubble.pivot_offset = bubble_size * 0.5
 	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
-	patience_bar.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - PATIENCE_BAR_HEIGHT - 2.0)
-	patience_bar.size = Vector2(bubble_size.x - ORDER_BUBBLE_PADDING * 2.0, PATIENCE_BAR_HEIGHT)
-	name_tag.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - BUBBLE_FOOTER_HEIGHT + 2.0)
-	name_tag.size = Vector2(bubble_size.x - ORDER_BUBBLE_PADDING * 2.0, NAME_TAG_HEIGHT)
 
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
 		return
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
 	patience_bar.value = patience_ratio * 100.0
-	_refresh_name_tag(patience_ratio)
+	_refresh_name_tag()
 	if patience_ratio > 0.6:
 		patience_fill.bg_color = PATIENCE_GREEN
 	elif patience_ratio >= 0.3:
@@ -163,22 +175,30 @@ func refresh_patience() -> void:
 	else:
 		patience_fill.bg_color = PATIENCE_RED
 
-func _refresh_name_tag(patience_ratio: float) -> void:
+func _refresh_name_tag() -> void:
 	if not is_instance_valid(name_tag) or not is_instance_valid(name_label):
 		return
-	var tag_text := "%s · %d%%" % [_display_name(customer.customer_id), roundi(patience_ratio * 100.0)]
+	var tag_text := _display_name(customer.customer_id)
 	var font_size := 15
 	var font := name_label.get_theme_font("font")
-	var tag_width := name_tag.size.x
 	if font != null:
 		var text_width := font.get_string_size(tag_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		while text_width + 8.0 > NAME_TAG_MAX_WIDTH and font_size > NAME_TAG_MIN_FONT_SIZE:
+		var available_width := order_bubble.size.x - ORDER_BUBBLE_PADDING * 2.0
+		while text_width > available_width and font_size > NAME_TAG_MIN_FONT_SIZE:
 			font_size -= 1
 			text_width = font.get_string_size(tag_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-		tag_width = minf(NAME_TAG_MAX_WIDTH, maxf(tag_width, text_width + 8.0))
-	name_tag.size.x = tag_width
 	name_label.add_theme_font_size_override("font_size", font_size)
 	name_label.text = tag_text
+
+func _minimum_readable_bubble_width() -> float:
+	var minimum_width := ORDER_BUBBLE_MIN_WIDTH
+	if customer == null or not is_instance_valid(name_label):
+		return minimum_width
+	var font := name_label.get_theme_font("font")
+	if font == null:
+		return minimum_width
+	var name_width := font.get_string_size(_display_name(customer.customer_id), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_TAG_MIN_FONT_SIZE).x
+	return maxf(minimum_width, name_width + ORDER_BUBBLE_PADDING * 2.0)
 
 func contains_drop_point(viewport_position: Vector2) -> bool:
 	return Rect2(global_position + portrait.position, portrait.size).has_point(viewport_position)

@@ -90,12 +90,19 @@ func _test_customer_patience_footer_uses_patience_ratio_and_thresholds() -> void
 	await process_frame
 	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 42.0)
 	actor.call("set_customer", customer, {})
+	await process_frame
 	var bubble := actor.get_node("OrderBubble") as Control
-	var name_label := actor.get_node("NameTrustTag").get_child(0) as Label
-	var patience_bar := actor.get_node("PatienceBar") as ProgressBar
-	var fill := (actor.get_node("PatienceBar") as ProgressBar).get_theme_stylebox("fill") as StyleBoxFlat
-	_assert(name_label.text == "Jun · 100%", "the name tag reports current patience rather than unrelated trust")
-	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 8.0), "patience uses the slim horizontal bubble footer")
+	var bubble_content := bubble.get_node_or_null("BubbleContent") as VBoxContainer
+	_assert(bubble_content != null, "the bubble owns a vertical layout for icons, name, and patience")
+	if bubble_content == null:
+		actor.queue_free()
+		return
+	var name_label := bubble_content.get_node("NameTag/NameLabel") as Label
+	var patience_bar := bubble_content.get_node("PatienceBar") as ProgressBar
+	var fill := patience_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	_assert(name_label.text == "Jun", "the name tag contains the customer name only")
+	_assert(bubble.size == Vector2(152.0, 134.0), "one-item bubbles use the minimum readable name width and three layout rows")
+	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 10.0), "patience uses a ten-pixel horizontal footer row")
 	customer.patience_remaining = 15.25
 	actor.call("refresh_patience")
 	_assert(fill.bg_color == Color("4caa56"), "patience remains green above sixty percent")
@@ -105,6 +112,20 @@ func _test_customer_patience_footer_uses_patience_ratio_and_thresholds() -> void
 	customer.patience_remaining = 7.25
 	actor.call("refresh_patience")
 	_assert(fill.bg_color == Color("d94536"), "patience turns red below thirty percent")
+	var one_item_long_name_customer := CustomerStateScript.new("kuya_dodong", OrderStateScript.new({"chips": 1}), 25.0)
+	actor.call("set_customer", one_item_long_name_customer, {})
+	await process_frame
+	_assert(bubble.size.x >= 152.0 and name_label.text == "Kuya Dodong", "a one-item bubble keeps a long customer name readable")
+	var three_item_customer := CustomerStateScript.new("aling_nena", OrderStateScript.new({"chips": 1, "bread": 1, "eggs": 1}), 25.0)
+	actor.call("set_customer", three_item_customer, {})
+	await process_frame
+	_assert(bubble.size == Vector2(268.0, 134.0), "three-item bubbles retain one icon row above the footer rows")
+	_assert(name_label.text == "Aling Nena", "long names remain readable without a percentage suffix")
+	var five_item_customer := CustomerStateScript.new("kuya_dodong", OrderStateScript.new({"chips": 1, "bread": 1, "eggs": 1, "rice": 1, "soft_drink": 1}), 25.0)
+	actor.call("set_customer", five_item_customer, {})
+	await process_frame
+	_assert(bubble.size == Vector2(184.0, 218.0), "five-item bubbles use two icon rows above the footer rows")
+	_assert(name_label.text == "Kuya Dodong" and int(name_label.get_theme_font_size("font_size")) >= 10, "long names remain visible at or above the minimum font size")
 	actor.queue_free()
 
 func _test_product_drag_reports_mouse_and_touch_release() -> void:
