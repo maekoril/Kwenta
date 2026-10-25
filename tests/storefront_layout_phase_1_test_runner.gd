@@ -82,27 +82,32 @@ func _test_customer_actor_compacts_orders_and_keeps_its_drop_target_whole() -> v
 	actor.call("set_customer", CustomerStateScript.new("aleng_mila", OrderStateScript.new({"chips": 1}), 20.0, 100.0), {})
 	await process_frame
 	var bubble := actor.get_node_or_null("OrderBubble") as PanelContainer
-	var patience := actor.get_node_or_null("PatienceBar") as ProgressBar
-	var tag := actor.get_node_or_null("NameTrustTag") as PanelContainer
+	var content: VBoxContainer = null
+	var patience: ProgressBar = null
+	var tag: PanelContainer = null
+	var grid: GridContainer = null
+	if bubble != null:
+		content = bubble.get_node_or_null("BubbleContent") as VBoxContainer
+	if content != null:
+		patience = content.get_node_or_null("PatienceBar") as ProgressBar
+		tag = content.get_node_or_null("NameTag") as PanelContainer
+		grid = content.get_node_or_null("OrderGrid") as GridContainer
 	var portrait := actor.get_node_or_null("Portrait") as TextureRect
-	var one_item_bubble_size := Vector2.ONE * (CustomerSlotScript.ORDER_ICON_CELL_SIZE + CustomerSlotScript.ORDER_BUBBLE_PADDING * 2.0)
-	_assert(bubble != null and bubble.size == one_item_bubble_size, "a one-item order uses the configured compact icon bubble")
-	_assert(patience != null and patience.position.y >= bubble.position.y + bubble.size.y, "patience bar sits directly under the compact bubble")
-	_assert(tag != null, "customer name and trust use a pill container")
+	_assert(bubble != null and bubble.size == Vector2(152.0, 134.0), "a one-item order uses the readable-name minimum width and footer rows")
+	_assert(content != null and patience != null and tag != null and grid != null, "bubble contains dedicated icon, name, and patience rows")
+	_assert(tag != null and grid != null and tag.position.y >= grid.get_rect().end.y, "name row sits below the icon grid")
+	_assert(patience != null and tag != null and patience.position.y >= tag.get_rect().end.y, "patience row sits below the name row")
 	_assert(portrait != null and portrait.position.y + StorefrontLayoutScript.CUSTOMER_Y < StorefrontLayoutScript.WINDOW_RECT.end.y and portrait.get_rect().end.y + StorefrontLayoutScript.CUSTOMER_Y >= StorefrontLayoutScript.WINDOW_RECT.end.y, "raised customer bust stays visible while its lower body reaches the sill")
-	_assert(bubble != null and portrait != null and is_equal_approx(bubble.get_rect().end.y, portrait.position.y - CustomerSlotScript.BUBBLE_HEAD_GAP), "compact bubble sits above the customer head by its configured gap")
-	_assert(tag != null and patience != null and portrait != null and tag.position.y >= patience.get_rect().end.y and tag.get_rect().end.y <= portrait.position.y, "name tag sits under the bubble without covering the face")
 	if bubble == null or patience == null:
 		actor.queue_free()
 		return
 	actor.call("set_customer", CustomerStateScript.new("aleng_mila", OrderStateScript.new({"chips": 1, "soft_drink": 1, "instant_noodles": 1, "candy": 1}), 20.0, 100.0), {})
 	await process_frame
-	var two_row_bubble_size := Vector2(CustomerSlotScript.ORDER_BUBBLE_COLUMNS * CustomerSlotScript.ORDER_ICON_CELL_SIZE + CustomerSlotScript.ORDER_BUBBLE_PADDING * 2.0, CustomerSlotScript.ORDER_ICON_CELL_SIZE * 2.0 + CustomerSlotScript.ORDER_BUBBLE_PADDING * 2.0)
-	_assert(bubble.size == two_row_bubble_size, "four products use two configured icon rows without excess padding")
-	_assert(patience.position.y >= bubble.position.y + bubble.size.y, "patience bar follows a second bubble row")
-	_assert(portrait != null and is_equal_approx(bubble.get_rect().end.y, portrait.position.y - CustomerSlotScript.BUBBLE_HEAD_GAP), "multi-item bubble stays above the customer head by its configured gap")
+	_assert(bubble.size == Vector2(184.0, 218.0), "four products use two icon rows above the name and patience footer rows")
+	_assert(patience.position.y >= tag.get_rect().end.y, "patience row follows the second icon row without overlap")
 	var drop_target := Rect2(Vector2.ZERO, actor.size)
-	_assert(drop_target.encloses(bubble.get_rect()) and drop_target.encloses(patience.get_rect()) and drop_target.encloses(portrait.get_rect()), "actor drop target encloses bubble, bust, and patience bar")
+	var patience_rect := Rect2(bubble.position + content.position + patience.position, patience.size)
+	_assert(drop_target.encloses(bubble.get_rect()) and drop_target.encloses(patience_rect) and drop_target.encloses(portrait.get_rect()), "actor drop target encloses bubble, bust, and patience bar")
 	actor.queue_free()
 
 func _assert(condition: bool, message: String) -> void:

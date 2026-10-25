@@ -1,0 +1,278 @@
+{
+ "base": [
+  1920,
+  1080
+ ],
+ "nine_slice_margin_px": 12,
+ "z_order_main": [
+  "res://assets/sprites/scene/bg_wall",
+  "res://assets/sprites/scene/shelf_wall_left",
+  "res://assets/sprites/scene/shelf_wall_right",
+  "product stacks / locked covers",
+  "res://assets/sprites/scene/street_view @ (528,222)",
+  "customers",
+  "res://assets/sprites/scene/window_frame @ (504,198)",
+  "res://assets/sprites/scene/sign_board @ (642,0)",
+  "res://assets/sprites/scene/counter_top @ (420,756)",
+  "res://assets/sprites/scene/counter_front @ (420,966)",
+  "props",
+  "HUD"
+ ],
+ "zones": {
+  "main": "res://assets/sprites/scene/bg_wall + shelf walls",
+  "fridge": "res://assets/sprites/scene/zone_fridge_1920x1080.png (arrow right from main)",
+  "rack": "res://assets/sprites/scene/zone_rack_1920x1080.png (arrow up from main)"
+ },
+ "product_sizes": {
+  "single": [
+   180,
+   240
+  ],
+  "stack": [
+   210,
+   276
+  ],
+  "icon": [
+   48,
+   48
+  ],
+  "locked_cover": [
+   210,
+   276
+  ]
+ },
+ "stack_rule": "front item at (0,36) in the stack canvas; 3 rear copies each +10px right, -9px up, one palette step darker",
+ "shelf_board_y": [
+  330,
+  630,
+  930
+ ],
+ "slots": [
+  {
+   "product": "noodles",
+   "zone": "main",
+   "x": 18,
+   "y": 54,
+   "anchor": "bottom"
+  },
+  {
+   "product": "canned_goods",
+   "zone": "main",
+   "x": 240,
+   "y": 54,
+   "anchor": "bottom"
+  },
+  {
+   "product": "chips",
+   "zone": "main",
+   "x": 18,
+   "y": 354,
+   "anchor": "bottom"
+  },
+  {
+   "product": "biscuits",
+   "zone": "main",
+   "x": 240,
+   "y": 354,
+   "anchor": "bottom"
+  },
+  {
+   "product": "bread",
+   "zone": "main",
+   "x": 18,
+   "y": 654,
+   "anchor": "bottom"
+  },
+  {
+   "product": "rice",
+   "zone": "main",
+   "x": 240,
+   "y": 654,
+   "anchor": "bottom"
+  },
+  {
+   "product": "eggs",
+   "zone": "main",
+   "x": 1470,
+   "y": 54,
+   "anchor": "bottom"
+  },
+  {
+   "product": "cooking_oil",
+   "zone": "main",
+   "x": 1692,
+   "y": 54,
+   "anchor": "bottom"
+  },
+  {
+   "product": "soy_sauce",
+   "zone": "main",
+   "x": 1470,
+   "y": 354,
+   "anchor": "bottom"
+  },
+  {
+   "product": "vinegar",
+   "zone": "main",
+   "x": 1692,
+   "y": 354,
+   "anchor": "bottom"
+  },
+  {
+   "product": "laundry_soap",
+   "zone": "main",
+   "x": 1470,
+   "y": 654,
+   "anchor": "bottom"
+  },
+  {
+   "product": "dishwashing_liquid",
+   "zone": "main",
+   "x": 1692,
+   "y": 654,
+   "anchor": "bottom"
+  },
+  {
+   "product": "softdrink",
+   "zone": "fridge",
+   "x": 610,
+   "y": 224,
+   "anchor": "bottom"
+  },
+  {
+   "product": "bottled_water",
+   "zone": "fridge",
+   "x": 1100,
+   "y": 224,
+   "anchor": "bottom"
+  },
+  {
+   "product": "iced_tea",
+   "zone": "fridge",
+   "x": 610,
+   "y": 604,
+   "anchor": "bottom"
+  },
+  {
+   "product": "ice_candy",
+   "zone": "fridge",
+   "x": 1100,
+   "y": 604,
+   "anchor": "bottom"
+  },
+  {
+   "product": "coffee_sachet",
+   "zone": "rack",
+   "x": 650,
+   "y": 234,
+   "anchor": "top (hangs from rod)"
+  },
+  {
+   "product": "shampoo_sachet",
+   "zone": "rack",
+   "x": 1060,
+   "y": 234,
+   "anchor": "top (hangs from rod)"
+  },
+  {
+   "product": "candy",
+   "zone": "rack",
+   "x": 650,
+   "y": 634,
+   "anchor": "top (hangs from rod)"
+  },
+  {
+   "product": "load_card",
+   "zone": "rack",
+   "x": 1060,
+   "y": 634,
+   "anchor": "top (hangs from rod)"
+  }
+ ],
+ "customer_slots_top_left": [
+  [
+   654,
+   414
+  ],
+  [
+   1059,
+   414
+  ]
+ ],
+ "customer_note": "customer sprite is 192x336; its bottom edge sits at y=750 and counter_top covers the rest",
+ "props": {
+  "cash_box": [
+   618,
+   804
+  ],
+  "calculator": [
+   1098,
+   828
+  ],
+  "pencil": [
+   840,
+   816
+  ],
+  "coins": [
+   [
+    1248,
+    852
+   ],
+   [
+    1272,
+    828
+   ],
+   [
+    1242,
+    876
+   ]
+  ],
+  "bills": [
+   [
+    1320,
+    822
+   ]
+  ],
+  "pay_here_label": [
+   588,
+   738
+  ]
+ },
+ "order_bubble_above_customer": {
+  "y": 264,
+  "tail_y": 351,
+  "patience_bar_y": 375
+ },
+ "hud": {
+  "coins_time_panel": [
+   1656,
+   936,
+   252,
+   120
+  ],
+  "tips_panel": [
+   1620,
+   54,
+   276,
+   294
+  ],
+  "tips_portrait": [
+   1632,
+   66
+  ],
+  "tips_bubble": [
+   1620,
+   354,
+   276,
+   138
+  ],
+  "note": "tips panel is a TRANSIENT popup; it covers right-wall slots while shown"
+ },
+ "zone_arrows": {
+  "right": "res://assets/sprites/ui/arrow_right_96x96.png",
+  "up": "res://assets/sprites/ui/arrow_up_96x96.png",
+  "down": "res://assets/sprites/ui/arrow_down_96x96.png",
+  "left": "res://assets/sprites/ui/arrow_left_96x96.png"
+ },
+ "asset_root": "res://assets/sprites/"
+}

@@ -10,6 +10,7 @@ static func make_order(order_data: OrderData, available_product_ids: Array[Strin
 		for product_id in available_product_ids:
 			pool.append(product_id)
 	if pool.is_empty():
+		push_warning("Order generation skipped because the stocked product pool is empty.")
 		return OrderState.new()
 	var low := maxi(1, order_data.minimum_units)
 	var high := maxi(low, order_data.maximum_units)

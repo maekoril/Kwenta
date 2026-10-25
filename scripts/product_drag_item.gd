@@ -15,11 +15,12 @@ var _display_size: Vector2 = Vector2.ZERO
 var _rotated: bool = false
 var _stock_count: int = 1
 var _display_scale: float = DEFAULT_STORE_DISPLAY_SCALE
+var _drag_preview_size: Vector2 = Vector2.ZERO
 var _drag_preview: Control
 var _drag_active: bool = false
 var _drag_touch_index: int = -1
 
-func configure(product: ProductData, icon_texture: Texture2D, can_drag: bool, display_size: Vector2, rotated: bool, display_texture: Texture2D = null, stock_count: int = 1, display_scale: float = DEFAULT_STORE_DISPLAY_SCALE) -> void:
+func configure(product: ProductData, icon_texture: Texture2D, can_drag: bool, display_size: Vector2, rotated: bool, display_texture: Texture2D = null, stock_count: int = 1, display_scale: float = DEFAULT_STORE_DISPLAY_SCALE, drag_preview_size: Vector2 = Vector2.ZERO) -> void:
 	product_id = product.id
 	_item_icon = icon_texture
 	_display_texture = display_texture if display_texture != null else icon_texture
@@ -28,6 +29,7 @@ func configure(product: ProductData, icon_texture: Texture2D, can_drag: bool, di
 	_rotated = rotated
 	_stock_count = maxi(1, stock_count)
 	_display_scale = display_scale
+	_drag_preview_size = drag_preview_size
 	modulate = Color.WHITE if can_drag else Color(0.46, 0.46, 0.46, 0.76)
 	queue_redraw()
 
@@ -90,7 +92,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			_begin_drag(mouse_event.position, -1)
+			_begin_drag(get_global_mouse_position(), -1)
 			accept_event()
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
@@ -125,9 +127,9 @@ func _begin_drag(viewport_position: Vector2, touch_index: int) -> void:
 	preview.preview_size = _get_drag_preview_size()
 	preview.rotated = _rotated
 	preview.size = preview.preview_size + Vector2(8.0, 8.0)
-	preview.scale = Vector2.ONE * 1.15
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview.z_index = 100
+	preview.position = viewport_position - preview.size * 0.5
 	var preview_parent: Node = get_tree().current_scene
 	if preview_parent == null:
 		preview_parent = get_tree().root
@@ -196,7 +198,7 @@ func _get_store_display_size() -> Vector2:
 	return _display_size * _display_scale
 
 func _get_drag_preview_size() -> Vector2:
-	return _display_size * 1.2
+	return _drag_preview_size if _drag_preview_size != Vector2.ZERO else _display_size
 
 func play_reject() -> void:
 	var origin_x: float = position.x
@@ -214,7 +216,6 @@ class ProductDragPreview extends Control:
 		if preview_texture == null:
 			return
 		var origin := Vector2(4.0, 4.0)
-		draw_rect(Rect2(origin + Vector2(3.0, 4.0), preview_size), Color(0.0, 0.0, 0.0, 0.25), true)
 		var fit_bounds: Vector2 = Vector2(preview_size.y, preview_size.x) if rotated else preview_size
 		var fitted := CounterArt.fit_texture_rect(Vector2(preview_texture.get_size()), fit_bounds)
 		if rotated:

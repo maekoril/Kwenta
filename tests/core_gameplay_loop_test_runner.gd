@@ -23,7 +23,8 @@ func _initialize() -> void:
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
-	await _test_customer_patience_colours_use_discrete_thresholds()
+	await _test_customer_patience_footer_uses_patience_ratio_and_thresholds()
+	await _test_customer_payment_bubble_preserves_sukli_prompt()
 	await _test_product_drag_reports_mouse_and_touch_release()
 	await _test_only_one_shelf_drag_preview_can_be_active()
 	await _test_story_replay_resets_the_campaign()
@@ -83,23 +84,69 @@ func _test_timeout_notifies_the_scene_before_replacement_spawn() -> void:
 	_assert(manager.get_active_customers().is_empty(), "an expired customer is removed from shift state")
 	_assert(customer_change_count == 1, "an expired customer immediately notifies Main to animate its departure")
 
-func _test_customer_patience_colours_use_discrete_thresholds() -> void:
+func _test_customer_patience_footer_uses_patience_ratio_and_thresholds() -> void:
 	var actor := CustomerActorScene.instantiate() as Control
 	actor.size = Vector2(StorefrontLayoutScript.CUSTOMER_WIDTH, StorefrontLayoutScript.CUSTOMER_HEIGHT)
 	root.add_child(actor)
 	await process_frame
-	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 100.0)
+	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 42.0)
 	actor.call("set_customer", customer, {})
-	var fill := (actor.get_node("PatienceBar") as ProgressBar).get_theme_stylebox("fill") as StyleBoxFlat
-	customer.patience_remaining = 12.5
+	await process_frame
+	var bubble := actor.get_node("OrderBubble") as Control
+	var bubble_content := bubble.get_node_or_null("BubbleContent") as VBoxContainer
+	_assert(bubble_content != null, "the bubble owns a vertical layout for icons, name, and patience")
+	if bubble_content == null:
+		actor.queue_free()
+		return
+	var name_label := bubble_content.get_node("NameTag/NameLabel") as Label
+	var patience_bar := bubble_content.get_node("PatienceBar") as ProgressBar
+	var fill := patience_bar.get_theme_stylebox("fill") as StyleBoxFlat
+	_assert(name_label.text == "Jun", "the name tag contains the customer name only")
+	_assert(bubble.size == Vector2(152.0, 134.0), "one-item bubbles use the minimum readable name width and three layout rows")
+	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 10.0), "patience uses a ten-pixel horizontal footer row")
+	customer.patience_remaining = 15.25
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("4caa56"), "patience remains green at fifty percent")
-	customer.patience_remaining = 12.25
+	_assert(fill.bg_color == Color("4caa56"), "patience remains green above sixty percent")
+	customer.patience_remaining = 15.0
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("e3bd39"), "patience turns yellow below fifty percent")
-	customer.patience_remaining = 6.0
+	_assert(fill.bg_color == Color("e3bd39"), "patience turns yellow at sixty percent")
+	customer.patience_remaining = 7.25
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("d94536"), "patience turns red below twenty-five percent")
+	_assert(fill.bg_color == Color("d94536"), "patience turns red below thirty percent")
+	var one_item_long_name_customer := CustomerStateScript.new("kuya_dodong", OrderStateScript.new({"chips": 1}), 25.0)
+	actor.call("set_customer", one_item_long_name_customer, {})
+	await process_frame
+	_assert(bubble.size.x >= 152.0 and name_label.text == "Kuya Dodong", "a one-item bubble keeps a long customer name readable")
+	var three_item_customer := CustomerStateScript.new("aling_nena", OrderStateScript.new({"chips": 1, "bread": 1, "eggs": 1}), 25.0)
+	actor.call("set_customer", three_item_customer, {})
+	await process_frame
+	_assert(bubble.size == Vector2(268.0, 134.0), "three-item bubbles retain one icon row above the footer rows")
+	_assert(name_label.text == "Aling Nena", "long names remain readable without a percentage suffix")
+	var five_item_customer := CustomerStateScript.new("kuya_dodong", OrderStateScript.new({"chips": 1, "bread": 1, "eggs": 1, "rice": 1, "soft_drink": 1}), 25.0)
+	actor.call("set_customer", five_item_customer, {})
+	await process_frame
+	_assert(bubble.size == Vector2(184.0, 218.0), "five-item bubbles use two icon rows above the footer rows")
+	_assert(name_label.text == "Kuya Dodong" and int(name_label.get_theme_font_size("font_size")) >= 10, "long names remain visible at or above the minimum font size")
+	actor.queue_free()
+
+func _test_customer_payment_bubble_preserves_sukli_prompt() -> void:
+	var actor := CustomerActorScene.instantiate() as Control
+	actor.size = Vector2(StorefrontLayoutScript.CUSTOMER_WIDTH, StorefrontLayoutScript.CUSTOMER_HEIGHT)
+	root.add_child(actor)
+	await process_frame
+	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0)
+	customer.begin_payment(10, 20, 12.0)
+	actor.call("set_customer", customer, {})
+	await process_frame
+	var bubble := actor.get_node("OrderBubble") as Control
+	var content := bubble.get_node("BubbleContent") as VBoxContainer
+	var name_tag := content.get_node("NameTag") as PanelContainer
+	var patience_bar := content.get_node("PatienceBar") as ProgressBar
+	var grid := content.get_node("OrderGrid") as GridContainer
+	_assert(actor.has_signal("payment_tapped"), "a paying customer can open the Sukli tray")
+	_assert(bubble.size == Vector2(168.0, 120.0), "a paying customer uses the fixed Sukli prompt size")
+	_assert(not name_tag.visible and not patience_bar.visible, "the order footer hides while the Sukli prompt is displayed")
+	_assert(grid.get_child_count() == 1, "the Sukli prompt replaces the order icon grid during payment")
 	actor.queue_free()
 
 func _test_product_drag_reports_mouse_and_touch_release() -> void:

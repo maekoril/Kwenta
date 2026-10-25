@@ -4,9 +4,9 @@ extends RefCounted
 # All coordinates are in 1920x1080 viewport space (the old 640x360 values x3).
 const VIEWPORT_SIZE := Vector2(1920.0, 1080.0)
 const WINDOW_RECT := Rect2(450.0, 72.0, 1020.0, 528.0)
-const CUSTOMER_WIDTH: float = 204.0
-const CUSTOMER_Y: float = 93.0
-const CUSTOMER_HEIGHT: float = 525.0
+const CUSTOMER_WIDTH: float = 220.0
+const CUSTOMER_Y: float = 40.0
+const CUSTOMER_HEIGHT: float = 500.0
 const MAX_CUSTOMERS: int = 5
 const MAX_ACTIVE_WINDOW_CUSTOMERS: int = 2
 const CUSTOMER_SPAWN_DELAY_MIN_SECONDS: float = 5.0
@@ -134,6 +134,10 @@ static func get_customer_x_positions(count: int) -> Array[float]:
 	var gap: float = (WINDOW_RECT.size.x - float(customer_count) * CUSTOMER_WIDTH) / float(customer_count + 1)
 	for index in range(customer_count):
 		positions.append(WINDOW_RECT.position.x + gap * float(index + 1) + CUSTOMER_WIDTH * float(index))
+	if customer_count == 1:
+		positions[0] -= 110.0
+	elif customer_count == 2:
+		positions = [520.0, 980.0]
 	return positions
 
 static func get_order_icon_entries(requested: Dictionary, delivered: Dictionary) -> Array[Dictionary]:

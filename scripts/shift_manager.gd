@@ -195,6 +195,9 @@ func _spawn_customer() -> void:
 	var id := _choose_customer_id()
 	var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
 	var order := OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
+	if order.requested.is_empty():
+		push_warning("No stocked products are available; customer spawn skipped.")
+		return
 	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout

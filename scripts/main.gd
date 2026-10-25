@@ -7,6 +7,7 @@ const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_pr
 const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
+const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -20,6 +21,7 @@ var product_layer: Control
 var product_items_by_id: Dictionary = {}
 var upgrade_buttons: Dictionary = {}
 var customer_layer: Control
+var store_layer_renderer: StoreLayerRenderer
 var customer_actors: Dictionary = {}
 var summary_panel: PanelContainer
 var summary_backdrop: ColorRect
@@ -49,13 +51,13 @@ var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
 var cash_tray: CashTray
-
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
 		products_by_id[product.id] = product
+	_build_store_layer_renderer()
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
@@ -261,9 +263,37 @@ func _create_shift_manager() -> void:
 	shift.shift_completed.connect(_show_shift_summary)
 
 func _rebuild_product_shelf() -> void:
+	if store_layer_renderer != null:
+		store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
 	for child in product_layer.get_children():
 		child.queue_free()
 	product_items_by_id.clear()
+	var config := StoreConfig.load_config("res://data/store_config.json")
+	var stocked_entries := StoreConfig.get_stocked_entries(config, campaign.day, campaign.purchased_store_groups)
+	var stocked_game_ids: Array[String] = []
+	for entry in stocked_entries:
+		var store_id := str(entry.get("id", ""))
+		var game_id := str(entry.get("game_product_id", ""))
+		if game_id.is_empty():
+			push_warning("Store product %s has no gameplay product mapping." % store_id)
+			continue
+		var product: ProductData = products_by_id.get(game_id)
+		if product == null:
+			push_warning("Store product %s maps to missing gameplay product %s." % [store_id, game_id])
+			continue
+		stocked_game_ids.append(game_id)
+		var slot: Rect2 = store_layer_renderer.get_slot_rect(store_id)
+		var display_rect: Rect2 = store_layer_renderer.get_product_display_rect(store_id)
+		var drag_item := PRODUCT_DRAG_ITEM_SCENE.instantiate() as Control
+		drag_item.call("configure", product, product.single_unit_texture, true, slot.size, false, product.single_unit_texture, 1, 1.0, display_rect.size)
+		drag_item.position = slot.position
+		drag_item.size = slot.size
+		drag_item.modulate.a = 0.0
+		product_layer.add_child(drag_item)
+		drag_item.connect("product_released", _on_product_drag_released)
+		product_items_by_id[game_id] = drag_item
+	campaign.set_stocked_product_ids(stocked_game_ids)
+	return
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
 		if not campaign.is_product_available(product):
@@ -685,3 +715,35 @@ func _float_text(at: Vector2, text: String, color: Color) -> void:
 	tween.tween_property(label, "position:y", at.y - 70.0, 0.9)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.3)
 	tween.tween_callback(label.queue_free)
+
+func _build_store_layer_renderer() -> void:
+	store_layer_renderer = STORE_LAYER_RENDERER.new()
+	store_layer_renderer.z_index = 0
+	add_child(store_layer_renderer)
+	store_layer_renderer.purchase_requested.connect(_on_store_purchase_requested)
+	store_layer_renderer.purchase_denied.connect(_on_store_purchase_denied)
+	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+
+func _on_store_purchase_requested(group_id: String) -> void:
+	var config := StoreConfig.load_config("res://data/store_config.json")
+	for product_id in config.get("products", {}):
+		var entry: Dictionary = config.products[product_id]
+		if str(entry.get("purchase_group", product_id)) != group_id:
+			continue
+		if campaign.purchase_store_group(group_id, int(entry.get("price", 0))):
+			_update_cash(campaign.cash)
+			store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+			_rebuild_product_shelf()
+		return
+
+func _on_store_purchase_denied(_group_id: String) -> void:
+	var notice := _label("NOT ENOUGH MONEY", 20, Color("ff9d8f"))
+	notice.z_index = 45
+	notice.position = Vector2(780, 78)
+	add_child(notice)
+	var tween := create_tween()
+	tween.tween_property(notice, "position:x", 770.0, 0.06)
+	tween.tween_property(notice, "position:x", 790.0, 0.12)
+	tween.tween_property(notice, "position:x", 780.0, 0.06)
+	tween.tween_interval(0.8)
+	tween.tween_callback(notice.queue_free)

@@ -9,6 +9,15 @@ var purchased_upgrade_ids: Array[String] = []
 var upgrade_investment: int = 0
 var product_price_bonuses: Dictionary = {}
 var customer_trust: Dictionary = {}
+var purchased_store_groups: Array[String] = []
+var stocked_product_ids: Array[String] = []
+
+func purchase_store_group(group_id: String, price: int) -> bool:
+	if group_id.is_empty() or purchased_store_groups.has(group_id) or cash < price:
+		return false
+	cash -= price
+	purchased_store_groups.append(group_id)
+	return true
 
 func _init(campaign_config: CampaignConfig) -> void:
 	config = campaign_config
@@ -29,6 +38,8 @@ func get_max_order_units() -> int:
 	return int(config.max_order_sizes[mini(day - 1, config.max_order_sizes.size() - 1)])
 
 func get_available_product_ids() -> Array[String]:
+	if not stocked_product_ids.is_empty():
+		return stocked_product_ids.duplicate()
 	var result: Array[String] = []
 	for product_resource in config.product_catalog:
 		var product: ProductData = product_resource
@@ -36,23 +47,29 @@ func get_available_product_ids() -> Array[String]:
 			result.append(product.id)
 	return result
 
+func set_stocked_product_ids(product_ids: Array[String]) -> void:
+	stocked_product_ids.clear()
+	for product_id in product_ids:
+		if not product_id.is_empty() and not stocked_product_ids.has(product_id):
+			stocked_product_ids.append(product_id)
+
+func to_dict() -> Dictionary:
+	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate()}
+
+func from_dict(data: Dictionary) -> void:
+	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
+	cash = int(data.get("cash", cash))
+	purchased_store_groups.clear()
+	for group_id in data.get("purchased_store_groups", []):
+		var value := str(group_id)
+		if not value.is_empty() and not purchased_store_groups.has(value):
+			purchased_store_groups.append(value)
+
 func get_order_data_for_day(requested_day: int) -> OrderData:
-	if config.day_order_pools.is_empty():
-		var fallback := OrderData.new()
-		fallback.minimum_units = 1
-		fallback.maximum_units = mini(3, get_max_order_units())
-		fallback.product_ids = get_available_product_ids()
-		return fallback
-	var index := 0
-	for pool_index in range(config.order_pool_start_days.size()):
-		if config.order_pool_start_days[pool_index] <= requested_day:
-			index = pool_index
-	index = mini(index, config.day_order_pools.size() - 1)
-	var source: OrderData = config.day_order_pools[index]
 	var result := OrderData.new()
-	result.product_ids = source.product_ids.duplicate()
-	result.minimum_units = source.minimum_units
-	result.maximum_units = maxi(source.minimum_units, mini(source.maximum_units, get_max_order_units()))
+	result.product_ids = get_available_product_ids()
+	result.minimum_units = 1
+	result.maximum_units = maxi(1, get_max_order_units())
 	return result
 
 func get_customer_trust(customer_id: String) -> float:
