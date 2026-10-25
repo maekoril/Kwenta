@@ -43,7 +43,6 @@ func _ready() -> void:
 	bubble_tail = Polygon2D.new()
 	bubble_tail.name = "OrderBubbleTail"
 	bubble_tail.color = Color("f2dfb9")
-	bubble_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bubble_tail)
 	order_grid = GridContainer.new()
 	order_grid.columns = ORDER_BUBBLE_COLUMNS
