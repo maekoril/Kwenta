@@ -11,9 +11,11 @@ const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const ORDER_ICON_CELL_SIZE := 84.0
 const ORDER_BUBBLE_PADDING := 8.0
 const ORDER_BUBBLE_COLUMNS := 3
-const PORTRAIT_POSITION := Vector2(12.0, 135.0)
-const PORTRAIT_SIZE := Vector2(216.0, 432.0)
-const BUBBLE_HEAD_GAP := 24.0
+const PORTRAIT_POSITION := Vector2(18.0, 160.0)
+const PORTRAIT_SIZE := Vector2(144.0, 288.0)
+const BUBBLE_RIGHT_OFFSET := 10.0
+const BUBBLE_TOP_OFFSET := 88.0
+const BUBBLE_FOOTER_HEIGHT := 30.0
 const PATIENCE_GREEN := Color("4caa56")
 const PATIENCE_YELLOW := Color("e3bd39")
 const PATIENCE_RED := Color("d94536")
@@ -21,6 +23,7 @@ const PATIENCE_RED := Color("d94536")
 var customer: CustomerState
 var order_bubble: PanelContainer
 var order_grid: GridContainer
+var bubble_tail: Polygon2D
 var patience_bar: ProgressBar
 var patience_fill: StyleBoxFlat
 var portrait: TextureRect
@@ -37,6 +40,11 @@ func _ready() -> void:
 	order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
 	order_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(order_bubble)
+	bubble_tail = Polygon2D.new()
+	bubble_tail.name = "OrderBubbleTail"
+	bubble_tail.color = Color("f2dfb9")
+	bubble_tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bubble_tail)
 	order_grid = GridContainer.new()
 	order_grid.columns = ORDER_BUBBLE_COLUMNS
 	order_grid.add_theme_constant_override("h_separation", 0)
@@ -77,14 +85,13 @@ func _ready() -> void:
 	name_tag.name = "NameTrustTag"
 	# Keep identity information on the visible upper body; the concrete sill
 	# occludes everything from viewport y=528 downward.
-	name_tag.position = Vector2(9, 159)
-	name_tag.size = Vector2(186, 30)
+	name_tag.size = Vector2(100, 22)
 	name_tag.add_theme_stylebox_override("panel", _make_box(Color(0.06, 0.07, 0.08, 0.86), Color(0.06, 0.07, 0.08, 0.86), 0, 1.5, 12))
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(name_tag)
 	name_label = Label.new()
 	name_label.clip_text = true
-	name_label.add_theme_font_size_override("font_size", 18)
+	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", Color.WHITE)
 	name_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
 	name_label.add_theme_constant_override("shadow_offset_x", 3)
@@ -102,6 +109,7 @@ func set_customer(value: CustomerState, _products: Dictionary) -> void:
 func set_facing_right(from_right: bool) -> void:
 	if is_instance_valid(portrait):
 		portrait.flip_h = from_right
+		portrait_shadow.flip_h = from_right
 
 func refresh_display() -> void:
 	if customer == null or not is_instance_valid(name_label):
@@ -120,19 +128,24 @@ func refresh_display() -> void:
 	queue_redraw()
 
 func _layout_order_bubble(entry_count: int) -> void:
-	var visible_columns: int = mini(ORDER_BUBBLE_COLUMNS, maxi(1, entry_count))
-	var rows: int = maxi(1, int(ceil(float(entry_count) / float(ORDER_BUBBLE_COLUMNS))))
+	var columns: int = 2 if entry_count > 3 else ORDER_BUBBLE_COLUMNS
+	var visible_columns: int = mini(columns, maxi(1, entry_count))
+	var rows: int = maxi(1, int(ceil(float(entry_count) / float(columns))))
 	var bubble_size := Vector2(
 		float(visible_columns) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0,
-		float(rows) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0
+		float(rows) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0 + BUBBLE_FOOTER_HEIGHT
 	)
 	order_bubble.size = bubble_size
-	var bubble_y := maxf(0.0, portrait.position.y - bubble_size.y - BUBBLE_HEAD_GAP)
-	order_bubble.position = Vector2(roundf((size.x - bubble_size.x) * 0.5), bubble_y)
+	order_grid.columns = columns
+	var bubble_x := portrait.position.x + portrait.size.x + BUBBLE_RIGHT_OFFSET
+	var bubble_y := BUBBLE_TOP_OFFSET
+	order_bubble.position = Vector2(bubble_x, bubble_y)
 	order_bubble.pivot_offset = bubble_size * 0.5
-	patience_bar.position = Vector2(order_bubble.position.x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y + 3.0)
-	patience_bar.size = Vector2(maxf(60.0, bubble_size.x - ORDER_BUBBLE_PADDING * 2.0), 12.0)
-	name_tag.position = Vector2(9.0, patience_bar.position.y + patience_bar.size.y)
+	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
+	patience_bar.position = Vector2(bubble_x + bubble_size.x - 10.0, bubble_y + 7.0)
+	patience_bar.size = Vector2(6.0, bubble_size.y - 14.0)
+	name_tag.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - BUBBLE_FOOTER_HEIGHT + 3.0)
+	name_tag.size = Vector2(bubble_size.x - 24.0, 22.0)
 
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
@@ -147,7 +160,7 @@ func refresh_patience() -> void:
 		patience_fill.bg_color = PATIENCE_RED
 
 func contains_drop_point(viewport_position: Vector2) -> bool:
-	return get_global_rect().has_point(viewport_position)
+	return Rect2(global_position + portrait.position, portrait.size).has_point(viewport_position)
 
 func _make_order_item(entry: Dictionary) -> Control:
 	var item := Control.new()
