@@ -123,7 +123,7 @@
 			  {"speaker": "Tonyo", "portrait": "tonyo", "text": "Hindi pwede, may tindahan ako."},
 			  {"speaker": "Narrator", "portrait": "", "text": "Umalis ang mga kalaro na dismayado."}
 			]},
-		
+
 		  {"id": "shelter", "label": "Sumilong kayo", "response": [
 			  {"speaker": "Tonyo", "portrait": "tonyo", "text": "Dito na lang kayo, sumilong kayo!"},
 			  {"speaker": "Narrator", "portrait": "", "text": "Naghati-hati sila sa Feeta biscuits sa tabi ng counter."}

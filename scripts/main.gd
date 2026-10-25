@@ -63,8 +63,8 @@ func _ready() -> void:
 	_build_hud()
 	_build_summary_panel()
 	_build_bubble()
-	_build_cash_tray() 
-	_build_debug_tools() 
+	_build_cash_tray()
+	_build_debug_tools()
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
@@ -237,13 +237,13 @@ func _build_bubble() -> void:
 	bubble.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
-	bubble.choice_made.connect(_on_bubble_choice) 
+	bubble.choice_made.connect(_on_bubble_choice)
 
 func _on_bubble_choice(index: int) -> void:
 	if index < 0 or index >= current_choice_ids.size():
 		return
 	_select_story_choice(current_choice_data, current_choice_ids[index])
-	
+
 func _on_bubble_advanced() -> void:
 	story_beat_index += 1
 	_show_current_story_beat()
@@ -318,7 +318,7 @@ func _rebuild_product_shelf() -> void:
 func _on_customers_changed() -> void:
 	_rebuild_customer_slots()
 	_sync_cash_tray()
-	
+
 func _on_customer_timed_out(customer_instance_id: String) -> void:
 	var actor: Control = customer_actors.get(customer_instance_id)
 	if is_instance_valid(actor):
@@ -351,7 +351,7 @@ func _rebuild_customer_slots() -> void:
 			actor.size = Vector2(STOREFRONT_LAYOUT.CUSTOMER_WIDTH, STOREFRONT_LAYOUT.CUSTOMER_HEIGHT)
 			actor.call("set_customer", customer, products_by_id)
 			actor.connect("product_dropped", _on_product_dropped)
-			actor.connect("payment_tapped", _on_payment_tapped)  
+			actor.connect("payment_tapped", _on_payment_tapped)
 			var from_right := randf() < 0.5
 			actor.position = Vector2(1980.0 if from_right else -270.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
 			actor.modulate.a = 0.0
@@ -440,9 +440,9 @@ func _update_unlock_buttons() -> void:
 		button.disabled = purchased or campaign.cash < upgrade.purchase_cost
 
 func _show_shift_summary() -> void:
-	shift_in_progress = false                 
-	if debug_skip_button != null:             
-		debug_skip_button.visible = false     
+	shift_in_progress = false
+	if debug_skip_button != null:
+		debug_skip_button.visible = false
 	showing_shift_results = true
 	var summary_text_value := "Tapos ang Day %d.\n\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [campaign.day, shift.shift_earnings, campaign.cash]
 	if shift.change_total > 0:
@@ -520,7 +520,7 @@ func _show_current_story_beat() -> void:
 func _complete_story_beats() -> void:
 	match story_after_action:
 		"start_shift":
-			bubble.close()   
+			bubble.close()
 			campaign_started = true
 			showing_shift_results = false
 			summary_backdrop.visible = false
@@ -585,8 +585,8 @@ func _clear_story_choice_buttons() -> void:
 func _finish_story_day() -> void:
 	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
 		story_complete = true
-		bubble.close()                         
-		summary_backdrop.visible = true        
+		bubble.close()
+		summary_backdrop.visible = true
 		summary_panel.visible = true
 		summary_title.text = "KWENTA · WAKAS"
 		summary_speaker.text = ""
@@ -620,9 +620,9 @@ func _restart_story() -> void:
 	_present_prologue()
 
 func _begin_shift() -> void:
-	shift_in_progress = true                  
-	if debug_skip_button != null:             
-		debug_skip_button.visible = true  
+	shift_in_progress = true
+	if debug_skip_button != null:
+		debug_skip_button.visible = true
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
 	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
