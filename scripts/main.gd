@@ -48,6 +48,7 @@ var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
+var cash_tray: CashTray
 
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -60,6 +61,7 @@ func _ready() -> void:
 	_build_hud()
 	_build_summary_panel()
 	_build_bubble()
+	_build_cash_tray() 
 	_build_debug_tools() 
 	_update_cash(campaign.cash)
 	_create_shift_manager()
@@ -285,7 +287,8 @@ func _rebuild_product_shelf() -> void:
 
 func _on_customers_changed() -> void:
 	_rebuild_customer_slots()
-
+	_sync_cash_tray()
+	
 func _on_customer_timed_out(customer_instance_id: String) -> void:
 	var actor: Control = customer_actors.get(customer_instance_id)
 	if is_instance_valid(actor):
@@ -318,6 +321,7 @@ func _rebuild_customer_slots() -> void:
 			actor.size = Vector2(STOREFRONT_LAYOUT.CUSTOMER_WIDTH, STOREFRONT_LAYOUT.CUSTOMER_HEIGHT)
 			actor.call("set_customer", customer, products_by_id)
 			actor.connect("product_dropped", _on_product_dropped)
+			actor.connect("payment_tapped", _on_payment_tapped)  
 			var from_right := randf() < 0.5
 			actor.position = Vector2(1980.0 if from_right else -270.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
 			actor.modulate.a = 0.0
@@ -372,7 +376,7 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 	if is_instance_valid(actor):
 		actor.call("refresh_display")
 		actor.call("play_correct_drop")
-		if result == OrderState.DeliveryResult.COMPLETED:
+		if result == OrderState.DeliveryResult.COMPLETED and not _is_waiting_for_change(actor):
 			actor.call("play_happy")
 	return true
 
@@ -410,10 +414,13 @@ func _show_shift_summary() -> void:
 	if debug_skip_button != null:             
 		debug_skip_button.visible = false     
 	showing_shift_results = true
+	var summary_text_value := "Tapos ang Day %d.\n\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [campaign.day, shift.shift_earnings, campaign.cash]
+	if shift.change_total > 0:
+		summary_text_value += "\n\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
 	var beats: Array[Dictionary] = [{
 		"speaker": "Kuwaderno",
 		"portrait": "",
-		"text": "Tapos ang Day %d.\n\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [campaign.day, shift.shift_earnings, campaign.cash],
+		"text": summary_text_value,
 	}]
 	beats.append_array(story.get_day_outro_beats(campaign.day))
 	_show_story_beats(beats, "DAY %d COMPLETE · %s" % [campaign.day, story.get_day_title(campaign.day)], "day_choices")
@@ -570,6 +577,7 @@ func _restart_story() -> void:
 		if is_instance_valid(actor):
 			actor.queue_free()
 	customer_actors.clear()
+	cash_tray.close()
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	story_complete = false
@@ -609,3 +617,71 @@ func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 	box.content_margin_right = 18.0
 	box.content_margin_bottom = 12.0
 	return box
+
+func _build_cash_tray() -> void:
+	cash_tray = CashTray.new()
+	cash_tray.z_index = 36          # above the HUD (30), below story panels (40+) and the bubble (50)
+	cash_tray.position = Vector2.ZERO
+	cash_tray.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	add_child(cash_tray)
+	cash_tray.change_given.connect(_on_change_given)
+
+func _on_payment_tapped(customer_id: String) -> void:
+	if shift == null:
+		return
+	for customer in shift.get_active_customers():
+		if customer.instance_id == customer_id and customer.is_paying():
+			cash_tray.open_for(customer, SukliRules.shows_change_due(campaign.day))
+			return
+
+func _on_change_given(customer_id: String, amount: int) -> void:
+	if shift == null:
+		return
+	var actor: Control = customer_actors.get(customer_id)
+	var outcome: Dictionary = shift.give_change(customer_id, amount)
+	var result: int = int(outcome.get("result", PaymentState.Result.NO_PAYMENT))
+	var diff: int = int(outcome.get("diff", 0))
+	var at := Vector2(840.0, 200.0)
+	if is_instance_valid(actor):
+		at = actor.global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
+	match result:
+		PaymentState.Result.SHORT:
+			cash_tray.show_short()
+			if is_instance_valid(actor):
+				actor.call("play_wrong_drop")
+			_float_text(at, "KULANG!", Color("ff8a7a"))
+		PaymentState.Result.EXACT:
+			cash_tray.close()
+			_float_text(at, "TAMA!", Color("d9efaa"))
+			if is_instance_valid(actor):
+				actor.call("play_happy")
+		PaymentState.Result.OVER:
+			cash_tray.close()
+			_float_text(at, "SOBRA  -₱%d" % diff, Color("f6d95e"))
+		_:
+			cash_tray.close()
+
+# Closes the tray if the customer it was open for has left or timed out.
+func _sync_cash_tray() -> void:
+	if cash_tray == null or not cash_tray.is_open() or shift == null:
+		return
+	for customer in shift.get_active_customers():
+		if customer.instance_id == cash_tray.customer_id and customer.is_paying():
+			return
+	cash_tray.close()
+
+func _is_waiting_for_change(actor: Control) -> bool:
+	var customer: CustomerState = actor.get("customer")
+	return customer != null and customer.is_paying()
+
+func _float_text(at: Vector2, text: String, color: Color) -> void:
+	var label := _label(text, 42, color)
+	label.z_index = 45
+	label.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	label.add_theme_constant_override("outline_size", 8)
+	label.position = at
+	add_child(label)
+	var tween := create_tween()
+	tween.tween_property(label, "position:y", at.y - 70.0, 0.9)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.3)
+	tween.tween_callback(label.queue_free)

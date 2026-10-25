@@ -10,6 +10,9 @@
 #
 #   bubble.ask(speaker, prompt, ["option A", "option B"], portrait_texture, portrait_id)
 #       A question with tappable answer bubbles. Emits `choice_made(index)`.
+#       With speaker "Narrator" the question is the GAME asking the player: a centered banner
+#       with a "PILIIN" tab, attached to nobody. The answers are what the character could say:
+#       cream bubbles with tails pointing at the character's portrait.
 #
 #   bubble.title_card("PROLOGUE · ANG SUSI")
 #       Chapter card; `await` it. A tap skips it.
@@ -62,6 +65,11 @@ const TAIL_SIZE := Vector2(40, 54)
 const OPTION_H := 84.0
 const OPTION_GAP := 14.0
 const CHOICE_GAP_TOP := 26.0
+const PROMPT_TAG := "PILIIN"            # tab on the question banner
+const PROMPT_W := 1200.0
+const PROMPT_Y := 240.0                 # top of the question banner
+const OPTION_W := 760.0                 # width of answer bubbles next to the portrait
+const OPTION_TAIL := Vector2(30, 40)
 const HUD_CLEARANCE := 110.0
 const SCREEN_MARGIN := 60.0
 
@@ -249,7 +257,7 @@ func _choice_style(bg: Color) -> StyleBoxFlat:
 	return sb
 
 
-func _make_choice_button(label: String, index: int) -> Button:
+func _make_choice_button(label: String, index: int, tail_dir: int = 0) -> Button:
 	var b := Button.new()
 	b.text = label
 	b.custom_minimum_size = Vector2(0.0, OPTION_H)
@@ -262,14 +270,42 @@ func _make_choice_button(label: String, index: int) -> Button:
 		b.add_theme_color_override(c, INK)
 	var normal := _choice_style(PAPER)
 	b.add_theme_stylebox_override("normal", normal)
-	b.add_theme_stylebox_override("hover", _choice_style(GOLD.lightened(0.3)))
-	b.add_theme_stylebox_override("pressed", _choice_style(GOLD))
+	# Every state looks the same (paper) so the speech-bubble tail always matches.
+	# Feedback is a small hover pop and a gold flash once picked.
+	b.add_theme_stylebox_override("hover", normal)
+	b.add_theme_stylebox_override("pressed", normal)
 	b.add_theme_stylebox_override("disabled", normal)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS   # fire on touch-down, feels snappier
 	b.pressed.connect(_on_choice_pressed.bind(index))
+	b.mouse_entered.connect(_on_choice_hover.bind(b, true))
+	b.mouse_exited.connect(_on_choice_hover.bind(b, false))
+	if tail_dir != 0:
+		# Makes the answer read as a speech bubble pointing at the character.
+		var tail := Tail.new()
+		tail.size = OPTION_TAIL
+		tail.fill = PAPER
+		tail.ink = INK
+		tail.border = float(BORDER_W)
+		tail.points_right = tail_dir > 0
+		tail.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(tail)
+		b.set_meta("tail", tail)
+		b.resized.connect(_place_option_tail.bind(b, tail))
 	b.modulate.a = 0.0     # revealed one by one once the question has finished typing
 	b.disabled = true
 	return b
+
+
+func _place_option_tail(b: Button, tail: Tail) -> void:
+	var x := b.size.x if tail.points_right else -tail.size.x
+	tail.position = Vector2(x, (b.size.y - tail.size.y) * 0.5)
+
+
+func _on_choice_hover(b: Button, entered: bool) -> void:
+	if not _choices_ready:
+		return
+	create_tween().tween_property(b, "scale", Vector2.ONE * (1.04 if entered else 1.0), 0.1)
 
 
 # ---------------------------------------------------------------- public API
@@ -338,7 +374,11 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	var is_speech := with_portrait and not narration     # speech bubble with a tail
 	var char_key := _character_of(portrait_key)
 	var right_side := with_portrait and char_key == PROTAGONIST_KEY
-	var show_tag := not narration
+	var is_prompt := narration and not options.is_empty()   # the game asking the player
+	var show_tag := (not narration) or is_prompt
+	var tail_dir := 0
+	if is_prompt and with_portrait:
+		tail_dir = 1 if right_side else -1
 
 	# --- reset / build answer bubbles ---
 	_choices_ready = false
@@ -349,7 +389,7 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	_choices.modulate.a = 1.0
 	_choices.visible = _choosing
 	for i in options.size():
-		_choices.add_child(_make_choice_button(str(options[i]), i))
+		_choices.add_child(_make_choice_button(str(options[i]), i, tail_dir))
 
 	# --- style for this line ---
 	_panel.add_theme_stylebox_override("panel", _box_style(
@@ -357,10 +397,10 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 		INK if is_speech else GOLD))
 	var ink := INK if is_speech else CAPTION_INK
 	_text.add_theme_color_override("default_color", ink)
-	_text.text = line   # BBCode works here: [color=red], [i], [shake]...
+	_text.text = ("[center]%s[/center]" % line) if is_prompt else line   # BBCode works here: [color=red], [i]...
 	_text.visible_ratio = 0.0
 	_tag.visible = show_tag
-	_tag_label.text = speaker
+	_tag_label.text = PROMPT_TAG if is_prompt else speaker
 	_tail.visible = is_speech
 	_tail.points_right = right_side
 	_tail.fill = PAPER
@@ -368,6 +408,7 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	_tail.border = float(BORDER_W)
 	_tail.queue_redraw()
 	_hint.visible = false
+	_hint.get_parent().visible = not _choosing   # no empty arrow row under a question
 	_hint.color = ink
 	_set_portrait(portrait_tex, char_key, right_side)
 
@@ -379,14 +420,17 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	# --- size the bubble; wait for the text to wrap so we know its height ---
 	var vp := size
 	var w: float
-	if with_portrait:
+	if is_prompt:
+		w = minf(PROMPT_W, vp.x - 160.0)
+	elif with_portrait:
 		var used := PORTRAIT_MARGIN + PORTRAIT_SIZE.x + TAIL_SIZE.x + 12.0
 		w = minf(BUBBLE_W, vp.x - used - 100.0)
 	else:
 		w = minf(CAPTION_W, vp.x - 160.0)
 	_panel.custom_minimum_size = Vector2(w, 0.0)
 	_panel.reset_size()
-	_choices.custom_minimum_size = Vector2(w, 0.0)
+	var cw := minf(OPTION_W, w) if is_prompt else w
+	_choices.custom_minimum_size = Vector2(cw, 0.0)
 	_choices.reset_size()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -400,9 +444,13 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	# --- place it ---
 	var p := Vector2.ZERO
 	var pivot := Vector2.ZERO
-	if with_portrait:
-		var face_y := vp.y - PORTRAIT_SIZE.y + 170.0
-		var edge := PORTRAIT_MARGIN + PORTRAIT_SIZE.x + TAIL_SIZE.x + 12.0
+	var face_y := vp.y - PORTRAIT_SIZE.y + 170.0
+	var edge := PORTRAIT_MARGIN + PORTRAIT_SIZE.x + TAIL_SIZE.x + 12.0
+	if is_prompt:
+		# Question banner: centered and high, attached to nobody.
+		p = Vector2((vp.x - w) * 0.5, PROMPT_Y)
+		pivot = p + Vector2(w * 0.5, h)
+	elif with_portrait:
 		p.x = (vp.x - edge - w) if right_side else edge
 		p.y = clampf(face_y - h * 0.4, HUD_CLEARANCE, vp.y - stack_h - SCREEN_MARGIN)
 		_tail.size = TAIL_SIZE
@@ -420,8 +468,19 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 		pivot = p + Vector2(w * 0.5, h)
 	_panel.position = p
 	_tag.reset_size()
-	_tag.position = p + Vector2(28.0, -_tag.size.y * 0.55)
-	_choices.position = Vector2(p.x, p.y + h + CHOICE_GAP_TOP)
+	if is_prompt:
+		# "PILIIN" tab centered on the banner (a speaker's name tag sits at the corner instead).
+		_tag.position = p + Vector2((w - _tag.size.x) * 0.5, -_tag.size.y * 0.55)
+		# Answers stand beside the character, level with their face, away from the banner.
+		var oh := _choices.size.y
+		var cx := (vp.x - edge - cw) if right_side else edge
+		if not with_portrait:
+			cx = (vp.x - cw) * 0.5
+		var cy := clampf(face_y - oh * 0.5, p.y + h + 70.0, vp.y - SCREEN_MARGIN - oh)
+		_choices.position = Vector2(cx, cy)
+	else:
+		_tag.position = p + Vector2(28.0, -_tag.size.y * 0.55)
+		_choices.position = Vector2(p.x, p.y + h + CHOICE_GAP_TOP)
 
 	# --- pop in, growing out of the tail tip (or the caption's bottom edge) ---
 	_group.pivot_offset = pivot
@@ -572,6 +631,10 @@ func _on_choice_pressed(index: int) -> void:
 	var chosen := buttons[index] as Button
 	chosen.add_theme_stylebox_override("disabled", _choice_style(GOLD))   # stays gold while it pops
 	chosen.pivot_offset = chosen.size * 0.5
+	if chosen.has_meta("tail"):
+		var chosen_tail := chosen.get_meta("tail") as Tail
+		chosen_tail.fill = GOLD
+		chosen_tail.queue_redraw()
 	for b in buttons:
 		(b as Button).disabled = true
 	var t := create_tween().set_parallel(true)

@@ -1,6 +1,7 @@
 extends Control
 
 signal product_dropped(customer_id: String, product_id: String)
+signal payment_tapped(customer_id: String)
 
 const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
@@ -17,6 +18,7 @@ const BUBBLE_HEAD_GAP := 45.0
 const PATIENCE_GREEN := Color("4caa56")
 const PATIENCE_YELLOW := Color("e3bd39")
 const PATIENCE_RED := Color("d94536")
+const PAYMENT_BUBBLE_SIZE := Vector2(168.0, 120.0)
 
 var customer: CustomerState
 var order_bubble: PanelContainer
@@ -27,6 +29,8 @@ var portrait: TextureRect
 var name_tag: PanelContainer
 var name_label: Label
 var _drop_hovered: bool = false
+var _bubble_paying: bool = false
+var _pay_pulse: Tween
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(STOREFRONT_LAYOUT.CUSTOMER_WIDTH, STOREFRONT_LAYOUT.CUSTOMER_HEIGHT)
@@ -99,10 +103,14 @@ func refresh_display() -> void:
 	for child in order_grid.get_children():
 		order_grid.remove_child(child)
 		child.queue_free()
-	var entries: Array[Dictionary] = STOREFRONT_LAYOUT.get_order_icon_entries(customer.order.requested, customer.order.delivered)
-	for entry in entries:
-		order_grid.add_child(_make_order_item(entry))
-	_layout_order_bubble(entries.size())
+	if customer.phase == CustomerState.Phase.PAYING:
+		_build_payment_bubble()
+	else:
+		_set_bubble_paying(false)
+		var entries: Array[Dictionary] = STOREFRONT_LAYOUT.get_order_icon_entries(customer.order.requested, customer.order.delivered)
+		for entry in entries:
+			order_grid.add_child(_make_order_item(entry))
+		_layout_order_bubble(entries.size())
 	refresh_patience()
 	queue_redraw()
 
@@ -113,6 +121,9 @@ func _layout_order_bubble(entry_count: int) -> void:
 		float(visible_columns) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0,
 		float(rows) * ORDER_ICON_CELL_SIZE + ORDER_BUBBLE_PADDING * 2.0
 	)
+	_place_bubble(bubble_size)
+
+func _place_bubble(bubble_size: Vector2) -> void:
 	order_bubble.size = bubble_size
 	var bubble_y := maxf(0.0, portrait.position.y - bubble_size.y - BUBBLE_HEAD_GAP)
 	order_bubble.position = Vector2(roundf((size.x - bubble_size.x) * 0.5), bubble_y)
@@ -132,7 +143,7 @@ func refresh_patience() -> void:
 		patience_fill.bg_color = PATIENCE_YELLOW
 	else:
 		patience_fill.bg_color = PATIENCE_RED
-
+	
 func contains_drop_point(viewport_position: Vector2) -> bool:
 	return get_global_rect().has_point(viewport_position)
 
@@ -159,7 +170,7 @@ func _make_order_item(entry: Dictionary) -> Control:
 	return item
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	var can_accept: bool = customer != null and customer.active and data is Dictionary and data.has("product_id")
+	var can_accept: bool = customer != null and customer.active and customer.phase == CustomerState.Phase.ORDERING and data is Dictionary and data.has("product_id")
 	if _drop_hovered != can_accept:
 		_drop_hovered = can_accept
 		queue_redraw()
@@ -238,3 +249,55 @@ func _make_box(fill_color: Color, border_color: Color, border_width: int, paddin
 	box.content_margin_right = padding
 	box.content_margin_bottom = padding
 	return box
+
+func _build_payment_bubble() -> void:
+	_set_bubble_paying(true)
+	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING, ORDER_BUBBLE_PADDING) * 2.0
+	var holder := Control.new()
+	holder.custom_minimum_size = holder_size
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bill: MoneyIcon = MoneyIcon.new().setup(customer.payment.tendered, 66.0, false)
+	bill.position = Vector2((holder_size.x - bill.size.x) * 0.5, 4.0)
+	holder.add_child(bill)
+	var caption := Label.new()
+	caption.text = "SUKLI?"
+	caption.add_theme_font_size_override("font_size", 24)
+	caption.add_theme_color_override("font_color", Color("7a4a14"))
+	caption.position = Vector2(0.0, 76.0)
+	caption.size = Vector2(holder_size.x, 30.0)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(caption)
+	order_grid.add_child(holder)
+	_place_bubble(PAYMENT_BUBBLE_SIZE)
+
+func _set_bubble_paying(paying: bool) -> void:
+	if paying == _bubble_paying:
+		return
+	_bubble_paying = paying
+	if paying:
+		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("fff0c2"), Color("c9892b"), 4, ORDER_BUBBLE_PADDING, 9))
+		_start_pay_pulse()
+	else:
+		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+		_stop_pay_pulse()
+
+func _start_pay_pulse() -> void:
+	_stop_pay_pulse()
+	_pay_pulse = create_tween().set_loops()
+	_pay_pulse.tween_property(order_bubble, "modulate", Color(1.15, 1.1, 0.9), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_pay_pulse.tween_property(order_bubble, "modulate", Color.WHITE, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _stop_pay_pulse() -> void:
+	if _pay_pulse:
+		_pay_pulse.kill()
+		_pay_pulse = null
+	if is_instance_valid(order_bubble):
+		order_bubble.modulate = Color.WHITE
+
+func _gui_input(event: InputEvent) -> void:
+	if customer == null or not customer.is_paying():
+		return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		accept_event()
+		payment_tapped.emit(customer.instance_id)

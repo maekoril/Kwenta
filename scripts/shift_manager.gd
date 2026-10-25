@@ -24,6 +24,12 @@ var spawn_delay_min_seconds: float = 0.0
 var spawn_delay_max_seconds: float = 0.0
 var patience_seconds_override: float = 0.0
 
+# Sukli stats for the current shift.
+var change_total: int = 0          # sales that needed change and were completed
+var change_correct: int = 0        # of those, exact change on the first try
+var change_streak: int = 0         # current run of first-try exact change
+var best_change_streak: int = 0
+
 func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGenerator) -> void:
 	campaign_state = state
 	products_by_id = product_map
@@ -35,6 +41,10 @@ func start_shift() -> void:
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
 	shift_earnings = 0
+	change_total = 0
+	change_correct = 0
+	change_streak = 0
+	best_change_streak = 0
 	did_emit_completion = false
 	is_running = true
 	_spawn_customer()
@@ -53,7 +63,11 @@ func advance_time(delta_seconds: float) -> void:
 		if customer.advance_time(delta_seconds):
 			customer_left = true
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
-			feedback_changed.emit("%s left before finishing. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
+			if customer.phase == CustomerState.Phase.PAYING:
+				change_streak = 0
+				feedback_changed.emit("%s didn't wait for their change. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
+			else:
+				feedback_changed.emit("%s left before finishing. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
 			customer_timed_out.emit(customer.instance_id)
 	var remaining_customers: Array[CustomerState] = []
 	for customer in active_customers:
@@ -77,6 +91,9 @@ func deliver_product(customer_id: String, product_id: String) -> int:
 		if customer.instance_id != customer_id:
 			continue
 		var result := customer.receive_product(product_id)
+		if result == CustomerState.DeliveryResult.INACTIVE:
+			feedback_changed.emit("Give this customer their change first.")
+			return result
 		if result == OrderState.DeliveryResult.WRONG_PRODUCT:
 			feedback_changed.emit("That isn't in this customer's order.")
 			return result
@@ -87,20 +104,57 @@ func deliver_product(customer_id: String, product_id: String) -> int:
 				if product != null:
 					prices[id] = campaign_state.get_product_price(product)
 			var order_total := customer.order.total_price(prices)
-			campaign_state.cash += order_total
-			shift_earnings += order_total
-			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
-			customer.finish_as_paid()
-			active_customers.erase(customer)
-			spawn_elapsed = 0.0
-			current_spawn_delay = _next_spawn_delay()
-			cash_changed.emit(campaign_state.cash)
-			feedback_changed.emit("Order complete! Customer paid and left.")
-			customers_changed.emit()
+			var tendered := order_total
+			if SukliRules.is_enabled(campaign_state.day):
+				tendered = SukliRules.tender_for(order_total, campaign_state.day, rng)
+			if tendered > order_total:
+				# Order done, but they paid with a bigger bill: wait for the player to give change.
+				customer.begin_payment(order_total, tendered, _payment_patience_seconds())
+				feedback_changed.emit("%s paid ₱%d. Tap them to give change." % [customer.customer_id.capitalize(), tendered])
+				customers_changed.emit()
+			else:
+				_finish_sale(customer, order_total)
+				feedback_changed.emit("Order complete! Customer paid and left.")
 		else:
 			feedback_changed.emit("Good! Keep going.")
 		return result
 	return CustomerState.DeliveryResult.INACTIVE
+
+# The player hands over `amount` pesos in change. Returns {"result": PaymentState.Result, "diff": int}
+# where diff = amount given minus what was due (negative = short, positive = over).
+#   EXACT: sale completes, cash goes up by the order total.
+#   OVER:  sale completes, but the extra comes out of the register.
+#   SHORT: customer refuses, loses a bit of patience; the player can try again.
+func give_change(customer_id: String, amount: int) -> Dictionary:
+	for customer in active_customers:
+		if customer.instance_id != customer_id:
+			continue
+		if not customer.is_paying():
+			break
+		var payment: PaymentState = customer.payment
+		var result := payment.evaluate(amount)
+		var diff := amount - payment.change_due()
+		if result == PaymentState.Result.SHORT:
+			payment.mistakes += 1
+			change_streak = 0
+			customer.penalize_patience(SukliRules.SHORT_PENALTY_SECONDS)
+			feedback_changed.emit("Kulang po ang sukli!")
+			return {"result": result, "diff": diff}
+		change_total += 1
+		if result == PaymentState.Result.EXACT and payment.mistakes == 0:
+			change_correct += 1
+			change_streak += 1
+			best_change_streak = maxi(best_change_streak, change_streak)
+			feedback_changed.emit("Tamang sukli!")
+		else:
+			change_streak = 0
+			if result == PaymentState.Result.OVER:
+				feedback_changed.emit("Sobra ang naibigay mong sukli: ₱%d." % diff)
+			else:
+				feedback_changed.emit("Tamang sukli, pero may mali muna.")
+		_finish_sale(customer, payment.net_cash(amount))
+		return {"result": result, "diff": diff}
+	return {"result": PaymentState.Result.NO_PAYMENT, "diff": 0}
 
 func get_active_customers() -> Array[CustomerState]:
 	return active_customers.duplicate()
@@ -113,6 +167,24 @@ func finish_shift() -> void:
 	active_customers.clear()
 	customers_changed.emit()
 	shift_completed.emit()
+
+func _finish_sale(customer: CustomerState, net_cash: int) -> void:
+	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
+	shift_earnings += net_cash
+	campaign_state.save_customer_trust(customer.customer_id, customer.trust)
+	customer.finish_as_paid()
+	active_customers.erase(customer)
+	spawn_elapsed = 0.0
+	current_spawn_delay = _next_spawn_delay()
+	cash_changed.emit(campaign_state.cash)
+	customers_changed.emit()
+
+func _payment_patience_seconds() -> float:
+	var base: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
+	# The final day sets a huge override so nobody ever leaves; keep it that way during payment too.
+	if base >= 10000.0:
+		return base
+	return minf(base, SukliRules.payment_patience(campaign_state.day))
 
 func _spawn_customer() -> void:
 	if active_customers.size() >= _active_customer_limit():

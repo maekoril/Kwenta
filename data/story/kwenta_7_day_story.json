@@ -27,10 +27,11 @@
 	  "outro": [
 		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Tonyo! Tara na, laro na tayo! Tumbang preso!"},
 		{"speaker": "Mikay", "portrait": "mikay_smug", "text": "Dalian mo, baka matalo ka na naman!"},
-		{"speaker": "Bogs", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs mula sa kalsada."}
+		{"speaker": "Narrator", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs mula sa kalsada."},
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Tara na!"}
 	  ],
 	  "choices": [
-		{"id": "day1_play", "prompt": "Tara na! Ano ang gagawin ni Tonyo?", "options": [
+		{"id": "day1_play", "prompt":"Ano ang gagawin ni Tonyo?", "options": [
 		  {"id": "stay", "label": "Mamaya na!", "response": "Mamaya na! May tindahan pa ako.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
 		  {"id": "play", "label": "Saglit lang!", "response": "Saglit lang! Babalik agad ako.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
 		]}
@@ -63,7 +64,7 @@
 		]},
 		{"id": "day2_overpayment", "prompt": "Ano ang gagawin sa sobrang ₱50?", "options": [
 		  {"id": "return", "label": "Itabi para isauli", "response": "Nilagay ni Tonyo ang pera sa sobre na may pangalang Mang Berting.", "response_speaker": "Narrator", "response_portrait": ""},
-		  {"id": "keep", "label": "Itago", "response": "Hindi naman niya malalaman, bulong ni Tonyo.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
+		  {"id": "keep", "label": "Itago", "response": "Hindi naman niya malalaman...", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
 		]}
 	  ],
 	  "callbacks": [
@@ -91,7 +92,10 @@
 		{"id": "day3_candy", "prompt": "Kulang ng ₱3 si Paolo. Ano ang gagawin?", "options": [
 		  {"id": "credit", "label": "Utang muna", "response": "Sige, utang muna. Isusulat ko sa kuwaderno.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
 		  {"id": "free", "label": "Libre na", "response": "Libre na, bata.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
-		  {"id": "no", "label": "Pasensya na", "response": "Pasensya na, kulang pa. Umuwi si Paolo na malungkot.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
+		  {"id": "no", "label": "Pasensya na", "response": [
+			  {"speaker": "Tonyo", "portrait": "tonyo", "text": "Pasensya na, kulang pa."},
+			  {"speaker": "Narrator", "portrait": "paolo_sad", "text": "Umuwi si Paolo na malungkot."}
+			]}
 		]}
 	  ],
 	  "callbacks": [
@@ -115,8 +119,15 @@
 	  "choices": [
 		{"id": "day4_rain", "prompt": "Ano ang gagawin ni Tonyo?", "options": [
 		  {"id": "join", "label": "Sumama sandali", "response": "Naiwan ang tindahan at nabasa ang order ni Aling Nena.", "response_speaker": "Narrator", "response_portrait": ""},
-		  {"id": "stay", "label": "May tindahan ako", "response": "Hindi pwede, may tindahan ako. Umalis ang mga kalaro na dismayado.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
-		  {"id": "shelter", "label": "Sumilong kayo", "response": "Dito na lang kayo, sumilong kayo! Naghati-hati sila sa Feeta biscuits sa tabi ng counter.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
+		  {"id": "stay", "label": "May tindahan ako", "response": [
+			  {"speaker": "Tonyo", "portrait": "tonyo", "text": "Hindi pwede, may tindahan ako."},
+			  {"speaker": "Narrator", "portrait": "", "text": "Umalis ang mga kalaro na dismayado."}
+			]},
+		
+		  {"id": "shelter", "label": "Sumilong kayo", "response": [
+			  {"speaker": "Tonyo", "portrait": "tonyo", "text": "Dito na lang kayo, sumilong kayo!"},
+			  {"speaker": "Narrator", "portrait": "", "text": "Naghati-hati sila sa Feeta biscuits sa tabi ng counter."}
+			]}
 		]}
 	  ],
 	  "callbacks": [
