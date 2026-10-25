@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://dxx6bnqgo8ybc"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1_product"]
+
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/noodz_stack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/noodz_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1_product")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "instant_noodles"
+display_name = "Noodz"
+price = 15
+shelf_location = "Shelf Row A"
+stacked_texture_key = "instant_noodles"
+single_unit_texture_key = "instant_noodles"
+display_scale = 1.9

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="StoreUpgradeData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/store_upgrade_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = "condiment_rack"
+display_name = "Condiment Rack"
+purchase_cost = 300
+offer_after_day = 4
+product_ids = Array[String]( ["soy_sauce", "vinegar", "fish_sauce"] )

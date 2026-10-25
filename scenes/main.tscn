@@ -1,19 +1,90 @@
 [gd_scene format=3 uid="uid://155xx7s6y6ta"]
 
-[node name="Node2D" type="Node2D" unique_id=695057372]
+[ext_resource type="Script" uid="uid://b7v3u48w3vj1m" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Texture2D" uid="uid://bqa2vu2iu2kse" path="res://assets/backgrounds/kwenta_store_interior_clean.png" id="2_storefront"]
 
-[node name="Label" type="Label" parent="." unique_id=1890056083]
-offset_left = 126.0
-offset_top = 130.0
-offset_right = 313.0
-offset_bottom = 193.0
-text = "Kwenta"
-horizontal_alignment = 1
-vertical_alignment = 1
+[sub_resource type="AtlasTexture" id="AtlasTexture_counter_sill"]
+atlas = ExtResource("2_storefront")
+region = Rect2(0, 462, 1680, 483)
 
-[node name="Button" type="Button" parent="." unique_id=2014360442]
-offset_left = 193.0
-offset_top = 76.0
-offset_right = 264.0
-offset_bottom = 109.0
-text = "Tap Me"
+[node name="Main" type="Control" unique_id=292310750]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 640.0
+offset_bottom = 360.0
+script = ExtResource("1_main")
+
+[node name="StoreBackground" type="TextureRect" parent="." unique_id=1569920771]
+texture_filter = 1
+texture_repeat = 1
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+texture = ExtResource("2_storefront")
+expand_mode = 1
+
+[node name="StorefrontLayout" type="Control" parent="." unique_id=343704420]
+anchors_preset = 0
+mouse_filter = 2
+
+[node name="CustomerWindow" type="Control" parent="StorefrontLayout" unique_id=1855593906]
+anchors_preset = 0
+offset_left = 432.0
+offset_top = 49.0
+offset_right = 1472.0
+offset_bottom = 526.0
+mouse_filter = 2
+
+[node name="TopLeftRailSlots" type="Control" parent="StorefrontLayout" unique_id=717217829]
+anchors_preset = 0
+offset_left = 20.0
+offset_top = 24.0
+offset_right = 485.0
+offset_bottom = 159.0
+mouse_filter = 2
+
+[node name="TopRightRailSlots" type="Control" parent="StorefrontLayout" unique_id=1351983205]
+anchors_preset = 0
+offset_left = 1485.0
+offset_top = 30.0
+offset_right = 1875.0
+offset_bottom = 165.0
+mouse_filter = 2
+
+[node name="CountertopSlots" type="Control" parent="StorefrontLayout" unique_id=1018911941]
+anchors_preset = 0
+offset_left = 199.0
+offset_top = 531.0
+offset_right = 1857.0
+offset_bottom = 605.0
+mouse_filter = 2
+
+[node name="ShelfRowASlots" type="Control" parent="StorefrontLayout" unique_id=1538494836]
+anchors_preset = 0
+offset_left = 130.0
+offset_top = 607.0
+offset_right = 1781.0
+offset_bottom = 708.0
+mouse_filter = 2
+
+[node name="ShelfRowBSlots" type="Control" parent="StorefrontLayout" unique_id=1633653723]
+anchors_preset = 0
+offset_left = 117.0
+offset_top = 868.0
+offset_right = 1787.0
+offset_bottom = 970.0
+mouse_filter = 2
+
+[node name="ForegroundCounterSill" type="TextureRect" parent="." unique_id=1340925773]
+z_index = 10
+texture_filter = 1
+texture_repeat = 1
+layout_mode = 0
+offset_left = 9.0
+offset_top = 534.0
+offset_right = 1920.0
+offset_bottom = 1082.0
+mouse_filter = 2
+texture = SubResource("AtlasTexture_counter_sill")
+expand_mode = 1

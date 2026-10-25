@@ -1,0 +1,289 @@
+extends SceneTree
+
+const CampaignConfigScript = preload("res://scripts/campaign_config.gd")
+const CampaignStateScript = preload("res://scripts/campaign_state.gd")
+const CustomerActorScene = preload("res://scenes/customer_slot.tscn")
+const CustomerStateScript = preload("res://scripts/customer_state.gd")
+const OrderDataScript = preload("res://scripts/order_data.gd")
+const OrderStateScript = preload("res://scripts/order_state.gd")
+const ProductDataScript = preload("res://scripts/product_data.gd")
+const ProductDragItemScene = preload("res://scenes/product_drag_item.tscn")
+const ShiftManagerScript = preload("res://scripts/shift_manager.gd")
+const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
+const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
+const MainScene = preload("res://scenes/main.tscn")
+
+var failures := 0
+var released_product_id := ""
+var released_position := Vector2.ZERO
+var observed_clock := ""
+var customer_change_count := 0
+
+func _initialize() -> void:
+	_test_storefront_defines_core_shift_pacing()
+	_test_shift_caps_window_customers_and_uses_core_patience()
+	_test_timeout_notifies_the_scene_before_replacement_spawn()
+	await _test_customer_patience_colours_use_discrete_thresholds()
+	await _test_product_drag_reports_mouse_and_touch_release()
+	await _test_only_one_shelf_drag_preview_can_be_active()
+	await _test_story_replay_resets_the_campaign()
+	await _test_main_routes_bubble_drops_to_immediate_cash()
+	if failures > 0:
+		push_error("%d core gameplay loop assertion(s) failed." % failures)
+		quit(1)
+	else:
+		print("All core gameplay loop assertions passed.")
+		quit(0)
+
+func _test_storefront_defines_core_shift_pacing() -> void:
+	var constants := _layout_constants()
+	_assert(int(constants.get("MAX_ACTIVE_WINDOW_CUSTOMERS", -1)) == 2, "the storefront permits at most two concurrent window customers")
+	_assert(is_equal_approx(float(constants.get("CUSTOMER_SPAWN_DELAY_MIN_SECONDS", -1.0)), 5.0), "customer spawn delay minimum is five seconds")
+	_assert(is_equal_approx(float(constants.get("CUSTOMER_SPAWN_DELAY_MAX_SECONDS", -1.0)), 12.0), "customer spawn delay maximum is twelve seconds")
+	_assert(is_equal_approx(float(constants.get("CUSTOMER_PATIENCE_SECONDS", -1.0)), 25.0), "core customers receive twenty-five seconds of patience")
+
+func _test_shift_caps_window_customers_and_uses_core_patience() -> void:
+	var constants := _layout_constants()
+	if not constants.has("MAX_ACTIVE_WINDOW_CUSTOMERS"):
+		return
+	var manager := _make_test_shift()
+	manager.set("active_customer_limit_override", int(constants["MAX_ACTIVE_WINDOW_CUSTOMERS"]))
+	manager.set("spawn_delay_min_seconds", float(constants["CUSTOMER_SPAWN_DELAY_MIN_SECONDS"]))
+	manager.set("spawn_delay_max_seconds", float(constants["CUSTOMER_SPAWN_DELAY_MAX_SECONDS"]))
+	manager.set("patience_seconds_override", float(constants["CUSTOMER_PATIENCE_SECONDS"]))
+	observed_clock = ""
+	manager.clock_changed.connect(_on_clock_changed)
+	manager.start_shift()
+	var first_customer: CustomerState = manager.get_active_customers()[0]
+	_assert(is_equal_approx(first_customer.patience_seconds, 25.0), "new customer inherits the core patience duration")
+	manager.advance_time(4.99)
+	_assert(manager.get_active_customers().size() == 1, "a second customer cannot arrive before the minimum delay")
+	manager.advance_time(7.02)
+	_assert(manager.get_active_customers().size() == 2, "a second customer arrives by the maximum delay")
+	manager.advance_time(18.0)
+	_assert(manager.get_active_customers().size() <= 2, "replacement arrivals never exceed the two-customer window cap")
+	var clock_manager := _make_test_shift()
+	clock_manager.campaign_state.config.shift_length_seconds = 1.0
+	clock_manager.clock_changed.connect(_on_clock_changed)
+	clock_manager.start_shift()
+	clock_manager.advance_time(1.0)
+	_assert(observed_clock == "6:00 PM", "the active shift clock reaches 6:00 PM at shift end (got %s)" % observed_clock)
+
+func _test_timeout_notifies_the_scene_before_replacement_spawn() -> void:
+	var manager := _make_test_shift()
+	manager.set("active_customer_limit_override", 2)
+	manager.set("spawn_delay_min_seconds", 12.0)
+	manager.set("spawn_delay_max_seconds", 12.0)
+	manager.set("patience_seconds_override", 0.1)
+	customer_change_count = 0
+	manager.customers_changed.connect(_on_customers_changed)
+	manager.start_shift()
+	customer_change_count = 0
+	manager.advance_time(0.1)
+	_assert(manager.get_active_customers().is_empty(), "an expired customer is removed from shift state")
+	_assert(customer_change_count == 1, "an expired customer immediately notifies Main to animate its departure")
+
+func _test_customer_patience_colours_use_discrete_thresholds() -> void:
+	var actor := CustomerActorScene.instantiate() as Control
+	actor.size = Vector2(StorefrontLayoutScript.CUSTOMER_WIDTH, StorefrontLayoutScript.CUSTOMER_HEIGHT)
+	root.add_child(actor)
+	await process_frame
+	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 100.0)
+	actor.call("set_customer", customer, {})
+	var fill := (actor.get_node("PatienceBar") as ProgressBar).get_theme_stylebox("fill") as StyleBoxFlat
+	customer.patience_remaining = 12.5
+	actor.call("refresh_patience")
+	_assert(fill.bg_color == Color("4caa56"), "patience remains green at fifty percent")
+	customer.patience_remaining = 12.25
+	actor.call("refresh_patience")
+	_assert(fill.bg_color == Color("e3bd39"), "patience turns yellow below fifty percent")
+	customer.patience_remaining = 6.0
+	actor.call("refresh_patience")
+	_assert(fill.bg_color == Color("d94536"), "patience turns red below twenty-five percent")
+	actor.queue_free()
+
+func _test_product_drag_reports_mouse_and_touch_release() -> void:
+	var item := ProductDragItemScene.instantiate() as Control
+	var product := ProductDataScript.new()
+	product.id = "chips"
+	item.call("configure", product, ProductAtlas, true, Vector2(24.0, 24.0), false)
+	item.position = Vector2(100.0, 100.0)
+	item.size = Vector2(40.0, 40.0)
+	root.add_child(item)
+	await process_frame
+	_assert(item.has_signal("product_released"), "a source item exposes a release event for drag resolution")
+	_assert(item.has_method("finish_drag"), "a source item can return or consume its own drag preview")
+	if not item.has_signal("product_released") or not item.has_method("finish_drag"):
+		item.queue_free()
+		return
+	item.connect("product_released", _on_product_released)
+	_simulate_mouse_drag(item, Vector2(110.0, 110.0), Vector2(180.0, 120.0))
+	_assert(released_product_id == "chips" and released_position == Vector2(180.0, 120.0), "mouse release reports the selected product and viewport position")
+	item.call("finish_drag", true)
+	released_product_id = ""
+	_simulate_touch_drag(item, Vector2(110.0, 110.0), Vector2(160.0, 145.0))
+	_assert(released_product_id == "chips" and released_position == Vector2(160.0, 145.0), "touch release reports the selected product and viewport position")
+	item.call("finish_drag", false)
+	await create_timer(0.4).timeout
+	_assert(not item.call("is_drag_active"), "returned previews are freed after their bounce animation")
+	item.queue_free()
+
+func _test_only_one_shelf_drag_preview_can_be_active() -> void:
+	var first := _make_drag_item("chips", Vector2(60.0, 100.0))
+	var second := _make_drag_item("soft_drink", Vector2(120.0, 100.0))
+	root.add_child(first)
+	root.add_child(second)
+	await process_frame
+	var first_press := InputEventScreenTouch.new()
+	first_press.index = 0
+	first_press.pressed = true
+	first_press.position = Vector2(70.0, 110.0)
+	first.call("_gui_input", first_press)
+	var second_press := InputEventScreenTouch.new()
+	second_press.index = 1
+	second_press.pressed = true
+	second_press.position = Vector2(130.0, 110.0)
+	second.call("_gui_input", second_press)
+	_assert(bool(first.call("is_drag_active")), "the first touch owns a drag preview")
+	_assert(not bool(second.call("is_drag_active")), "a second touch cannot create a concurrent drag preview")
+	first.call("finish_drag", true)
+	second.call("_gui_input", second_press)
+	_assert(bool(second.call("is_drag_active")), "a new drag can begin after the first preview resolves")
+	second.call("finish_drag", false)
+	await create_timer(0.4).timeout
+	first.queue_free()
+	second.queue_free()
+
+func _test_main_routes_bubble_drops_to_immediate_cash() -> void:
+	var main := MainScene.instantiate() as Control
+	root.add_child(main)
+	await process_frame
+	main.call("_begin_shift")
+	await process_frame
+	var manager: ShiftManager = main.get("shift")
+	var active: Array[CustomerState] = manager.get_active_customers()
+	_assert(active.size() == 1, "opening a shift creates the first customer")
+	if active.is_empty():
+		main.queue_free()
+		return
+	var customer: CustomerState = active[0]
+	var actors: Dictionary = main.get("customer_actors")
+	var actor: Control = actors.get(customer.instance_id)
+	var bubble := actor.get_node("OrderBubble") as Control
+	var bubble_point := bubble.global_position + Vector2(2.0, 2.0)
+	_assert(bool(actor.call("contains_drop_point", bubble_point)), "a customer bubble is inside the actor drop target")
+	var cash_before: int = manager.campaign_state.cash
+	var product_items: Dictionary = main.get("product_items_by_id")
+	var requested_product_id: String = str(customer.order.requested.keys()[0])
+	var requested_source: Control = product_items.get(requested_product_id)
+	main.call("_on_product_drag_released", requested_product_id, Vector2.ZERO, requested_source)
+	_assert(customer.order.delivered.is_empty() and manager.campaign_state.cash == cash_before, "a release outside every customer returns without fulfilling or paying")
+	for product_id in product_items:
+		if not customer.order.requested.has(product_id):
+			main.call("_on_product_drag_released", str(product_id), bubble_point, product_items[product_id])
+			break
+	_assert(customer.order.delivered.is_empty() and manager.campaign_state.cash == cash_before, "a wrong product over a bubble returns without fulfilling or paying")
+	for product_id in customer.order.requested:
+		for _unit in range(int(customer.order.requested[product_id])):
+			var source: Control = product_items.get(product_id)
+			main.call("_on_product_drag_released", str(product_id), bubble_point, source)
+	_assert(manager.campaign_state.cash > cash_before, "a completed bubble drop pays the global cash balance immediately")
+	var cash_label := main.get("cash_label") as Label
+	_assert(cash_label.text == "₱%d" % manager.campaign_state.cash, "the cash HUD updates in the same delivery transaction")
+	main.queue_free()
+
+func _test_story_replay_resets_the_campaign() -> void:
+	var main := MainScene.instantiate() as Control
+	root.add_child(main)
+	await process_frame
+	var old_story: StoryProgression = main.get("story")
+	old_story.record_choice("day1_play", "stay")
+	var old_campaign: CampaignState = main.get("campaign")
+	old_campaign.day = old_campaign.config.campaign_day_count
+	main.set("story_complete", true)
+	main.call("_restart_story")
+	var replay_campaign: CampaignState = main.get("campaign")
+	var replay_story: StoryProgression = main.get("story")
+	_assert(replay_campaign.day == 1, "replay returns the campaign to Day 1")
+	_assert(replay_story.get_choice("day1_play").is_empty(), "replay starts with fresh choice flags")
+	main.queue_free()
+
+func _simulate_mouse_drag(item: Control, start: Vector2, finish: Vector2) -> void:
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = start
+	item.call("_gui_input", press)
+	var motion := InputEventMouseMotion.new()
+	motion.position = finish
+	item.call("_input", motion)
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = finish
+	item.call("_input", release)
+
+func _simulate_touch_drag(item: Control, start: Vector2, finish: Vector2) -> void:
+	var press := InputEventScreenTouch.new()
+	press.index = 0
+	press.pressed = true
+	press.position = start
+	item.call("_gui_input", press)
+	var motion := InputEventScreenDrag.new()
+	motion.index = 0
+	motion.position = finish
+	item.call("_input", motion)
+	var release := InputEventScreenTouch.new()
+	release.index = 0
+	release.pressed = false
+	release.position = finish
+	item.call("_input", release)
+
+func _make_test_shift() -> ShiftManager:
+	var product := ProductDataScript.new()
+	product.id = "chips"
+	product.price = 10
+	var order_data := OrderDataScript.new()
+	order_data.product_ids = ["chips"]
+	order_data.minimum_units = 1
+	order_data.maximum_units = 1
+	var config := CampaignConfigScript.new()
+	config.product_catalog.append(product)
+	config.day_order_pools.append(order_data)
+	config.order_pool_start_days = [1]
+	config.customer_ids = ["jun", "mila", "ben"]
+	config.shift_length_seconds = 60.0
+	config.customer_spawn_interval = 60.0
+	config.customer_patience_seconds = 90.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 12345
+	return ShiftManagerScript.new(CampaignStateScript.new(config), {"chips": product}, rng)
+
+func _make_drag_item(product_id: String, item_position: Vector2) -> Control:
+	var item := ProductDragItemScene.instantiate() as Control
+	var product := ProductDataScript.new()
+	product.id = product_id
+	item.call("configure", product, ProductAtlas, true, Vector2(24.0, 24.0), false)
+	item.position = item_position
+	item.size = Vector2(40.0, 40.0)
+	return item
+
+func _on_product_released(product_id: String, viewport_position: Vector2, _source: Control) -> void:
+	released_product_id = product_id
+	released_position = viewport_position
+
+func _on_clock_changed(value: String) -> void:
+	observed_clock = value
+
+func _on_customers_changed() -> void:
+	customer_change_count += 1
+
+func _layout_constants() -> Dictionary:
+	var layout := StorefrontLayoutScript.new()
+	return layout.get_script().get_script_constant_map()
+
+func _assert(condition: bool, description: String) -> void:
+	if condition:
+		return
+	failures += 1
+	push_error("FAIL: " + description)
