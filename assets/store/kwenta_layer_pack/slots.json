@@ -1,0 +1,337 @@
+{
+  "base_size": [
+    1672,
+    941
+  ],
+  "layers": [
+    {
+      "id": "feeta",
+      "type": "cubby",
+      "slot_rect": [
+        262,
+        430,
+        383,
+        155
+      ],
+      "x": 276,
+      "y": 437,
+      "w": 359,
+      "h": 131
+    },
+    {
+      "id": "giga_sardines",
+      "type": "cubby",
+      "slot_rect": [
+        645,
+        430,
+        340,
+        155
+      ],
+      "x": 676,
+      "y": 439,
+      "w": 285,
+      "h": 129
+    },
+    {
+      "id": "wemby",
+      "type": "cubby",
+      "slot_rect": [
+        985,
+        430,
+        410,
+        155
+      ],
+      "x": 1005,
+      "y": 436,
+      "w": 363,
+      "h": 132
+    },
+    {
+      "id": "ticnap_notnac",
+      "type": "cubby",
+      "slot_rect": [
+        155,
+        590,
+        470,
+        150
+      ],
+      "x": 170,
+      "y": 602,
+      "w": 431,
+      "h": 136
+    },
+    {
+      "id": "noodz",
+      "type": "cubby",
+      "slot_rect": [
+        625,
+        595,
+        430,
+        145
+      ],
+      "x": 649,
+      "y": 607,
+      "w": 403,
+      "h": 132
+    },
+    {
+      "id": "bfresh_gum",
+      "type": "cubby",
+      "slot_rect": [
+        1055,
+        590,
+        455,
+        150
+      ],
+      "x": 1074,
+      "y": 613,
+      "w": 409,
+      "h": 126
+    },
+    {
+      "id": "golden_oil",
+      "type": "bay",
+      "slot_rect": [
+        160,
+        745,
+        230,
+        127
+      ],
+      "x": 174,
+      "y": 751,
+      "w": 213,
+      "h": 112
+    },
+    {
+      "id": "bato_spring_water",
+      "type": "bay",
+      "slot_rect": [
+        395,
+        745,
+        245,
+        127
+      ],
+      "x": 402,
+      "y": 750,
+      "w": 235,
+      "h": 115
+    },
+    {
+      "id": "cola_coca",
+      "type": "bay",
+      "slot_rect": [
+        640,
+        742,
+        295,
+        130
+      ],
+      "x": 656,
+      "y": 751,
+      "w": 264,
+      "h": 114
+    },
+    {
+      "id": "boss_toyo",
+      "type": "bay_mini",
+      "slot_rect": [
+        940,
+        745,
+        95,
+        127
+      ],
+      "x": 940,
+      "y": 751,
+      "w": 95,
+      "h": 114
+    },
+    {
+      "id": "pating",
+      "type": "bay_mini",
+      "slot_rect": [
+        1035,
+        745,
+        85,
+        127
+      ],
+      "x": 1035,
+      "y": 751,
+      "w": 85,
+      "h": 112
+    },
+    {
+      "id": "real_suka",
+      "type": "bay_mini",
+      "slot_rect": [
+        1120,
+        745,
+        90,
+        127
+      ],
+      "x": 1120,
+      "y": 751,
+      "w": 78,
+      "h": 112
+    },
+    {
+      "id": "jasmine_rice",
+      "type": "bay",
+      "slot_rect": [
+        1215,
+        745,
+        290,
+        127
+      ],
+      "x": 1219,
+      "y": 747,
+      "w": 260,
+      "h": 116
+    },
+    {
+      "id": "egg_large",
+      "type": "counter",
+      "slot_rect": [
+        265,
+        300,
+        150,
+        110
+      ],
+      "x": 270,
+      "y": 309,
+      "w": 145,
+      "h": 101
+    },
+    {
+      "id": "maximo",
+      "type": "counter",
+      "slot_rect": [
+        415,
+        290,
+        115,
+        120
+      ],
+      "x": 415,
+      "y": 290,
+      "w": 115,
+      "h": 120
+    },
+    {
+      "id": "bread_winner",
+      "type": "counter",
+      "slot_rect": [
+        1160,
+        262,
+        230,
+        148
+      ],
+      "x": 1160,
+      "y": 266,
+      "w": 230,
+      "h": 144
+    },
+    {
+      "id": "thang",
+      "type": "hook",
+      "slot_rect": [
+        25,
+        95,
+        59,
+        275
+      ],
+      "x": 25,
+      "y": 95,
+      "w": 59,
+      "h": 275
+    },
+    {
+      "id": "zesty",
+      "type": "hook",
+      "slot_rect": [
+        84,
+        100,
+        50,
+        270
+      ],
+      "x": 84,
+      "y": 100,
+      "w": 50,
+      "h": 270
+    },
+    {
+      "id": "patos",
+      "type": "hook",
+      "slot_rect": [
+        134,
+        110,
+        50,
+        260
+      ],
+      "x": 134,
+      "y": 110,
+      "w": 50,
+      "h": 255
+    },
+    {
+      "id": "champ_powder",
+      "type": "hook",
+      "slot_rect": [
+        184,
+        120,
+        48,
+        220
+      ],
+      "x": 184,
+      "y": 120,
+      "w": 45,
+      "h": 220
+    },
+    {
+      "id": "kapeko_blanca",
+      "type": "hook",
+      "slot_rect": [
+        1462,
+        110,
+        60,
+        255
+      ],
+      "x": 1462,
+      "y": 110,
+      "w": 60,
+      "h": 249
+    },
+    {
+      "id": "clean",
+      "type": "hook",
+      "slot_rect": [
+        1522,
+        105,
+        60,
+        263
+      ],
+      "x": 1522,
+      "y": 105,
+      "w": 60,
+      "h": 263
+    },
+    {
+      "id": "rizz_up",
+      "type": "hook",
+      "slot_rect": [
+        1582,
+        95,
+        68,
+        277
+      ],
+      "x": 1582,
+      "y": 95,
+      "w": 68,
+      "h": 277
+    }
+  ],
+  "window_rect": [
+    368,
+    94,
+    920,
+    284
+  ],
+  "notes": "coords are in the 1672x941 base image; draw order: bg_empty -> customer -> bg_front (window punched out) -> layers"
+}

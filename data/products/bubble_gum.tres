@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3]
+
+[ext_resource type="Script" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/bfresh_gum_stack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/bfresh_gum_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "bubble_gum"
+stacked_texture_key = "bubble_gum"
+single_unit_texture_key = "bubble_gum"
+display_name = "B-fresh Gum"
+price = 5
+shelf_location = "Shelf Row A"
+display_scale = 1.5
+unlock_day = 5
