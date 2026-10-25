@@ -4,9 +4,9 @@ extends RefCounted
 # All coordinates are in 1920x1080 viewport space (the old 640x360 values x3).
 const VIEWPORT_SIZE := Vector2(1920.0, 1080.0)
 const WINDOW_RECT := Rect2(450.0, 72.0, 1020.0, 528.0)
-const CUSTOMER_WIDTH: float = 204.0
-const CUSTOMER_Y: float = 93.0
-const CUSTOMER_HEIGHT: float = 525.0
+const CUSTOMER_WIDTH: float = 240.0
+const CUSTOMER_Y: float = 84.0
+const CUSTOMER_HEIGHT: float = 600.0
 const MAX_CUSTOMERS: int = 5
 const MAX_ACTIVE_WINDOW_CUSTOMERS: int = 2
 const CUSTOMER_SPAWN_DELAY_MIN_SECONDS: float = 5.0

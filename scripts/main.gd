@@ -281,8 +281,9 @@ func _rebuild_product_shelf() -> void:
 			continue
 		stocked_game_ids.append(game_id)
 		var slot: Rect2 = store_layer_renderer.get_slot_rect(store_id)
+		var display_rect: Rect2 = store_layer_renderer.get_product_display_rect(store_id)
 		var drag_item := PRODUCT_DRAG_ITEM_SCENE.instantiate() as Control
-		drag_item.call("configure", product, product.single_unit_texture, true, slot.size, false, product.single_unit_texture, 1, 1.0)
+		drag_item.call("configure", product, product.single_unit_texture, true, slot.size, false, product.single_unit_texture, 1, 1.0, display_rect.size)
 		drag_item.position = slot.position
 		drag_item.size = slot.size
 		drag_item.modulate.a = 0.0

@@ -41,6 +41,14 @@ func configure(day: int, cash: int, bought_groups: Array = []) -> void:
 func get_slot_rect(id: String) -> Rect2:
 	return slots.get(id, {}).get("rect", Rect2())
 
+func get_product_display_rect(id: String) -> Rect2:
+	var data: Dictionary = slots.get(id, {})
+	if data.is_empty():
+		return Rect2()
+	var raw: Dictionary = data.get("raw", {})
+	var scale: Vector2 = data.get("scale", Vector2.ONE)
+	return Rect2(Vector2(raw.get("x", 0), raw.get("y", 0)) * scale, Vector2(raw.get("w", 0), raw.get("h", 0)) * scale)
+
 func _load_slots() -> void:
 	slots.clear()
 	var f := FileAccess.open("res://assets/store/kwenta_layer_pack/slots.json", FileAccess.READ)

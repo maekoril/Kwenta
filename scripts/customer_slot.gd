@@ -8,12 +8,12 @@ const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const ORDER_BUBBLE_ICON = preload("res://scripts/order_bubble_icon.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 # All pixel values below are the old 640x360 values x3 (1920x1080 viewport).
-const ORDER_ICON_CELL_SIZE := 60.0
-const ORDER_BUBBLE_PADDING := 6.0
+const ORDER_ICON_CELL_SIZE := 84.0
+const ORDER_BUBBLE_PADDING := 8.0
 const ORDER_BUBBLE_COLUMNS := 3
-const PORTRAIT_POSITION := Vector2(21.0, 189.0)
-const PORTRAIT_SIZE := Vector2(162.0, 336.0)
-const BUBBLE_HEAD_GAP := 45.0
+const PORTRAIT_POSITION := Vector2(12.0, 135.0)
+const PORTRAIT_SIZE := Vector2(216.0, 432.0)
+const BUBBLE_HEAD_GAP := 24.0
 const PATIENCE_GREEN := Color("4caa56")
 const PATIENCE_YELLOW := Color("e3bd39")
 const PATIENCE_RED := Color("d94536")
@@ -24,6 +24,7 @@ var order_grid: GridContainer
 var patience_bar: ProgressBar
 var patience_fill: StyleBoxFlat
 var portrait: TextureRect
+var portrait_shadow: TextureRect
 var name_tag: PanelContainer
 var name_label: Label
 var _drop_hovered: bool = false
@@ -52,6 +53,17 @@ func _ready() -> void:
 	patience_fill.set_corner_radius_all(3)
 	patience_bar.add_theme_stylebox_override("fill", patience_fill)
 	add_child(patience_bar)
+	portrait_shadow = TextureRect.new()
+	portrait_shadow.name = "PortraitShadow"
+	portrait_shadow.position = PORTRAIT_POSITION + Vector2(5.0, 7.0)
+	portrait_shadow.size = PORTRAIT_SIZE
+	portrait_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait_shadow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	portrait_shadow.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	portrait_shadow.modulate = Color(0.02, 0.02, 0.02, 0.52)
+	portrait_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_shadow.z_index = -1
+	add_child(portrait_shadow)
 	portrait = TextureRect.new()
 	portrait.name = "Portrait"
 	portrait.position = PORTRAIT_POSITION
@@ -96,6 +108,7 @@ func refresh_display() -> void:
 		return
 	name_label.text = "%s · %d%%" % [_display_name(customer.customer_id), int(customer.trust)]
 	portrait.texture = COUNTER_ART.customer_portrait(customer.customer_id, PORTRAIT_ATLAS)
+	portrait_shadow.texture = portrait.texture
 	for child in order_grid.get_children():
 		order_grid.remove_child(child)
 		child.queue_free()
