@@ -23,7 +23,7 @@ func _initialize() -> void:
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
-	await _test_customer_patience_colours_use_discrete_thresholds()
+	await _test_customer_patience_footer_uses_patience_ratio_and_thresholds()
 	await _test_product_drag_reports_mouse_and_touch_release()
 	await _test_only_one_shelf_drag_preview_can_be_active()
 	await _test_story_replay_resets_the_campaign()
@@ -83,23 +83,28 @@ func _test_timeout_notifies_the_scene_before_replacement_spawn() -> void:
 	_assert(manager.get_active_customers().is_empty(), "an expired customer is removed from shift state")
 	_assert(customer_change_count == 1, "an expired customer immediately notifies Main to animate its departure")
 
-func _test_customer_patience_colours_use_discrete_thresholds() -> void:
+func _test_customer_patience_footer_uses_patience_ratio_and_thresholds() -> void:
 	var actor := CustomerActorScene.instantiate() as Control
 	actor.size = Vector2(StorefrontLayoutScript.CUSTOMER_WIDTH, StorefrontLayoutScript.CUSTOMER_HEIGHT)
 	root.add_child(actor)
 	await process_frame
-	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 100.0)
+	var customer := CustomerStateScript.new("jun", OrderStateScript.new({"chips": 1}), 25.0, 42.0)
 	actor.call("set_customer", customer, {})
+	var bubble := actor.get_node("OrderBubble") as Control
+	var name_label := actor.get_node("NameTrustTag").get_child(0) as Label
+	var patience_bar := actor.get_node("PatienceBar") as ProgressBar
 	var fill := (actor.get_node("PatienceBar") as ProgressBar).get_theme_stylebox("fill") as StyleBoxFlat
-	customer.patience_remaining = 12.5
+	_assert(name_label.text == "Jun · 100%", "the name tag reports current patience rather than unrelated trust")
+	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 8.0), "patience uses the slim horizontal bubble footer")
+	customer.patience_remaining = 15.25
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("4caa56"), "patience remains green at fifty percent")
-	customer.patience_remaining = 12.25
+	_assert(fill.bg_color == Color("4caa56"), "patience remains green above sixty percent")
+	customer.patience_remaining = 15.0
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("e3bd39"), "patience turns yellow below fifty percent")
-	customer.patience_remaining = 6.0
+	_assert(fill.bg_color == Color("e3bd39"), "patience turns yellow at sixty percent")
+	customer.patience_remaining = 7.25
 	actor.call("refresh_patience")
-	_assert(fill.bg_color == Color("d94536"), "patience turns red below twenty-five percent")
+	_assert(fill.bg_color == Color("d94536"), "patience turns red below thirty percent")
 	actor.queue_free()
 
 func _test_product_drag_reports_mouse_and_touch_release() -> void:

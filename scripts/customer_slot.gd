@@ -16,6 +16,10 @@ const PORTRAIT_SIZE := Vector2(144.0, 288.0)
 const BUBBLE_RIGHT_OFFSET := 10.0
 const BUBBLE_TOP_OFFSET := 105.0
 const BUBBLE_FOOTER_HEIGHT := 30.0
+const PATIENCE_BAR_HEIGHT := 8.0
+const NAME_TAG_HEIGHT := 16.0
+const NAME_TAG_MAX_WIDTH := 152.0
+const NAME_TAG_MIN_FONT_SIZE := 10
 const PATIENCE_GREEN := Color("4caa56")
 const PATIENCE_YELLOW := Color("e3bd39")
 const PATIENCE_RED := Color("d94536")
@@ -52,7 +56,8 @@ func _ready() -> void:
 	order_bubble.add_child(order_grid)
 	patience_bar = ProgressBar.new()
 	patience_bar.name = "PatienceBar"
-	patience_bar.custom_minimum_size = Vector2(60, 12)
+	patience_bar.custom_minimum_size = Vector2.ZERO
+	patience_bar.max_value = 100.0
 	patience_bar.show_percentage = false
 	patience_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	patience_bar.add_theme_stylebox_override("background", _make_box(Color("30261f"), Color("30261f"), 0, 0.0, 3))
@@ -89,7 +94,7 @@ func _ready() -> void:
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(name_tag)
 	name_label = Label.new()
-	name_label.clip_text = true
+	name_label.clip_text = false
 	name_label.add_theme_font_size_override("font_size", 15)
 	name_label.add_theme_color_override("font_color", Color.WHITE)
 	name_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
@@ -113,7 +118,6 @@ func set_facing_right(from_right: bool) -> void:
 func refresh_display() -> void:
 	if customer == null or not is_instance_valid(name_label):
 		return
-	name_label.text = "%s · %d%%" % [_display_name(customer.customer_id), int(customer.trust)]
 	portrait.texture = COUNTER_ART.customer_portrait(customer.customer_id, PORTRAIT_ATLAS)
 	portrait_shadow.texture = portrait.texture
 	for child in order_grid.get_children():
@@ -141,22 +145,40 @@ func _layout_order_bubble(entry_count: int) -> void:
 	order_bubble.position = Vector2(bubble_x, bubble_y)
 	order_bubble.pivot_offset = bubble_size * 0.5
 	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
-	patience_bar.position = Vector2(bubble_x + bubble_size.x - 10.0, bubble_y + 7.0)
-	patience_bar.size = Vector2(6.0, bubble_size.y - 14.0)
-	name_tag.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - BUBBLE_FOOTER_HEIGHT + 3.0)
-	name_tag.size = Vector2(bubble_size.x - 24.0, 22.0)
+	patience_bar.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - PATIENCE_BAR_HEIGHT - 2.0)
+	patience_bar.size = Vector2(bubble_size.x - ORDER_BUBBLE_PADDING * 2.0, PATIENCE_BAR_HEIGHT)
+	name_tag.position = Vector2(bubble_x + ORDER_BUBBLE_PADDING, bubble_y + bubble_size.y - BUBBLE_FOOTER_HEIGHT + 2.0)
+	name_tag.size = Vector2(bubble_size.x - ORDER_BUBBLE_PADDING * 2.0, NAME_TAG_HEIGHT)
 
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
 		return
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
 	patience_bar.value = patience_ratio * 100.0
-	if patience_ratio >= 0.5:
+	_refresh_name_tag(patience_ratio)
+	if patience_ratio > 0.6:
 		patience_fill.bg_color = PATIENCE_GREEN
-	elif patience_ratio >= 0.25:
+	elif patience_ratio >= 0.3:
 		patience_fill.bg_color = PATIENCE_YELLOW
 	else:
 		patience_fill.bg_color = PATIENCE_RED
+
+func _refresh_name_tag(patience_ratio: float) -> void:
+	if not is_instance_valid(name_tag) or not is_instance_valid(name_label):
+		return
+	var tag_text := "%s · %d%%" % [_display_name(customer.customer_id), roundi(patience_ratio * 100.0)]
+	var font_size := 15
+	var font := name_label.get_theme_font("font")
+	var tag_width := name_tag.size.x
+	if font != null:
+		var text_width := font.get_string_size(tag_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		while text_width + 8.0 > NAME_TAG_MAX_WIDTH and font_size > NAME_TAG_MIN_FONT_SIZE:
+			font_size -= 1
+			text_width = font.get_string_size(tag_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		tag_width = minf(NAME_TAG_MAX_WIDTH, maxf(tag_width, text_width + 8.0))
+	name_tag.size.x = tag_width
+	name_label.add_theme_font_size_override("font_size", font_size)
+	name_label.text = tag_text
 
 func contains_drop_point(viewport_position: Vector2) -> bool:
 	return Rect2(global_position + portrait.position, portrait.size).has_point(viewport_position)
