@@ -10,6 +10,11 @@ const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
 const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
+const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_rain.png"
+const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta.png"
+const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
+const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
+const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -51,7 +56,24 @@ var showing_shift_results: bool = false
 var story_complete: bool = false
 var cash_tray: CashTray
 var atmosphere
-
+var ENVIRONMENT_BY_DAY: Dictionary = {
+	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	4: {"base_path": RAIN_STORE_BACKGROUND_PATH, "full_background": true, "evening_path": "", "grade_color": NO_GRADE, "rain_particles": true, "sunbeams": false, "flicker_event": true},
+	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	6: {"base_path": FIESTA_BACKGROUND_PATH, "full_background": true, "evening_path": "", "brownout_path": FIESTA_BROWNOUT_BACKGROUND_PATH, "brownout_at_game_minute": 360, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": false, "flicker_event": false},
+	7: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+}
+var flicker_event_day := -1
+var environment_flicker_tween: Tween
+var brownout_crossfade_tween: Tween
+var environment_day := 1
+var environment_game_minute := 0
+var environment_settings: Dictionary = {}
+var environment_textures: Dictionary = {}
+var day_six_brownout_triggered := false
+var debug_environment_time_override := -1
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -62,6 +84,7 @@ func _ready() -> void:
 	_build_store_layer_renderer()
 	atmosphere = STORE_ATMOSPHERE.new()
 	add_child(atmosphere)
+	_build_environment_layers()
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
@@ -72,6 +95,7 @@ func _ready() -> void:
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	_present_prologue()
 
 func _process(delta: float) -> void:
@@ -145,7 +169,28 @@ func _debug_skip_day() -> void:
 		push_warning("Skip day: the shift did not complete after fast-forwarding. Check ShiftManager's end condition.")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F10:
+	if not OS.is_debug_build() or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.ctrl_pressed:
+		if event.keycode == KEY_0:
+			debug_environment_time_override = -1
+			return
+		if event.keycode == KEY_4:
+			_debug_set_environment_time(480)
+			return
+		if event.keycode == KEY_5:
+			_debug_set_environment_time(540)
+			return
+		if event.keycode == KEY_6:
+			_debug_set_environment_time(600)
+			return
+	if event.keycode >= KEY_1 and event.keycode <= KEY_7:
+		apply_environment(int(event.keycode) - int(KEY_0))
+		return
+	if event.keycode == KEY_F8:
+		trigger_day_six_brownout()
+		return
+	if event.keycode == KEY_F10:
 		_debug_skip_day()
 
 func _build_product_layer() -> void:
@@ -165,6 +210,124 @@ func _build_customer_area() -> void:
 	customer_layer.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	customer_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(customer_layer)
+
+func _build_environment_layers() -> void:
+	var grade := ColorRect.new()
+	grade.name = "WeatherGrade"
+	grade.color = NO_GRADE
+	grade.position = Vector2.ZERO
+	grade.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	grade.z_index = 28
+	grade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(grade)
+	var flicker := ColorRect.new()
+	flicker.name = "RainFlicker"
+	flicker.color = Color(0.79, 0.87, 1.0, 0.0)
+	flicker.position = Vector2.ZERO
+	flicker.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	flicker.z_index = 29
+	flicker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(flicker)
+
+func apply_environment(day: int) -> void:
+	environment_day = day
+	environment_game_minute = 0
+	day_six_brownout_triggered = false
+	if brownout_crossfade_tween != null and brownout_crossfade_tween.is_valid():
+		brownout_crossfade_tween.kill()
+	environment_settings = ENVIRONMENT_BY_DAY.get(day, ENVIRONMENT_BY_DAY[1])
+	_prepare_environment_textures(environment_settings)
+	var settings := _runtime_environment_settings("base_path")
+	var grade := get_node_or_null("WeatherGrade") as ColorRect
+	if grade != null:
+		grade.color = environment_settings.get("grade_color", NO_GRADE)
+	store_layer_renderer.apply_environment(settings)
+	store_layer_renderer.clear_environment_crossfade()
+	if bool(environment_settings.get("flicker_event", false)) and flicker_event_day != day:
+		_play_environment_flicker()
+		flicker_event_day = day
+	_update_environment_for_time()
+
+func set_environment_game_minute(game_minute: int) -> void:
+	environment_game_minute = clampi(game_minute, 0, 600)
+	_update_environment_for_time()
+
+func _prepare_environment_textures(settings: Dictionary) -> void:
+	environment_textures.clear()
+	for key in ["base_path", "evening_path", "brownout_path"]:
+		var path := str(settings.get(key, ""))
+		if not path.is_empty():
+			environment_textures[key] = load(path) as Texture2D
+
+func _runtime_environment_settings(texture_key: String) -> Dictionary:
+	var runtime_settings := environment_settings.duplicate()
+	runtime_settings["base_texture"] = environment_textures.get(texture_key) as Texture2D
+	return runtime_settings
+
+func _update_environment_for_time() -> void:
+	if environment_settings.is_empty():
+		return
+	var evening_path := str(environment_settings.get("evening_path", ""))
+	if not evening_path.is_empty():
+		var start := int(environment_settings.get("evening_start_minute", 480))
+		var finish := int(environment_settings.get("evening_end_minute", 600))
+		var progress := clampf(float(environment_game_minute - start) / float(maxi(1, finish - start)), 0.0, 1.0)
+		store_layer_renderer.set_environment_crossfade(environment_textures.get("evening_path") as Texture2D, progress)
+		store_layer_renderer.set_front_background_alpha(1.0 - progress)
+	else:
+		store_layer_renderer.clear_environment_crossfade()
+	if environment_day == 6 and not day_six_brownout_triggered and environment_game_minute >= int(environment_settings.get("brownout_at_game_minute", 9999)):
+		trigger_day_six_brownout()
+
+func trigger_day_six_brownout() -> void:
+	if environment_day != 6 or day_six_brownout_triggered:
+		return
+	var brownout_texture := environment_textures.get("brownout_path") as Texture2D
+	if brownout_texture == null:
+		return
+	day_six_brownout_triggered = true
+	_play_brownout_flicker()
+	store_layer_renderer.start_environment_crossfade(brownout_texture, 1.5)
+	brownout_crossfade_tween = create_tween()
+	brownout_crossfade_tween.tween_interval(1.5)
+	brownout_crossfade_tween.tween_callback(_finish_day_six_brownout)
+
+func _finish_day_six_brownout() -> void:
+	store_layer_renderer.apply_environment(_runtime_environment_settings("brownout_path"))
+	store_layer_renderer.clear_environment_crossfade()
+
+func _debug_set_environment_time(game_minute: int) -> void:
+	debug_environment_time_override = clampi(game_minute, 0, 600)
+	set_environment_game_minute(debug_environment_time_override)
+	_update_clock(_format_game_clock(debug_environment_time_override))
+
+func _play_environment_flicker() -> void:
+	var flicker := get_node_or_null("RainFlicker") as ColorRect
+	if flicker == null:
+		return
+	if environment_flicker_tween != null and environment_flicker_tween.is_valid():
+		environment_flicker_tween.kill()
+	flicker.color.a = 0.0
+	environment_flicker_tween = create_tween()
+	environment_flicker_tween.tween_interval(0.35)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.24, 0.05)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.06, 0.08)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.0, 0.20)
+
+func _play_brownout_flicker() -> void:
+	var flicker := get_node_or_null("RainFlicker") as ColorRect
+	if flicker == null:
+		return
+	if environment_flicker_tween != null and environment_flicker_tween.is_valid():
+		environment_flicker_tween.kill()
+	flicker.color = Color(0.04, 0.03, 0.07, 0.0)
+	environment_flicker_tween = create_tween()
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.42, 0.10)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.04, 0.10)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.34, 0.12)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.05, 0.10)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.28, 0.12)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.0, 0.22)
 
 func _build_summary_panel() -> void:
 	summary_backdrop = ColorRect.new()
@@ -290,6 +453,7 @@ func _create_shift_manager() -> void:
 	shift.customer_timed_out.connect(_on_customer_timed_out)
 	shift.cash_changed.connect(_update_cash)
 	shift.clock_changed.connect(_update_clock)
+	shift.game_minutes_changed.connect(_on_game_minutes_changed)
 	shift.shift_completed.connect(_show_shift_summary)
 
 func _rebuild_product_shelf() -> void:
@@ -440,6 +604,17 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 
 func _update_clock(value: String) -> void:
 	clock_label.text = value
+
+func _on_game_minutes_changed(game_minutes: int) -> void:
+	if debug_environment_time_override >= 0:
+		return
+	set_environment_game_minute(game_minutes)
+
+func _format_game_clock(game_minutes: int) -> String:
+	var hour := 8 + floori(float(game_minutes) / 60.0)
+	var minute := game_minutes % 60
+	var display_hour := hour if hour <= 12 else hour - 12
+	return "%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"]
 
 func _update_cash(value: int) -> void:
 	cash_label.text = "₱%d" % value
@@ -610,6 +785,7 @@ func _finish_story_day() -> void:
 	day_label.text = "DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	_present_day_intro()
 
 func _restart_story() -> void:
@@ -625,6 +801,7 @@ func _restart_story() -> void:
 	displayed_cash = -1
 	_create_shift_manager()
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	day_label.text = "DAY 1"
 	_update_cash(campaign.cash)
 	_present_prologue()
