@@ -13,8 +13,6 @@ const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_f
 const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
 const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
-const RAIN_GRADE := Color(0.38, 0.54, 0.76, 0.10)
-const OVERCAST_GRADE := Color(0.50, 0.62, 0.82, 0.055)
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -58,13 +56,13 @@ var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
 var ENVIRONMENT_BY_DAY: Dictionary = {
-	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	4: {"base_path": RAIN_STORE_BACKGROUND_PATH, "full_background": true, "evening_path": "", "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": true, "sunbeams": false, "flicker_event": true},
-	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	6: {"base_path": FIESTA_BACKGROUND_PATH, "full_background": true, "evening_path": "", "brownout_path": FIESTA_BROWNOUT_BACKGROUND_PATH, "brownout_at_game_minute": 360, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": false, "flicker_event": false},
-	7: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	4: {"base_path": RAIN_STORE_BACKGROUND_PATH, "full_background": true, "evening_path": "", "grade_color": NO_GRADE, "rain_particles": true, "sunbeams": false, "flicker_event": true},
+	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	6: {"base_path": FIESTA_BACKGROUND_PATH, "full_background": true, "evening_path": "", "brownout_path": FIESTA_BROWNOUT_BACKGROUND_PATH, "brownout_at_game_minute": 360, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": false, "flicker_event": false},
+	7: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 }
 var flicker_event_day := -1
 var environment_flicker_tween: Tween
@@ -74,6 +72,7 @@ var environment_game_minute := 0
 var environment_settings: Dictionary = {}
 var environment_textures: Dictionary = {}
 var day_six_brownout_triggered := false
+var debug_environment_time_override := -1
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
@@ -168,6 +167,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not OS.is_debug_build() or not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.ctrl_pressed:
+		if event.keycode == KEY_0:
+			debug_environment_time_override = -1
+			return
 		if event.keycode == KEY_4:
 			_debug_set_environment_time(480)
 			return
@@ -255,7 +257,6 @@ func _prepare_environment_textures(settings: Dictionary) -> void:
 func _runtime_environment_settings(texture_key: String) -> Dictionary:
 	var runtime_settings := environment_settings.duplicate()
 	runtime_settings["base_texture"] = environment_textures.get(texture_key) as Texture2D
-	runtime_settings["street_texture"] = null
 	return runtime_settings
 
 func _update_environment_for_time() -> void:
@@ -291,10 +292,9 @@ func _finish_day_six_brownout() -> void:
 	store_layer_renderer.clear_environment_crossfade()
 
 func _debug_set_environment_time(game_minute: int) -> void:
-	if shift != null:
-		shift.set_debug_game_minutes(game_minute)
-	else:
-		set_environment_game_minute(game_minute)
+	debug_environment_time_override = clampi(game_minute, 0, 600)
+	set_environment_game_minute(debug_environment_time_override)
+	_update_clock(_format_game_clock(debug_environment_time_override))
 
 func _play_environment_flicker() -> void:
 	var flicker := get_node_or_null("RainFlicker") as ColorRect
@@ -575,7 +575,15 @@ func _update_clock(value: String) -> void:
 	clock_label.text = value
 
 func _on_game_minutes_changed(game_minutes: int) -> void:
+	if debug_environment_time_override >= 0:
+		return
 	set_environment_game_minute(game_minutes)
+
+func _format_game_clock(game_minutes: int) -> String:
+	var hour := 8 + floori(float(game_minutes) / 60.0)
+	var minute := game_minutes % 60
+	var display_hour := hour if hour <= 12 else hour - 12
+	return "%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"]
 
 func _update_cash(value: int) -> void:
 	cash_label.text = "₱%d" % value

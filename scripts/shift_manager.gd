@@ -115,10 +115,6 @@ func finish_shift() -> void:
 	customers_changed.emit()
 	shift_completed.emit()
 
-func set_debug_game_minutes(game_minutes: int) -> void:
-	elapsed_seconds = clampf(float(game_minutes) / 600.0 * campaign_state.config.shift_length_seconds, 0.0, campaign_state.config.shift_length_seconds)
-	_update_clock()
-
 func _spawn_customer() -> void:
 	if active_customers.size() >= _active_customer_limit():
 		return

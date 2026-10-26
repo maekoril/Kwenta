@@ -6,58 +6,8 @@ const CONFIG := preload("res://scripts/store_config.gd")
 const EMPTY_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_empty.png")
 const WINDOW_RAIN := preload("res://scripts/window_rain.gd")
 const SUNBEAMS := preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
-const WINDOW_APERTURE := Rect2(368.0, 94.0, 920.0, 284.0)
-# Source-art coordinates. The side rectangles overlap their wood posts by 2 px
-# and the central rectangle overlaps the roof/sill by 2 px to prevent seams.
-const WEATHER_MASK_LEFT_RECT := Rect2(296.0, 92.0, 74.0, 288.0)
-const WEATHER_MASK_CENTER_RECT := Rect2(368.0, 92.0, 920.0, 288.0)
-const WEATHER_MASK_RIGHT_RECT := Rect2(1286.0, 92.0, 78.0, 288.0)
-const WEATHER_MASK_RECTS := [WEATHER_MASK_LEFT_RECT, WEATHER_MASK_CENTER_RECT, WEATHER_MASK_RIGHT_RECT]
-const WEATHER_STREET_BOUNDS := Rect2(294.0, 90.0, 1072.0, 292.0)
-const WEATHER_COUNTER_SHEEN_RECT := Rect2(280.0, 378.0, 1110.0, 68.0)
-const WEATHER_FLOOR_LEFT_RECT := Rect2(0.0, 872.0, 360.0, 69.0)
-const WEATHER_FLOOR_RIGHT_RECT := Rect2(1285.0, 872.0, 387.0, 69.0)
-const WEATHER_LEFT_PILLAR_LIGHT_RECT := Rect2(76.0, 474.0, 190.0, 282.0)
-const WEATHER_RIGHT_PILLAR_LIGHT_RECT := Rect2(1406.0, 474.0, 190.0, 282.0)
-const WEATHER_LIGHT_RECTS := [WEATHER_COUNTER_SHEEN_RECT, WEATHER_FLOOR_LEFT_RECT, WEATHER_FLOOR_RIGHT_RECT, WEATHER_LEFT_PILLAR_LIGHT_RECT, WEATHER_RIGHT_PILLAR_LIGHT_RECT]
 const FULL_BACKGROUND_SILL_RECT := Rect2(0.0, 377.0, 1672.0, 68.0)
-const WEATHER_SHADER := """
-shader_type canvas_item;
-
-uniform float weather_strength = 0.0;
-uniform vec2 source_size = vec2(1672.0, 941.0);
-uniform vec4 mask_left;
-uniform vec4 mask_center;
-uniform vec4 mask_right;
-uniform vec4 light_counter;
-uniform vec4 light_floor_left;
-uniform vec4 light_floor_right;
-uniform vec4 light_pillar_left;
-uniform vec4 light_pillar_right;
-
-bool in_rect(vec2 source_uv, vec4 rect) {
-	return source_uv.x >= rect.x && source_uv.x <= rect.x + rect.z && source_uv.y >= rect.y && source_uv.y <= rect.y + rect.w;
-}
-
-float rect_weight(vec2 source_uv, vec4 rect) {
-	return in_rect(source_uv, rect) ? 1.0 : 0.0;
-}
-
-void fragment() {
-	vec4 art = texture(TEXTURE, UV);
-	vec2 source_uv = UV * source_size;
-	if (in_rect(source_uv, mask_left) || in_rect(source_uv, mask_center) || in_rect(source_uv, mask_right)) {
-		art.a = 0.0;
-	} else {
-		float light = max(max(rect_weight(source_uv, light_counter), rect_weight(source_uv, light_floor_left)), max(max(rect_weight(source_uv, light_floor_right), rect_weight(source_uv, light_pillar_left)), rect_weight(source_uv, light_pillar_right)));
-		float amount = light * weather_strength;
-		vec3 cool_gray_blue = vec3(0.45, 0.52, 0.63);
-		art.rgb = mix(art.rgb, cool_gray_blue, amount * 0.34);
-		art.rgb *= 1.0 - amount * 0.18;
-	}
-	COLOR = art;
-}
-"""
+const WINDOW_RAIN_BOUNDS := Rect2(294.0, 90.0, 1072.0, 292.0)
 var slots := {}
 var stock := []
 var debug_slots := false
@@ -103,15 +53,10 @@ func apply_environment(settings: Dictionary) -> void:
 	if empty_background != null:
 		empty_background.texture = base_texture if base_texture != null else EMPTY_BACKGROUND
 	_apply_full_background_sill(full_background, base_texture if base_texture != null else EMPTY_BACKGROUND)
-	var street := get_node_or_null("RainStreet") as TextureRect
-	var street_texture := settings.get("street_texture") as Texture2D
-	if street != null:
-		street.texture = street_texture
-		street.visible = street_texture != null
 	var rain := get_node_or_null("WindowRain") as Control
 	if rain != null:
 		rain.visible = bool(settings.get("rain_particles", false))
-	_apply_foreground_weather(float(settings.get("weather_strength", 0.0)), full_background)
+	_apply_foreground_mode(full_background)
 	_fade_sunbeams(bool(settings.get("sunbeams", false)))
 
 func get_slot_rect(id: String) -> Rect2:
@@ -144,15 +89,6 @@ func _on_resized() -> void:
 func _build_backgrounds() -> void:
 	for pair in [["EmptyBackground","res://assets/store/kwenta_layer_pack/bg_empty.png",0],["FrontBackground","res://assets/store/kwenta_layer_pack/bg_front.png",10]]:
 		var rect := TextureRect.new(); rect.name=pair[0]; rect.texture=load(pair[1]); rect.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; rect.stretch_mode=TextureRect.STRETCH_SCALE; rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); rect.z_index=pair[2]; rect.mouse_filter=Control.MOUSE_FILTER_IGNORE; add_child(rect)
-	var street := TextureRect.new()
-	street.name = "RainStreet"
-	street.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	street.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	street.clip_contents = true
-	street.z_index = 1
-	street.visible = false
-	street.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(street)
 	var rain := WINDOW_RAIN.new()
 	rain.name = "WindowRain"
 	rain.z_index = 2
@@ -200,15 +136,10 @@ func _layout_weather_layers() -> void:
 	if size == Vector2.ZERO:
 		return
 	var scale := size / BASE
-	var window_rect := Rect2(WEATHER_STREET_BOUNDS.position * scale, WEATHER_STREET_BOUNDS.size * scale)
-	var street := get_node_or_null("RainStreet") as TextureRect
-	if street != null:
-		street.position = window_rect.position
-		street.size = window_rect.size
 	var rain := get_node_or_null("WindowRain") as Control
 	if rain != null:
-		rain.position = window_rect.position
-		rain.size = window_rect.size
+		rain.position = WINDOW_RAIN_BOUNDS.position * scale
+		rain.size = WINDOW_RAIN_BOUNDS.size * scale
 	var sunbeams := get_node_or_null("SunbeamOverlay") as Sprite2D
 	if sunbeams != null:
 		sunbeams.scale = scale
@@ -286,7 +217,7 @@ func _apply_full_background_sill(show: bool, background_texture: Texture2D) -> v
 	sill_texture.region = FULL_BACKGROUND_SILL_RECT
 	rainy_sill.texture = sill_texture
 
-func _apply_foreground_weather(weather_strength: float, full_background: bool) -> void:
+func _apply_foreground_mode(full_background: bool) -> void:
 	var foreground := get_node_or_null("FrontBackground") as TextureRect
 	if foreground == null:
 		return
@@ -296,27 +227,7 @@ func _apply_foreground_weather(weather_strength: float, full_background: bool) -
 		return
 	foreground.visible = true
 	foreground.modulate.a = 1.0
-	if is_zero_approx(weather_strength):
-		foreground.material = null
-		return
-	var shader := Shader.new()
-	shader.code = WEATHER_SHADER
-	var material := ShaderMaterial.new()
-	material.shader = shader
-	material.set_shader_parameter("weather_strength", weather_strength)
-	material.set_shader_parameter("source_size", BASE)
-	_set_weather_shader_rect(material, "mask_left", WEATHER_MASK_LEFT_RECT)
-	_set_weather_shader_rect(material, "mask_center", WEATHER_MASK_CENTER_RECT)
-	_set_weather_shader_rect(material, "mask_right", WEATHER_MASK_RIGHT_RECT)
-	_set_weather_shader_rect(material, "light_counter", WEATHER_COUNTER_SHEEN_RECT)
-	_set_weather_shader_rect(material, "light_floor_left", WEATHER_FLOOR_LEFT_RECT)
-	_set_weather_shader_rect(material, "light_floor_right", WEATHER_FLOOR_RIGHT_RECT)
-	_set_weather_shader_rect(material, "light_pillar_left", WEATHER_LEFT_PILLAR_LIGHT_RECT)
-	_set_weather_shader_rect(material, "light_pillar_right", WEATHER_RIGHT_PILLAR_LIGHT_RECT)
-	foreground.material = material
-
-func _set_weather_shader_rect(material: ShaderMaterial, parameter: String, rect: Rect2) -> void:
-	material.set_shader_parameter(parameter, Vector4(rect.position.x, rect.position.y, rect.size.x, rect.size.y))
+	foreground.material = null
 
 func _fade_sunbeams(show: bool) -> void:
 	var sunbeams := get_node_or_null("SunbeamOverlay") as Sprite2D

@@ -15,15 +15,7 @@ func _initialize() -> void:
 	renderer.configure(1, 150)
 	_assert(renderer.get_node_or_null("EmptyBackground") != null and renderer.get_node_or_null("FrontBackground") != null, "renderer creates both background layers")
 	_assert(renderer.get_node("EmptyBackground").z_index < renderer.get_node("FrontBackground").z_index, "front art draws over customer layer")
-	var rain_street := renderer.get_node_or_null("RainStreet") as TextureRect
-	_assert(rain_street != null, "renderer owns a street layer behind the window frame")
-	_assert(rain_street != null and rain_street.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED and rain_street.clip_contents, "rain street cover-fits and crops inside the complete window opening")
-	var scaled_aperture := Rect2(Renderer.WINDOW_APERTURE.position * (renderer.size / Renderer.BASE), Renderer.WINDOW_APERTURE.size * (renderer.size / Renderer.BASE))
-	_assert(rain_street != null and Rect2(rain_street.position, rain_street.size).encloses(scaled_aperture), "rain street covers the full aperture and side gaps behind the posts")
-	_assert(rain_street != null and rain_street.z_index > renderer.get_node("EmptyBackground").z_index and rain_street.z_index < renderer.get_node("FrontBackground").z_index, "rain street stays between the base store art and front frame")
-	_assert(Renderer.WEATHER_MASK_RECTS.size() == 3 and Renderer.WEATHER_MASK_RECTS[0] == Rect2(296.0, 92.0, 74.0, 288.0) and Renderer.WEATHER_MASK_RECTS[1] == Rect2(368.0, 92.0, 920.0, 288.0) and Renderer.WEATHER_MASK_RECTS[2] == Rect2(1286.0, 92.0, 78.0, 288.0), "weather mask source rectangles cover both opaque sunny side strips with a feathered overlap")
-	_assert(Renderer.WEATHER_STREET_BOUNDS.encloses(Renderer.WEATHER_MASK_LEFT_RECT) and Renderer.WEATHER_STREET_BOUNDS.encloses(Renderer.WEATHER_MASK_CENTER_RECT) and Renderer.WEATHER_STREET_BOUNDS.encloses(Renderer.WEATHER_MASK_RIGHT_RECT), "cover-fit street bounds include every masked source-art pixel")
-	_assert(Renderer.WEATHER_LIGHT_RECTS.size() == 5 and Renderer.WEATHER_LEFT_PILLAR_LIGHT_RECT == Rect2(76.0, 474.0, 190.0, 282.0) and Renderer.WEATHER_RIGHT_PILLAR_LIGHT_RECT == Rect2(1406.0, 474.0, 190.0, 282.0), "weather light correction source rectangles keep pillar correction separate from shelf wood")
+	_assert(renderer.get_node_or_null("RainStreet") == null, "renderer no longer keeps an unused window-only rain street layer")
 	_assert(renderer.get_node("FrontBackground").material == null, "sunny foreground uses no weather shader material")
 	_assert(renderer.get_node_or_null("WindowRain") != null, "renderer adds sparse rain only over the window")
 	var fade_background := renderer.get_node_or_null("EnvironmentFadeBackground") as TextureRect
@@ -62,17 +54,16 @@ func _initialize() -> void:
 	_assert(main.get_node_or_null("RainCanvasTint") == null, "the environment does not use a global CanvasModulate")
 	_assert(main.get_node_or_null("RainFlicker") != null, "main scene owns the one-time rain flicker")
 	var main_renderer := main.get("store_layer_renderer") as Control
-	var day_one_street := main_renderer.get_node_or_null("RainStreet") as TextureRect
 	var day_one_rain := main_renderer.get_node_or_null("WindowRain") as Control
 	var day_one_sunbeams := main_renderer.get_node_or_null("SunbeamOverlay") as Sprite2D
 	await create_timer(0.55).timeout
-	_assert(day_one_street != null and not day_one_street.visible and day_one_rain != null and not day_one_rain.visible and day_one_sunbeams != null and day_one_sunbeams.visible and is_equal_approx(day_one_sunbeams.modulate.a, 0.65), "Day 1 applies the sunny environment")
+	_assert(day_one_rain != null and not day_one_rain.visible and day_one_sunbeams != null and day_one_sunbeams.visible and is_equal_approx(day_one_sunbeams.modulate.a, 0.65), "Day 1 applies the sunny environment")
 	var supports_environment_apply := main.has_method("apply_environment")
 	_assert(supports_environment_apply, "main scene exposes one environment application function")
 	if supports_environment_apply:
 		main.call("apply_environment", 4)
 		await create_timer(0.55).timeout
-		_assert(not day_one_street.visible and day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and not day_one_sunbeams.visible and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
+		_assert(day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and not day_one_sunbeams.visible and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
 		_assert(is_zero_approx(weather_grade.color.a) and weather_grade.z_index < 30, "Day 4 uses the authored rainy background without an extra global grade")
 		_assert(not main_renderer.get_node("FrontBackground").visible and main_renderer.get_node("FrontBackground").material == null, "Day 4 hides the old sunny foreground because the rainy base already includes the sill")
 		var rainy_sill := main_renderer.get_node_or_null("RainForegroundSill") as TextureRect
@@ -82,7 +73,14 @@ func _initialize() -> void:
 		debug_day.pressed = true
 		main.call("_unhandled_input", debug_day)
 		await create_timer(0.55).timeout
-		_assert(int(main.get("campaign").day) == 1 and not day_one_street.visible and not day_one_rain.visible and day_one_sunbeams.visible and main_renderer.get_node("FrontBackground").visible, "debug day shortcut previews sunny Day 5 without changing story progress")
+		_assert(int(main.get("campaign").day) == 1 and not day_one_rain.visible and day_one_sunbeams.visible and main_renderer.get_node("FrontBackground").visible, "debug day shortcut previews sunny Day 5 without changing story progress")
+		var shift_elapsed_before_debug_time := float(main.get("shift").elapsed_seconds)
+		var debug_time := InputEventKey.new()
+		debug_time.ctrl_pressed = true
+		debug_time.keycode = KEY_5
+		debug_time.pressed = true
+		main.call("_unhandled_input", debug_time)
+		_assert(int(main.get("environment_game_minute")) == 540 and is_equal_approx(float(main.get("shift").elapsed_seconds), shift_elapsed_before_debug_time), "Ctrl+5 previews 5 PM without advancing shift or story progress")
 		main.call("apply_environment", 1)
 		_assert(main.has_method("set_environment_game_minute"), "main exposes a time-based environment update hook")
 		if main.has_method("set_environment_game_minute"):
