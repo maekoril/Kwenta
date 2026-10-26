@@ -57,13 +57,13 @@ func _initialize() -> void:
 	var day_one_rain := main_renderer.get_node_or_null("WindowRain") as Control
 	var day_one_sunbeams := main_renderer.get_node_or_null("SunbeamOverlay") as Sprite2D
 	await create_timer(0.55).timeout
-	_assert(day_one_street != null and not day_one_street.visible and day_one_rain != null and not day_one_rain.visible and day_one_sunbeams != null and is_equal_approx(day_one_sunbeams.modulate.a, 0.65), "Day 1 applies the sunny environment")
+	_assert(day_one_street != null and not day_one_street.visible and day_one_rain != null and not day_one_rain.visible and day_one_sunbeams != null and day_one_sunbeams.visible and is_equal_approx(day_one_sunbeams.modulate.a, 0.65), "Day 1 applies the sunny environment")
 	var supports_environment_apply := main.has_method("apply_environment")
 	_assert(supports_environment_apply, "main scene exposes one environment application function")
 	if supports_environment_apply:
 		main.call("apply_environment", 4)
 		await create_timer(0.55).timeout
-		_assert(not day_one_street.visible and day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
+		_assert(not day_one_street.visible and day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and not day_one_sunbeams.visible and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
 		_assert(weather_grade.color.a > 0.0 and weather_grade.z_index < 30, "Day 4 applies a subtle grade without dimming the HUD")
 		_assert(main_renderer.get_node("FrontBackground").material != null, "Day 4 applies the localized weather shader to the foreground art")
 		var debug_day := InputEventKey.new()

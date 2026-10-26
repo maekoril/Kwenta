@@ -214,12 +214,17 @@ func _fade_sunbeams(show: bool) -> void:
 	if sunbeams == null:
 		return
 	var target_alpha := 0.65 if show else 0.0
+	if show:
+		sunbeams.visible = true
 	if is_equal_approx(sunbeams.modulate.a, target_alpha):
+		sunbeams.visible = show
 		return
 	if sunbeam_tween != null and sunbeam_tween.is_valid():
 		sunbeam_tween.kill()
 	sunbeam_tween = create_tween()
 	sunbeam_tween.tween_property(sunbeams, "modulate:a", target_alpha, 0.5)
+	if not show:
+		sunbeam_tween.tween_callback(sunbeams.hide)
 
 func _make_slot(root: Control, data: Dictionary) -> void:
 	var entry: Dictionary = store_config.get("products", {}).get(data.id, {})
