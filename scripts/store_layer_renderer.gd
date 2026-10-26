@@ -20,6 +20,19 @@ const WEATHER_FLOOR_RIGHT_RECT := Rect2(1285.0, 872.0, 387.0, 69.0)
 const WEATHER_LEFT_PILLAR_LIGHT_RECT := Rect2(76.0, 474.0, 190.0, 282.0)
 const WEATHER_RIGHT_PILLAR_LIGHT_RECT := Rect2(1406.0, 474.0, 190.0, 282.0)
 const WEATHER_LIGHT_RECTS := [WEATHER_COUNTER_SHEEN_RECT, WEATHER_FLOOR_LEFT_RECT, WEATHER_FLOOR_RIGHT_RECT, WEATHER_LEFT_PILLAR_LIGHT_RECT, WEATHER_RIGHT_PILLAR_LIGHT_RECT]
+const FULL_BACKGROUND_SILL_RECT := Rect2(0.0, 377.0, 1672.0, 68.0)
+const FULL_BACKGROUND_SILL_SHADER := """
+shader_type canvas_item;
+
+uniform vec2 source_size = vec2(1672.0, 941.0);
+uniform vec4 sill_rect;
+
+void fragment() {
+	vec2 source_uv = UV * source_size;
+	bool in_sill = source_uv.y >= sill_rect.y && source_uv.y <= sill_rect.y + sill_rect.w;
+	COLOR = in_sill ? texture(TEXTURE, UV) : vec4(0.0);
+}
+"""
 const WEATHER_SHADER := """
 shader_type canvas_item;
 
@@ -106,7 +119,7 @@ func apply_environment(settings: Dictionary) -> void:
 	var rain := get_node_or_null("WindowRain") as Control
 	if rain != null:
 		rain.visible = bool(settings.get("rain_particles", false))
-	_apply_foreground_weather(float(settings.get("weather_strength", 0.0)))
+	_apply_foreground_weather(float(settings.get("weather_strength", 0.0)), bool(settings.get("full_background", false)))
 	_fade_sunbeams(bool(settings.get("sunbeams", false)))
 
 func get_slot_rect(id: String) -> Rect2:
@@ -183,9 +196,18 @@ func _layout_weather_layers() -> void:
 	if sunbeams != null:
 		sunbeams.scale = scale
 
-func _apply_foreground_weather(weather_strength: float) -> void:
+func _apply_foreground_weather(weather_strength: float, full_background: bool) -> void:
 	var foreground := get_node_or_null("FrontBackground") as TextureRect
 	if foreground == null:
+		return
+	if full_background:
+		var sill_shader := Shader.new()
+		sill_shader.code = FULL_BACKGROUND_SILL_SHADER
+		var sill_material := ShaderMaterial.new()
+		sill_material.shader = sill_shader
+		sill_material.set_shader_parameter("source_size", BASE)
+		_set_weather_shader_rect(sill_material, "sill_rect", FULL_BACKGROUND_SILL_RECT)
+		foreground.material = sill_material
 		return
 	if is_zero_approx(weather_strength):
 		foreground.material = null
