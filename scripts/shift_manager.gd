@@ -4,7 +4,6 @@ extends RefCounted
 signal customers_changed
 signal cash_changed(value: int)
 signal clock_changed(value: String)
-signal game_minutes_changed(value: int)
 signal feedback_changed(message: String)
 signal shift_completed
 signal customer_timed_out(customer_instance_id: String)
@@ -244,4 +243,3 @@ func _update_clock() -> void:
 	var minute := game_minutes % 60
 	var display_hour := hour if hour <= 12 else hour - 12
 	clock_changed.emit("%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"])
-	game_minutes_changed.emit(game_minutes)
