@@ -40,7 +40,7 @@
 
 ### Task 2: Seller-side background and product art
 
-**Files:** `assets/backgrounds/kwenta_store_interior_background.png`, `assets/sprites/kwenta_generic_products.png`, `scripts/counter_art.gd`
+**Files:** `assets/store/kwenta_layer_pack/bg_empty.png`, `assets/sprites/kwenta_generic_products.png`, `scripts/counter_art.gd`
 
 - [x] Generate a 16:9 inside-store view with an empty central window, edge-only grille, sill, hanging-strip edges, blank shelf-row A, empty red cooler at row B, and candy jar. No people, UI, text, brands, or sellable stock in interaction slots.
 - [x] Generate original unbranded product sprites and map their atlas regions.
