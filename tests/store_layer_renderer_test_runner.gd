@@ -21,6 +21,8 @@ func _initialize() -> void:
 	var fade_background := renderer.get_node_or_null("EnvironmentFadeBackground") as TextureRect
 	var fade_sill := renderer.get_node_or_null("EnvironmentFadeSill") as TextureRect
 	_assert(fade_background != null and fade_background.z_index == 0 and fade_sill != null and fade_sill.z_index == 10, "renderer owns reusable base and sill crossfade layers")
+	var occlusion_sill := renderer.get_node_or_null("EnvironmentOcclusionSill") as TextureRect
+	_assert(occlusion_sill != null and occlusion_sill.z_index > fade_sill.z_index, "renderer owns an opaque sill compositor above the fading sill layers")
 	var sunbeams := renderer.get_node_or_null("SunbeamOverlay") as Sprite2D
 	_assert(sunbeams != null and sunbeams.texture == SUNBEAMS, "renderer adds the named sunbeam overlay asset")
 	_assert(sunbeams != null and not sunbeams.centered and sunbeams.position == Vector2.ZERO and sunbeams.z_index > renderer.get_node("EmptyBackground").z_index and sunbeams.z_index < renderer.get_node("FrontBackground").z_index, "sunbeam sprite aligns to the base and stays behind the frame")

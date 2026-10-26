@@ -4,10 +4,23 @@ extends Control
 const BASE := Vector2(1672.0, 941.0)
 const CONFIG := preload("res://scripts/store_config.gd")
 const EMPTY_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_empty.png")
+const FRONT_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_front.png")
 const WINDOW_RAIN := preload("res://scripts/window_rain.gd")
 const SUNBEAMS := preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
 const FULL_BACKGROUND_SILL_RECT := Rect2(0.0, 377.0, 1672.0, 68.0)
 const WINDOW_RAIN_BOUNDS := Rect2(294.0, 90.0, 1072.0, 292.0)
+const SILL_CROSSFADE_SHADER := """
+shader_type canvas_item;
+
+uniform sampler2D target_sill : source_color;
+uniform float blend_amount : hint_range(0.0, 1.0) = 0.0;
+
+void fragment() {
+	vec4 from_sill = texture(TEXTURE, UV);
+	vec4 to_sill = texture(target_sill, UV);
+	COLOR = vec4(mix(from_sill.rgb, to_sill.rgb, blend_amount), 1.0);
+}
+"""
 var slots := {}
 var stock := []
 var debug_slots := false
@@ -18,6 +31,9 @@ var store_config: Dictionary = {}
 var sunbeam_tween: Tween
 var environment_crossfade_tween: Tween
 var environment_crossfade_sill_source: Texture2D
+var environment_sill_source: Texture2D = FRONT_BACKGROUND
+var environment_occlusion_sill_source: Texture2D
+var environment_occlusion_sill_target_source: Texture2D
 signal purchase_requested(group_id: String)
 signal purchase_denied(group_id: String)
 
@@ -87,8 +103,8 @@ func _on_resized() -> void:
 	configure(current_day, current_cash, purchased_groups)
 
 func _build_backgrounds() -> void:
-	for pair in [["EmptyBackground","res://assets/store/kwenta_layer_pack/bg_empty.png",0],["FrontBackground","res://assets/store/kwenta_layer_pack/bg_front.png",10]]:
-		var rect := TextureRect.new(); rect.name=pair[0]; rect.texture=load(pair[1]); rect.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; rect.stretch_mode=TextureRect.STRETCH_SCALE; rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); rect.z_index=pair[2]; rect.mouse_filter=Control.MOUSE_FILTER_IGNORE; add_child(rect)
+	for pair in [["EmptyBackground", EMPTY_BACKGROUND, 0], ["FrontBackground", FRONT_BACKGROUND, 10]]:
+		var rect := TextureRect.new(); rect.name=pair[0]; rect.texture=pair[1]; rect.expand_mode=TextureRect.EXPAND_IGNORE_SIZE; rect.stretch_mode=TextureRect.STRETCH_SCALE; rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); rect.z_index=pair[2]; rect.mouse_filter=Control.MOUSE_FILTER_IGNORE; add_child(rect)
 	var rain := WINDOW_RAIN.new()
 	rain.name = "WindowRain"
 	rain.z_index = 2
@@ -130,6 +146,19 @@ func _build_backgrounds() -> void:
 	fade_sill.visible = false
 	fade_sill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(fade_sill)
+	var occlusion_sill := TextureRect.new()
+	occlusion_sill.name = "EnvironmentOcclusionSill"
+	occlusion_sill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	occlusion_sill.stretch_mode = TextureRect.STRETCH_SCALE
+	occlusion_sill.z_index = 11
+	occlusion_sill.visible = false
+	occlusion_sill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sill_shader := Shader.new()
+	sill_shader.code = SILL_CROSSFADE_SHADER
+	var sill_material := ShaderMaterial.new()
+	sill_material.shader = sill_shader
+	occlusion_sill.material = sill_material
+	add_child(occlusion_sill)
 	_layout_weather_layers()
 
 func _layout_weather_layers() -> void:
@@ -151,6 +180,10 @@ func _layout_weather_layers() -> void:
 	if fade_sill != null:
 		fade_sill.position = FULL_BACKGROUND_SILL_RECT.position * scale
 		fade_sill.size = FULL_BACKGROUND_SILL_RECT.size * scale
+	var occlusion_sill := get_node_or_null("EnvironmentOcclusionSill") as TextureRect
+	if occlusion_sill != null:
+		occlusion_sill.position = FULL_BACKGROUND_SILL_RECT.position * scale
+		occlusion_sill.size = FULL_BACKGROUND_SILL_RECT.size * scale
 
 func set_environment_crossfade(texture: Texture2D, alpha: float) -> void:
 	var fade_background := get_node_or_null("EnvironmentFadeBackground") as TextureRect
@@ -160,16 +193,15 @@ func set_environment_crossfade(texture: Texture2D, alpha: float) -> void:
 	if fade_background.texture != texture:
 		fade_background.texture = texture
 	if environment_crossfade_sill_source != texture:
-		var sill_texture := AtlasTexture.new()
-		sill_texture.atlas = texture
-		sill_texture.region = FULL_BACKGROUND_SILL_RECT
-		fade_sill.texture = sill_texture
+		fade_sill.texture = _make_sill_texture(texture)
 		environment_crossfade_sill_source = texture
+	_configure_environment_occlusion_sill(texture)
 	var clamped_alpha := clampf(alpha, 0.0, 1.0)
 	fade_background.visible = clamped_alpha > 0.0
 	fade_sill.visible = clamped_alpha > 0.0
 	fade_background.modulate.a = clamped_alpha
 	fade_sill.modulate.a = clamped_alpha
+	_set_environment_occlusion_sill_alpha(clamped_alpha)
 
 func start_environment_crossfade(texture: Texture2D, duration: float) -> void:
 	set_environment_crossfade(texture, 0.0)
@@ -184,19 +216,26 @@ func start_environment_crossfade(texture: Texture2D, duration: float) -> void:
 	environment_crossfade_tween = create_tween()
 	environment_crossfade_tween.tween_property(fade_background, "modulate:a", 1.0, duration)
 	environment_crossfade_tween.parallel().tween_property(fade_sill, "modulate:a", 1.0, duration)
+	environment_crossfade_tween.parallel().tween_method(_set_environment_occlusion_sill_alpha, 0.0, 1.0, duration)
 
 func clear_environment_crossfade() -> void:
 	if environment_crossfade_tween != null and environment_crossfade_tween.is_valid():
 		environment_crossfade_tween.kill()
 	var fade_background := get_node_or_null("EnvironmentFadeBackground") as TextureRect
 	var fade_sill := get_node_or_null("EnvironmentFadeSill") as TextureRect
+	var occlusion_sill := get_node_or_null("EnvironmentOcclusionSill") as TextureRect
 	if fade_background != null:
 		fade_background.visible = false
 		fade_background.texture = null
 	if fade_sill != null:
 		fade_sill.visible = false
 		fade_sill.texture = null
+	if occlusion_sill != null:
+		occlusion_sill.visible = false
+		occlusion_sill.texture = null
 	environment_crossfade_sill_source = null
+	environment_occlusion_sill_source = null
+	environment_occlusion_sill_target_source = null
 
 func set_front_background_alpha(alpha: float) -> void:
 	var foreground := get_node_or_null("FrontBackground") as TextureRect
@@ -211,11 +250,38 @@ func _apply_full_background_sill(show: bool, background_texture: Texture2D) -> v
 		return
 	rainy_sill.visible = show
 	if not show:
+		environment_sill_source = FRONT_BACKGROUND
 		return
+	environment_sill_source = background_texture
+	rainy_sill.texture = _make_sill_texture(background_texture)
+
+func _make_sill_texture(source: Texture2D) -> AtlasTexture:
 	var sill_texture := AtlasTexture.new()
-	sill_texture.atlas = background_texture
+	sill_texture.atlas = source
 	sill_texture.region = FULL_BACKGROUND_SILL_RECT
-	rainy_sill.texture = sill_texture
+	return sill_texture
+
+func _configure_environment_occlusion_sill(target_texture: Texture2D) -> void:
+	var occlusion_sill := get_node_or_null("EnvironmentOcclusionSill") as TextureRect
+	if occlusion_sill == null or target_texture == null:
+		return
+	if environment_occlusion_sill_source != environment_sill_source:
+		occlusion_sill.texture = _make_sill_texture(environment_sill_source)
+		environment_occlusion_sill_source = environment_sill_source
+	var material := occlusion_sill.material as ShaderMaterial
+	if material != null and environment_occlusion_sill_target_source != target_texture:
+		material.set_shader_parameter("target_sill", _make_sill_texture(target_texture))
+		environment_occlusion_sill_target_source = target_texture
+
+func _set_environment_occlusion_sill_alpha(amount: float) -> void:
+	var occlusion_sill := get_node_or_null("EnvironmentOcclusionSill") as TextureRect
+	if occlusion_sill == null:
+		return
+	var clamped_amount := clampf(amount, 0.0, 1.0)
+	occlusion_sill.visible = clamped_amount > 0.0
+	var material := occlusion_sill.material as ShaderMaterial
+	if material != null:
+		material.set_shader_parameter("blend_amount", clamped_amount)
 
 func _apply_foreground_mode(full_background: bool) -> void:
 	var foreground := get_node_or_null("FrontBackground") as TextureRect
