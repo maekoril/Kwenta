@@ -8,6 +8,8 @@ const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portrai
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
+const SUMMARY_PANEL_POS := Vector2(240, 129)
+const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -16,20 +18,17 @@ var products_by_id: Dictionary = {}
 var clock_label: Label
 var cash_label: Label
 var day_label: Label
-var goal_label: Label
 var product_layer: Control
 var product_items_by_id: Dictionary = {}
-var upgrade_buttons: Dictionary = {}
 var customer_layer: Control
 var store_layer_renderer: StoreLayerRenderer
 var customer_actors: Dictionary = {}
 var summary_panel: PanelContainer
 var summary_backdrop: ColorRect
-var summary_title: Label
+var summary_title: NotebookTitle
 var summary_portrait: TextureRect
-var summary_speaker: Label
-var summary_text: Label
-var summary_unlock_row: HBoxContainer
+var summary_speaker: NotebookEyebrow
+var summary_text: NotebookSummary
 var story_choice_column: VBoxContainer
 var summary_button: Button
 var bubble: DialogueBubble
@@ -44,20 +43,25 @@ var story_beats: Array[Dictionary] = []
 var story_beat_index: int = 0
 var story_after_action: String = ""
 var pending_story_choices: Array[Dictionary] = []
-const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for the upgrade shop after skipping
+const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for shelf purchases after skipping
 var shift_in_progress: bool = false
 var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
 var cash_tray: CashTray
+var atmosphere
+
 func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
 		products_by_id[product.id] = product
 	_build_store_layer_renderer()
+	atmosphere = STORE_ATMOSPHERE.new()
+	add_child(atmosphere)
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
@@ -82,32 +86,32 @@ func _process(delta: float) -> void:
 
 # All pixel values in this file are the old 640x360 values x3 (1920x1080 viewport).
 func _build_hud() -> void:
-	var hud := PanelContainer.new()
+	var hud := Control.new()
 	hud.z_index = 30
-	hud.position = Vector2(12, 6)
-	hud.size = Vector2(1896, 60)
-	hud.add_theme_stylebox_override("panel", _make_box(Color(0.13, 0.08, 0.06, 0.96), Color("e7b779")))
+	hud.position = _ui_offset()
+	hud.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 27)
-	row.add_theme_constant_override("margin_left", 15)
-	row.add_theme_constant_override("margin_right", 15)
-	hud.add_child(row)
-	day_label = _label("KWENTA · DAY 1", 24, Color("ffe1a7"))
-	day_label.custom_minimum_size.x = 336
-	row.add_child(day_label)
-	clock_label = _label("8:00 AM", 27, Color("fff0cf"))
-	clock_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(clock_label)
-	cash_label = _label("₱150", 27, Color("d9efaa"))
-	cash_label.custom_minimum_size.x = 150
-	cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(cash_label)
-	goal_label = _label("STORY  1/7", 21, Color("e4bd87"))
-	goal_label.custom_minimum_size.x = 282
-	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(goal_label)
+	day_label = _label("DAY 1", 32, KwentaStyle.INK)
+	clock_label = _label("8:00 AM", 32, KwentaStyle.INK)
+	cash_label = _label("₱150", 34, Color("2f6b2f"))
+
+	# [label, width, tag color, sway degrees, sway seconds]
+	var tags := [
+		[day_label, 230.0, KwentaStyle.PAPER, 1.4, 2.8],
+		[clock_label, 230.0, KwentaStyle.PAPER, 1.1, 3.3],
+		[cash_label, 230.0, Color("e4efc6"), 1.6, 2.5],
+	]
+	var gap := 36.0
+	var total := -gap
+	for spec in tags:
+		total += float(spec[1]) + gap
+	var x := (STOREFRONT_LAYOUT.VIEWPORT_SIZE.x - total) * 0.5
+	for spec in tags:
+		var tag := HudTag.new().setup(spec[0], float(spec[1]), spec[2], float(spec[3]), float(spec[4]))
+		tag.position = Vector2(x, 0.0)
+		hud.add_child(tag)
+		x += float(spec[1]) + gap
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
@@ -115,7 +119,7 @@ func _build_debug_tools() -> void:
 	debug_skip_button = Button.new()
 	debug_skip_button.text = "SKIP DAY  >>"
 	debug_skip_button.z_index = 35        # above the HUD (30), below the bubble (50)
-	debug_skip_button.position = Vector2(1648, 78)
+	debug_skip_button.position = Vector2(1648, 78) + _ui_offset()
 	debug_skip_button.size = Vector2(260, 56)
 	debug_skip_button.focus_mode = Control.FOCUS_NONE
 	debug_skip_button.add_theme_font_size_override("font_size", 24)
@@ -165,25 +169,43 @@ func _build_customer_area() -> void:
 func _build_summary_panel() -> void:
 	summary_backdrop = ColorRect.new()
 	summary_backdrop.z_index = 40
-	summary_backdrop.color = Color(0.04, 0.025, 0.02, 0.62)
-	summary_backdrop.position = Vector2.ZERO
-	summary_backdrop.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	summary_backdrop.color = Color(0.04, 0.025, 0.02, 0.5)
+	summary_backdrop.position = Vector2(-1000.0, -600.0)
+	summary_backdrop.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE + Vector2(2000.0, 1200.0)
 	summary_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
 	summary_backdrop.visible = false
+	summary_backdrop.visibility_changed.connect(_on_summary_backdrop_visibility_changed)
 	add_child(summary_backdrop)
 	summary_panel = PanelContainer.new()
 	summary_panel.z_index = 41
-	summary_panel.position = Vector2(240, 129)
+	summary_panel.position = SUMMARY_PANEL_POS + _ui_offset()
 	summary_panel.size = Vector2(1440, 822)
-	summary_panel.add_theme_stylebox_override("panel", _make_box(Color(0.16, 0.09, 0.07, 0.98), Color("f0c17b")))
+	var page := KwentaStyle.box(KwentaStyle.PAPER, KwentaStyle.INK, 56.0, 36.0, 12, 6, 12)
+	page.content_margin_left = 100.0      # room for the margin line and punched holes
+	summary_panel.add_theme_stylebox_override("panel", page)
 	summary_panel.visible = false
+	summary_panel.visibility_changed.connect(_on_summary_panel_visibility_changed)
 	add_child(summary_panel)
+	var paper := NotebookPaper.new()        # ruled lines; must be the first child
+	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	summary_panel.add_child(paper)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 18)
+	column.add_theme_constant_override("separation", 12)
 	summary_panel.add_child(column)
-	summary_title = _label("SHIFT COMPLETE", 42, Color("ffe1a7"))
-	summary_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	# Tiers 1 and 2: eyebrow, header, and the rule that closes the header.
+	summary_speaker = NotebookEyebrow.new()
+	column.add_child(summary_speaker)
+	summary_title = NotebookTitle.new()
+	summary_title.text = "SHIFT COMPLETE"
 	column.add_child(summary_title)
+	var header_rule := ColorRect.new()
+	header_rule.color = KwentaStyle.INK
+	header_rule.custom_minimum_size = Vector2(0.0, 4.0)
+	header_rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(header_rule)
+
+	# Tier 3: the summary details (hero number, ledger rows, quiet stats).
 	var story_row := HBoxContainer.new()
 	story_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	story_row.add_theme_constant_override("separation", 27)
@@ -200,40 +222,48 @@ func _build_summary_panel() -> void:
 	dialogue_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dialogue_column.add_theme_constant_override("separation", 12)
 	story_row.add_child(dialogue_column)
-	summary_speaker = _label("", 30, Color("f0c17b"))
-	dialogue_column.add_child(summary_speaker)
-	summary_text = _label("", 30, Color("fff0cf"))
-	summary_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	summary_text = NotebookSummary.new()
 	summary_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dialogue_column.add_child(summary_text)
 	story_choice_column = VBoxContainer.new()
 	story_choice_column.add_theme_constant_override("separation", 9)
 	story_choice_column.visible = false
 	dialogue_column.add_child(story_choice_column)
-	summary_unlock_row = HBoxContainer.new()
-	summary_unlock_row.add_theme_constant_override("separation", 18)
-	column.add_child(summary_unlock_row)
-	for upgrade_resource in CAMPAIGN_CONFIG.store_upgrades:
-		var upgrade: StoreUpgradeData = upgrade_resource
-		var unlock_button := Button.new()
-		unlock_button.custom_minimum_size.y = 72
-		unlock_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		unlock_button.add_theme_font_size_override("font_size", 21)
-		unlock_button.pressed.connect(_purchase_upgrade.bind(upgrade))
-		summary_unlock_row.add_child(unlock_button)
-		upgrade_buttons[upgrade.id] = unlock_button
+
+	# The primary action: tallest control on the page, biggest text, solid gold.
 	summary_button = Button.new()
 	summary_button.text = "NEXT SHIFT"
-	summary_button.custom_minimum_size.y = 78
-	summary_button.add_theme_font_size_override("font_size", 30)
+	summary_button.custom_minimum_size.y = 112
+	KwentaStyle.style_button(summary_button, KwentaStyle.GOLD, KwentaStyle.SIZE_BUTTON)
 	summary_button.pressed.connect(_on_summary_button_pressed)
 	column.add_child(summary_button)
-	_update_unlock_buttons()
+
+func _on_summary_panel_visibility_changed() -> void:
+	if not summary_panel.visible:
+		return
+	# The page flops onto the table: slides up, straightens out, overshoots slightly.
+	var rest_position := SUMMARY_PANEL_POS + _ui_offset()
+	summary_panel.pivot_offset = summary_panel.size * 0.5
+	summary_panel.scale = Vector2(0.92, 0.92)
+	summary_panel.rotation_degrees = -2.5
+	summary_panel.modulate.a = 0.0
+	summary_panel.position = rest_position + Vector2(0.0, 50.0)
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(summary_panel, "scale", Vector2.ONE, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(summary_panel, "rotation_degrees", 0.0, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(summary_panel, "position", rest_position, 0.32).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(summary_panel, "modulate:a", 1.0, 0.15)
+
+func _on_summary_backdrop_visibility_changed() -> void:
+	if not summary_backdrop.visible:
+		return
+	summary_backdrop.modulate.a = 0.0
+	create_tween().tween_property(summary_backdrop, "modulate:a", 1.0, 0.2)
 
 func _build_bubble() -> void:
 	bubble = DialogueBubble.new()
 	bubble.z_index = 50      # above HUD (30) and the summary panel (40/41)
-	bubble.position = Vector2.ZERO
+	bubble.position = _ui_offset()
 	bubble.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
@@ -271,6 +301,7 @@ func _rebuild_product_shelf() -> void:
 	var config := StoreConfig.load_config("res://data/store_config.json")
 	var stocked_entries := StoreConfig.get_stocked_entries(config, campaign.day, campaign.purchased_store_groups)
 	var stocked_game_ids: Array[String] = []
+	var shadow_rects: Array[Rect2] = []
 	for entry in stocked_entries:
 		var store_id := str(entry.get("id", ""))
 		var game_id := str(entry.get("game_product_id", ""))
@@ -292,7 +323,10 @@ func _rebuild_product_shelf() -> void:
 		product_layer.add_child(drag_item)
 		drag_item.connect("product_released", _on_product_drag_released)
 		product_items_by_id[game_id] = drag_item
+		shadow_rects.append(display_rect)
 	campaign.set_stocked_product_ids(stocked_game_ids)
+	if atmosphere != null:
+		atmosphere.set_product_shadows(shadow_rects)
 	return
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
 		var product: ProductData = product_resource
@@ -367,12 +401,6 @@ func _rebuild_customer_slots() -> void:
 			if not is_equal_approx(actor.position.x, target_x):
 				create_tween().tween_property(actor, "position:x", target_x, 0.22)
 
-func _purchase_upgrade(upgrade: StoreUpgradeData) -> void:
-	if campaign.purchase_upgrade(upgrade):
-		_update_cash(campaign.cash)
-		_rebuild_product_shelf()
-		_update_unlock_buttons()
-
 func _on_product_dropped(customer_id: String, product_id: String) -> void:
 	var source: Control = product_items_by_id.get(product_id)
 	if not _resolve_product_delivery(customer_id, product_id):
@@ -421,30 +449,15 @@ func _update_cash(value: int) -> void:
 		pop_tween.tween_property(cash_label, "scale", Vector2(1.18, 1.18), 0.10)
 		pop_tween.tween_property(cash_label, "scale", Vector2.ONE, 0.16)
 	displayed_cash = value
-	goal_label.text = "STORY  %d/%d" % [campaign.day, CAMPAIGN_CONFIG.campaign_day_count]
-	_update_unlock_buttons()
-
-func _update_unlock_buttons() -> void:
-	if summary_unlock_row == null:
-		return
-	var can_offer_unlocks: bool = campaign_started and campaign != null and campaign.day < CAMPAIGN_CONFIG.campaign_day_count
-	summary_unlock_row.visible = can_offer_unlocks and showing_shift_results and story_beat_index == 0
-	for upgrade_resource in CAMPAIGN_CONFIG.store_upgrades:
-		var upgrade: StoreUpgradeData = upgrade_resource
-		if not upgrade_buttons.has(upgrade.id):
-			continue
-		var button: Button = upgrade_buttons[upgrade.id]
-		var purchased: bool = campaign.purchased_upgrade_ids.has(upgrade.id)
-		button.visible = can_offer_unlocks and campaign.day >= upgrade.offer_after_day and not purchased
-		button.text = "%s  ·  ₱%d" % [upgrade.display_name, upgrade.purchase_cost]
-		button.disabled = purchased or campaign.cash < upgrade.purchase_cost
+	if store_layer_renderer != null:
+		store_layer_renderer.current_cash = value
 
 func _show_shift_summary() -> void:
 	shift_in_progress = false
 	if debug_skip_button != null:
 		debug_skip_button.visible = false
 	showing_shift_results = true
-	var summary_text_value := "Tapos ang Day %d.\n\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [campaign.day, shift.shift_earnings, campaign.cash]
+	var summary_text_value := "Benta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [shift.shift_earnings, campaign.cash]
 	if shift.change_total > 0:
 		summary_text_value += "\n\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
 	var beats: Array[Dictionary] = [{
@@ -496,7 +509,7 @@ func _show_current_story_beat() -> void:
 	var portrait_id: String = str(beat.get("portrait", ""))
 	var text: String = str(beat.get("text", ""))
 
-	# The first beat after a shift is the earnings notebook + upgrade shop.
+	# The first beat after a shift is the earnings notebook.
 	# That stays on the panel for now; everything else is a bubble.
 	if showing_shift_results and story_beat_index == 0:
 		bubble.close()
@@ -506,7 +519,6 @@ func _show_current_story_beat() -> void:
 		summary_text.text = text
 		summary_button.text = "CONTINUE"
 		summary_portrait.visible = false
-		_update_unlock_buttons()
 		return
 
 	summary_backdrop.visible = false
@@ -515,7 +527,6 @@ func _show_current_story_beat() -> void:
 	if not portrait_id.is_empty():
 		portrait_tex = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
 	bubble.show_beat(speaker, text, portrait_tex, portrait_id)
-	_update_unlock_buttons()
 
 func _complete_story_beats() -> void:
 	match story_after_action:
@@ -594,10 +605,9 @@ func _finish_story_day() -> void:
 		summary_portrait.visible = false
 		summary_button.visible = true
 		summary_button.text = "REPLAY STORY"
-		summary_unlock_row.visible = false
 		return
 	campaign.advance_day()
-	day_label.text = "KWENTA · DAY %d" % campaign.day
+	day_label.text = "DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
 	_present_day_intro()
@@ -615,7 +625,7 @@ func _restart_story() -> void:
 	displayed_cash = -1
 	_create_shift_manager()
 	_rebuild_product_shelf()
-	day_label.text = "KWENTA · DAY 1"
+	day_label.text = "DAY 1"
 	_update_cash(campaign.cash)
 	_present_prologue()
 
@@ -651,7 +661,7 @@ func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 func _build_cash_tray() -> void:
 	cash_tray = CashTray.new()
 	cash_tray.z_index = 36          # above the HUD (30), below story panels (40+) and the bubble (50)
-	cash_tray.position = Vector2.ZERO
+	cash_tray.position = _ui_offset()
 	cash_tray.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	add_child(cash_tray)
 	cash_tray.change_given.connect(_on_change_given)
@@ -673,7 +683,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 	var diff: int = int(outcome.get("diff", 0))
 	var at := Vector2(840.0, 200.0)
 	if is_instance_valid(actor):
-		at = actor.global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
+		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
 	match result:
 		PaymentState.Result.SHORT:
 			cash_tray.show_short()
@@ -739,11 +749,16 @@ func _on_store_purchase_requested(group_id: String) -> void:
 func _on_store_purchase_denied(_group_id: String) -> void:
 	var notice := _label("NOT ENOUGH MONEY", 20, Color("ff9d8f"))
 	notice.z_index = 45
-	notice.position = Vector2(780, 78)
+	notice.position = Vector2(780, 78) + _ui_offset()
 	add_child(notice)
 	var tween := create_tween()
-	tween.tween_property(notice, "position:x", 770.0, 0.06)
-	tween.tween_property(notice, "position:x", 790.0, 0.12)
-	tween.tween_property(notice, "position:x", 780.0, 0.06)
+	tween.tween_property(notice, "position:x", notice.position.x - 10.0, 0.06)
+	tween.tween_property(notice, "position:x", notice.position.x + 10.0, 0.12)
+	tween.tween_property(notice, "position:x", notice.position.x, 0.06)
 	tween.tween_interval(0.8)
 	tween.tween_callback(notice.queue_free)
+
+# The store art stretches to fill wide screens, but the tags, notebook and dialogue are
+# laid out for 1920x1080, so they get centered in the extra width.
+func _ui_offset() -> Vector2:
+	return Vector2(maxf(0.0, size.x - STOREFRONT_LAYOUT.VIEWPORT_SIZE.x) * 0.5, 0.0)

@@ -3,6 +3,7 @@ extends Control
 
 const BASE := Vector2(1672.0, 941.0)
 const CONFIG := preload("res://scripts/store_config.gd")
+
 var slots := {}
 var stock := []
 var debug_slots := false
@@ -110,6 +111,7 @@ func _add_lock(root: Control, product_id: String, entry: Dictionary) -> void:
 	lock.position = lock_rect.get_center() - Vector2(48, 40)
 	lock.size = Vector2(96, 80)
 	lock.z_index = 25
+	lock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if current_day < int(entry.get("unlock_day", 1)):
 		lock.modulate = Color(0.55, 0.55, 0.55, 1.0)
 	root.add_child(lock)
@@ -145,6 +147,7 @@ func _get_group_rect(group_id: String) -> Rect2:
 
 func _slot_input(_viewport: Node, event: InputEvent, _shape: int, id: String) -> void:
 	if not (event is InputEventMouseButton and event.pressed) and not (event is InputEventScreenTouch and event.pressed): return
+	if stock.has(id): return
 	var entry: Dictionary = store_config.get("products", {}).get(id, {})
 	if entry.get("unlock_type") == "buyable" and current_day >= int(entry.get("unlock_day", 1)):
 		var group_id := str(entry.get("purchase_group", id))
