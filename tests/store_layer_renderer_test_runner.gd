@@ -66,6 +66,8 @@ func _initialize() -> void:
 		_assert(not day_one_street.visible and day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and not day_one_sunbeams.visible and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
 		_assert(is_zero_approx(weather_grade.color.a) and weather_grade.z_index < 30, "Day 4 uses the authored rainy background without an extra global grade")
 		_assert(not main_renderer.get_node("FrontBackground").visible and main_renderer.get_node("FrontBackground").material == null, "Day 4 hides the old sunny foreground because the rainy base already includes the sill")
+		var rainy_sill := main_renderer.get_node_or_null("RainForegroundSill") as TextureRect
+		_assert(rainy_sill != null and rainy_sill.visible and rainy_sill.z_index > main.get("customer_layer").z_index and rainy_sill.z_index < main.get("product_layer").z_index, "Day 4 draws the rainy-image sill above customers and below products")
 		var debug_day := InputEventKey.new()
 		debug_day.keycode = KEY_5
 		debug_day.pressed = true
@@ -73,7 +75,7 @@ func _initialize() -> void:
 		await create_timer(0.55).timeout
 		_assert(int(main.get("campaign").day) == 1 and not day_one_street.visible and not day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and is_zero_approx(day_one_sunbeams.modulate.a) and not main_renderer.get_node("FrontBackground").visible, "debug day shortcut previews Day 5 without changing story progress")
 		main.call("apply_environment", 7)
-		_assert(main_renderer.get_node("FrontBackground").visible and main_renderer.get_node("FrontBackground").material == null and main_renderer.get_node("EmptyBackground").texture != RAIN_STORE_BACKGROUND, "sunny Day 7 restores the sunny foreground and base")
+		_assert(main_renderer.get_node("FrontBackground").visible and main_renderer.get_node("FrontBackground").material == null and rainy_sill != null and not rainy_sill.visible and main_renderer.get_node("EmptyBackground").texture != RAIN_STORE_BACKGROUND, "sunny Day 7 restores the sunny foreground and base")
 	main.queue_free()
 	if failures > 0: quit(1)
 	quit(0)

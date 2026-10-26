@@ -20,6 +20,7 @@ const WEATHER_FLOOR_RIGHT_RECT := Rect2(1285.0, 872.0, 387.0, 69.0)
 const WEATHER_LEFT_PILLAR_LIGHT_RECT := Rect2(76.0, 474.0, 190.0, 282.0)
 const WEATHER_RIGHT_PILLAR_LIGHT_RECT := Rect2(1406.0, 474.0, 190.0, 282.0)
 const WEATHER_LIGHT_RECTS := [WEATHER_COUNTER_SHEEN_RECT, WEATHER_FLOOR_LEFT_RECT, WEATHER_FLOOR_RIGHT_RECT, WEATHER_LEFT_PILLAR_LIGHT_RECT, WEATHER_RIGHT_PILLAR_LIGHT_RECT]
+const FULL_BACKGROUND_SILL_RECT := Rect2(0.0, 377.0, 1672.0, 68.0)
 const WEATHER_SHADER := """
 shader_type canvas_item;
 
@@ -96,8 +97,10 @@ func configure(day: int, cash: int, bought_groups: Array = []) -> void:
 func apply_environment(settings: Dictionary) -> void:
 	var empty_background := get_node_or_null("EmptyBackground") as TextureRect
 	var base_texture := settings.get("base_texture") as Texture2D
+	var full_background := bool(settings.get("full_background", false))
 	if empty_background != null:
 		empty_background.texture = base_texture if base_texture != null else EMPTY_BACKGROUND
+	_apply_full_background_sill(full_background, base_texture if base_texture != null else EMPTY_BACKGROUND)
 	var street := get_node_or_null("RainStreet") as TextureRect
 	var street_texture := settings.get("street_texture") as Texture2D
 	if street != null:
@@ -106,7 +109,7 @@ func apply_environment(settings: Dictionary) -> void:
 	var rain := get_node_or_null("WindowRain") as Control
 	if rain != null:
 		rain.visible = bool(settings.get("rain_particles", false))
-	_apply_foreground_weather(float(settings.get("weather_strength", 0.0)), bool(settings.get("full_background", false)))
+	_apply_foreground_weather(float(settings.get("weather_strength", 0.0)), full_background)
 	_fade_sunbeams(bool(settings.get("sunbeams", false)))
 
 func get_slot_rect(id: String) -> Rect2:
@@ -164,6 +167,14 @@ func _build_backgrounds() -> void:
 	sunbeam_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	sunbeams.material = sunbeam_material
 	add_child(sunbeams)
+	var rainy_sill := TextureRect.new()
+	rainy_sill.name = "RainForegroundSill"
+	rainy_sill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rainy_sill.stretch_mode = TextureRect.STRETCH_SCALE
+	rainy_sill.z_index = 10
+	rainy_sill.visible = false
+	rainy_sill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rainy_sill)
 	_layout_weather_layers()
 
 func _layout_weather_layers() -> void:
@@ -182,6 +193,22 @@ func _layout_weather_layers() -> void:
 	var sunbeams := get_node_or_null("SunbeamOverlay") as Sprite2D
 	if sunbeams != null:
 		sunbeams.scale = scale
+	var rainy_sill := get_node_or_null("RainForegroundSill") as TextureRect
+	if rainy_sill != null:
+		rainy_sill.position = FULL_BACKGROUND_SILL_RECT.position * scale
+		rainy_sill.size = FULL_BACKGROUND_SILL_RECT.size * scale
+
+func _apply_full_background_sill(show: bool, background_texture: Texture2D) -> void:
+	var rainy_sill := get_node_or_null("RainForegroundSill") as TextureRect
+	if rainy_sill == null:
+		return
+	rainy_sill.visible = show
+	if not show:
+		return
+	var sill_texture := AtlasTexture.new()
+	sill_texture.atlas = background_texture
+	sill_texture.region = FULL_BACKGROUND_SILL_RECT
+	rainy_sill.texture = sill_texture
 
 func _apply_foreground_weather(weather_strength: float, full_background: bool) -> void:
 	var foreground := get_node_or_null("FrontBackground") as TextureRect
