@@ -8,6 +8,10 @@ const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portrai
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
+const RAIN_STREET: Texture2D = preload("res://assets/backgrounds/street_rain.png")
+const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
+const RAIN_GRADE := Color(0.38, 0.54, 0.76, 0.10)
+const OVERCAST_GRADE := Color(0.50, 0.62, 0.82, 0.055)
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -50,6 +54,17 @@ var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
+var ENVIRONMENT_BY_DAY: Dictionary = {
+	1: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	2: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	4: {"street_texture": RAIN_STREET, "grade_color": RAIN_GRADE, "weather_strength": 1.0, "rain_particles": true, "sunbeams": false, "flicker_event": true},
+	5: {"street_texture": RAIN_STREET, "grade_color": OVERCAST_GRADE, "weather_strength": 0.48, "rain_particles": false, "sunbeams": false, "flicker_event": false},
+	7: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+}
+var applied_environment_day := -1
+var flicker_event_day := -1
+var environment_flicker_tween: Tween
 func _ready() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
@@ -57,6 +72,7 @@ func _ready() -> void:
 		var product: ProductData = product_resource
 		products_by_id[product.id] = product
 	_build_store_layer_renderer()
+	_build_environment_layers()
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
@@ -66,6 +82,7 @@ func _ready() -> void:
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	_present_prologue()
 
 func _process(delta: float) -> void:
@@ -139,7 +156,12 @@ func _debug_skip_day() -> void:
 		push_warning("Skip day: the shift did not complete after fast-forwarding. Check ShiftManager's end condition.")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F10:
+	if not OS.is_debug_build() or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.keycode >= KEY_1 and event.keycode <= KEY_7:
+		apply_environment(int(event.keycode) - int(KEY_0))
+		return
+	if event.keycode == KEY_F10:
 		_debug_skip_day()
 
 func _build_product_layer() -> void:
@@ -159,6 +181,48 @@ func _build_customer_area() -> void:
 	customer_layer.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	customer_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(customer_layer)
+
+func _build_environment_layers() -> void:
+	var grade := ColorRect.new()
+	grade.name = "WeatherGrade"
+	grade.color = NO_GRADE
+	grade.position = Vector2.ZERO
+	grade.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	grade.z_index = 28
+	grade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(grade)
+	var flicker := ColorRect.new()
+	flicker.name = "RainFlicker"
+	flicker.color = Color(0.79, 0.87, 1.0, 0.0)
+	flicker.position = Vector2.ZERO
+	flicker.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	flicker.z_index = 29
+	flicker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(flicker)
+
+func apply_environment(day: int) -> void:
+	var settings: Dictionary = ENVIRONMENT_BY_DAY.get(day, ENVIRONMENT_BY_DAY[1])
+	var grade := get_node_or_null("WeatherGrade") as ColorRect
+	if grade != null:
+		grade.color = settings.get("grade_color", NO_GRADE)
+	store_layer_renderer.apply_environment(settings)
+	if bool(settings.get("flicker_event", false)) and flicker_event_day != day:
+		_play_environment_flicker()
+		flicker_event_day = day
+	applied_environment_day = day
+
+func _play_environment_flicker() -> void:
+	var flicker := get_node_or_null("RainFlicker") as ColorRect
+	if flicker == null:
+		return
+	if environment_flicker_tween != null and environment_flicker_tween.is_valid():
+		environment_flicker_tween.kill()
+	flicker.color.a = 0.0
+	environment_flicker_tween = create_tween()
+	environment_flicker_tween.tween_interval(0.35)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.24, 0.05)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.06, 0.08)
+	environment_flicker_tween.tween_property(flicker, "color:a", 0.0, 0.20)
 
 func _build_summary_panel() -> void:
 	summary_backdrop = ColorRect.new()
@@ -593,6 +657,7 @@ func _finish_story_day() -> void:
 	day_label.text = "KWENTA · DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	_present_day_intro()
 
 func _restart_story() -> void:
@@ -607,6 +672,7 @@ func _restart_story() -> void:
 	displayed_cash = -1
 	_create_shift_manager()
 	_rebuild_product_shelf()
+	apply_environment(campaign.day)
 	day_label.text = "KWENTA · DAY 1"
 	_update_cash(campaign.cash)
 	_present_prologue()
