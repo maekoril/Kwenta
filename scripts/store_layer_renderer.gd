@@ -3,6 +3,7 @@ extends Control
 
 const BASE := Vector2(1672.0, 941.0)
 const CONFIG := preload("res://scripts/store_config.gd")
+const EMPTY_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_empty.png")
 const WINDOW_RAIN := preload("res://scripts/window_rain.gd")
 const SUNBEAMS := preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
 const WINDOW_APERTURE := Rect2(368.0, 94.0, 920.0, 284.0)
@@ -93,6 +94,10 @@ func configure(day: int, cash: int, bought_groups: Array = []) -> void:
 	for entry in slots.values(): _make_slot(root, entry)
 
 func apply_environment(settings: Dictionary) -> void:
+	var empty_background := get_node_or_null("EmptyBackground") as TextureRect
+	var base_texture := settings.get("base_texture") as Texture2D
+	if empty_background != null:
+		empty_background.texture = base_texture if base_texture != null else EMPTY_BACKGROUND
 	var street := get_node_or_null("RainStreet") as TextureRect
 	var street_texture := settings.get("street_texture") as Texture2D
 	if street != null:

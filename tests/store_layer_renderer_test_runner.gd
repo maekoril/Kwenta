@@ -1,7 +1,7 @@
 extends SceneTree
 const Renderer = preload("res://scripts/store_layer_renderer.gd")
 const MainScene = preload("res://scenes/main.tscn")
-const RAIN_STREET = preload("res://assets/backgrounds/street_rain.png")
+const RAIN_STORE_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_rain.png")
 const SUNBEAMS = preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
 var failures := 0
 func _initialize() -> void:
@@ -48,7 +48,7 @@ func _initialize() -> void:
 	var weather_grade := main.get_node_or_null("WeatherGrade") as ColorRect
 	var environment_table = main.get("ENVIRONMENT_BY_DAY")
 	_assert(environment_table is Dictionary and environment_table.size() == 6, "one environment table defines every configured story day")
-	_assert(environment_table is Dictionary and environment_table.get(1, {}).get("street_texture") == null and environment_table.get(4, {}).get("street_texture") == RAIN_STREET, "environment table maps sunny and rainy street textures")
+	_assert(environment_table is Dictionary and environment_table.get(1, {}).get("base_texture") == null and environment_table.get(4, {}).get("base_texture") == RAIN_STORE_BACKGROUND and environment_table.get(4, {}).get("street_texture") == null, "environment table swaps the full rainy base instead of layering a second street")
 	_assert(weather_grade != null and weather_grade.z_index < 30 and is_zero_approx(weather_grade.color.a), "Day 1 starts with an inactive grade below the HUD")
 	_assert(main.get_node_or_null("RainCanvasTint") == null, "the environment does not use a global CanvasModulate")
 	_assert(main.get_node_or_null("RainFlicker") != null, "main scene owns the one-time rain flicker")
@@ -63,7 +63,7 @@ func _initialize() -> void:
 	if supports_environment_apply:
 		main.call("apply_environment", 4)
 		await create_timer(0.55).timeout
-		_assert(day_one_street.visible and day_one_street.texture == RAIN_STREET and day_one_rain.visible and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 applies rain street, particles, and no sunbeams")
+		_assert(not day_one_street.visible and day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and is_zero_approx(day_one_sunbeams.modulate.a), "Day 4 swaps the entire rainy base, keeps window rain particles, and hides sunbeams")
 		_assert(weather_grade.color.a > 0.0 and weather_grade.z_index < 30, "Day 4 applies a subtle grade without dimming the HUD")
 		_assert(main_renderer.get_node("FrontBackground").material != null, "Day 4 applies the localized weather shader to the foreground art")
 		var debug_day := InputEventKey.new()
@@ -71,9 +71,9 @@ func _initialize() -> void:
 		debug_day.pressed = true
 		main.call("_unhandled_input", debug_day)
 		await create_timer(0.55).timeout
-		_assert(int(main.get("campaign").day) == 1 and not day_one_rain.visible and is_zero_approx(day_one_sunbeams.modulate.a) and main_renderer.get_node("FrontBackground").material != null, "debug day shortcut previews Day 5 without changing story progress")
+		_assert(int(main.get("campaign").day) == 1 and not day_one_street.visible and not day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and is_zero_approx(day_one_sunbeams.modulate.a) and main_renderer.get_node("FrontBackground").material != null, "debug day shortcut previews Day 5 without changing story progress")
 		main.call("apply_environment", 7)
-		_assert(main_renderer.get_node("FrontBackground").material == null, "sunny Day 7 clears the weather shader material")
+		_assert(main_renderer.get_node("FrontBackground").material == null and main_renderer.get_node("EmptyBackground").texture != RAIN_STORE_BACKGROUND, "sunny Day 7 clears the weather shader and restores the sunny base")
 	main.queue_free()
 	if failures > 0: quit(1)
 	quit(0)

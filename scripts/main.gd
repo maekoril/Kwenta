@@ -8,7 +8,7 @@ const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portrai
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
-const RAIN_STREET: Texture2D = preload("res://assets/backgrounds/street_rain.png")
+const RAIN_STORE_BACKGROUND: Texture2D = preload("res://assets/store/kwenta_layer_pack/bg_empty_rain.png")
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
 const RAIN_GRADE := Color(0.38, 0.54, 0.76, 0.10)
 const OVERCAST_GRADE := Color(0.50, 0.62, 0.82, 0.055)
@@ -55,12 +55,12 @@ var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
 var ENVIRONMENT_BY_DAY: Dictionary = {
-	1: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	2: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	3: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	4: {"street_texture": RAIN_STREET, "grade_color": RAIN_GRADE, "weather_strength": 1.0, "rain_particles": true, "sunbeams": false, "flicker_event": true},
-	5: {"street_texture": RAIN_STREET, "grade_color": OVERCAST_GRADE, "weather_strength": 0.48, "rain_particles": false, "sunbeams": false, "flicker_event": false},
-	7: {"street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	1: {"base_texture": null, "street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	2: {"base_texture": null, "street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"base_texture": null, "street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	4: {"base_texture": RAIN_STORE_BACKGROUND, "street_texture": null, "grade_color": RAIN_GRADE, "weather_strength": 1.0, "rain_particles": true, "sunbeams": false, "flicker_event": true},
+	5: {"base_texture": RAIN_STORE_BACKGROUND, "street_texture": null, "grade_color": OVERCAST_GRADE, "weather_strength": 0.48, "rain_particles": false, "sunbeams": false, "flicker_event": false},
+	7: {"base_texture": null, "street_texture": null, "grade_color": NO_GRADE, "weather_strength": 0.0, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 }
 var applied_environment_day := -1
 var flicker_event_day := -1
