@@ -66,6 +66,8 @@ var current_cash := 0
 var purchased_groups: Array = []
 var store_config: Dictionary = {}
 var sunbeam_tween: Tween
+var environment_crossfade_tween: Tween
+var environment_crossfade_sill_source: Texture2D
 signal purchase_requested(group_id: String)
 signal purchase_denied(group_id: String)
 
@@ -167,6 +169,15 @@ func _build_backgrounds() -> void:
 	sunbeam_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	sunbeams.material = sunbeam_material
 	add_child(sunbeams)
+	var fade_background := TextureRect.new()
+	fade_background.name = "EnvironmentFadeBackground"
+	fade_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade_background.stretch_mode = TextureRect.STRETCH_SCALE
+	fade_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fade_background.z_index = 0
+	fade_background.visible = false
+	fade_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fade_background)
 	var rainy_sill := TextureRect.new()
 	rainy_sill.name = "RainForegroundSill"
 	rainy_sill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -175,6 +186,14 @@ func _build_backgrounds() -> void:
 	rainy_sill.visible = false
 	rainy_sill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(rainy_sill)
+	var fade_sill := TextureRect.new()
+	fade_sill.name = "EnvironmentFadeSill"
+	fade_sill.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade_sill.stretch_mode = TextureRect.STRETCH_SCALE
+	fade_sill.z_index = 10
+	fade_sill.visible = false
+	fade_sill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fade_sill)
 	_layout_weather_layers()
 
 func _layout_weather_layers() -> void:
@@ -197,6 +216,63 @@ func _layout_weather_layers() -> void:
 	if rainy_sill != null:
 		rainy_sill.position = FULL_BACKGROUND_SILL_RECT.position * scale
 		rainy_sill.size = FULL_BACKGROUND_SILL_RECT.size * scale
+	var fade_sill := get_node_or_null("EnvironmentFadeSill") as TextureRect
+	if fade_sill != null:
+		fade_sill.position = FULL_BACKGROUND_SILL_RECT.position * scale
+		fade_sill.size = FULL_BACKGROUND_SILL_RECT.size * scale
+
+func set_environment_crossfade(texture: Texture2D, alpha: float) -> void:
+	var fade_background := get_node_or_null("EnvironmentFadeBackground") as TextureRect
+	var fade_sill := get_node_or_null("EnvironmentFadeSill") as TextureRect
+	if fade_background == null or fade_sill == null or texture == null:
+		return
+	if fade_background.texture != texture:
+		fade_background.texture = texture
+	if environment_crossfade_sill_source != texture:
+		var sill_texture := AtlasTexture.new()
+		sill_texture.atlas = texture
+		sill_texture.region = FULL_BACKGROUND_SILL_RECT
+		fade_sill.texture = sill_texture
+		environment_crossfade_sill_source = texture
+	var clamped_alpha := clampf(alpha, 0.0, 1.0)
+	fade_background.visible = clamped_alpha > 0.0
+	fade_sill.visible = clamped_alpha > 0.0
+	fade_background.modulate.a = clamped_alpha
+	fade_sill.modulate.a = clamped_alpha
+
+func start_environment_crossfade(texture: Texture2D, duration: float) -> void:
+	set_environment_crossfade(texture, 0.0)
+	var fade_background := get_node_or_null("EnvironmentFadeBackground") as TextureRect
+	var fade_sill := get_node_or_null("EnvironmentFadeSill") as TextureRect
+	if fade_background == null or fade_sill == null:
+		return
+	fade_background.visible = true
+	fade_sill.visible = true
+	if environment_crossfade_tween != null and environment_crossfade_tween.is_valid():
+		environment_crossfade_tween.kill()
+	environment_crossfade_tween = create_tween()
+	environment_crossfade_tween.tween_property(fade_background, "modulate:a", 1.0, duration)
+	environment_crossfade_tween.parallel().tween_property(fade_sill, "modulate:a", 1.0, duration)
+
+func clear_environment_crossfade() -> void:
+	if environment_crossfade_tween != null and environment_crossfade_tween.is_valid():
+		environment_crossfade_tween.kill()
+	var fade_background := get_node_or_null("EnvironmentFadeBackground") as TextureRect
+	var fade_sill := get_node_or_null("EnvironmentFadeSill") as TextureRect
+	if fade_background != null:
+		fade_background.visible = false
+		fade_background.texture = null
+	if fade_sill != null:
+		fade_sill.visible = false
+		fade_sill.texture = null
+	environment_crossfade_sill_source = null
+
+func set_front_background_alpha(alpha: float) -> void:
+	var foreground := get_node_or_null("FrontBackground") as TextureRect
+	if foreground == null:
+		return
+	foreground.modulate.a = clampf(alpha, 0.0, 1.0)
+	foreground.visible = foreground.modulate.a > 0.0
 
 func _apply_full_background_sill(show: bool, background_texture: Texture2D) -> void:
 	var rainy_sill := get_node_or_null("RainForegroundSill") as TextureRect
@@ -219,6 +295,7 @@ func _apply_foreground_weather(weather_strength: float, full_background: bool) -
 		foreground.visible = false
 		return
 	foreground.visible = true
+	foreground.modulate.a = 1.0
 	if is_zero_approx(weather_strength):
 		foreground.material = null
 		return

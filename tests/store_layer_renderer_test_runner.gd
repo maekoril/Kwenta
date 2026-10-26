@@ -2,6 +2,9 @@ extends SceneTree
 const Renderer = preload("res://scripts/store_layer_renderer.gd")
 const MainScene = preload("res://scenes/main.tscn")
 const RAIN_STORE_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_rain.png")
+const FIESTA_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_fiesta.png")
+const FIESTA_BROWNOUT_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png")
+const EVENING_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png")
 const SUNBEAMS = preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
 var failures := 0
 func _initialize() -> void:
@@ -23,6 +26,9 @@ func _initialize() -> void:
 	_assert(Renderer.WEATHER_LIGHT_RECTS.size() == 5 and Renderer.WEATHER_LEFT_PILLAR_LIGHT_RECT == Rect2(76.0, 474.0, 190.0, 282.0) and Renderer.WEATHER_RIGHT_PILLAR_LIGHT_RECT == Rect2(1406.0, 474.0, 190.0, 282.0), "weather light correction source rectangles keep pillar correction separate from shelf wood")
 	_assert(renderer.get_node("FrontBackground").material == null, "sunny foreground uses no weather shader material")
 	_assert(renderer.get_node_or_null("WindowRain") != null, "renderer adds sparse rain only over the window")
+	var fade_background := renderer.get_node_or_null("EnvironmentFadeBackground") as TextureRect
+	var fade_sill := renderer.get_node_or_null("EnvironmentFadeSill") as TextureRect
+	_assert(fade_background != null and fade_background.z_index == 0 and fade_sill != null and fade_sill.z_index == 10, "renderer owns reusable base and sill crossfade layers")
 	var sunbeams := renderer.get_node_or_null("SunbeamOverlay") as Sprite2D
 	_assert(sunbeams != null and sunbeams.texture == SUNBEAMS, "renderer adds the named sunbeam overlay asset")
 	_assert(sunbeams != null and not sunbeams.centered and sunbeams.position == Vector2.ZERO and sunbeams.z_index > renderer.get_node("EmptyBackground").z_index and sunbeams.z_index < renderer.get_node("FrontBackground").z_index, "sunbeam sprite aligns to the base and stays behind the frame")
@@ -47,8 +53,11 @@ func _initialize() -> void:
 	await process_frame
 	var weather_grade := main.get_node_or_null("WeatherGrade") as ColorRect
 	var environment_table = main.get("ENVIRONMENT_BY_DAY")
-	_assert(environment_table is Dictionary and environment_table.size() == 6, "one environment table defines every configured story day")
-	_assert(environment_table is Dictionary and environment_table.get(1, {}).get("full_background", false) == false and environment_table.get(4, {}).get("base_texture") == RAIN_STORE_BACKGROUND and environment_table.get(4, {}).get("full_background", false) and environment_table.get(4, {}).get("street_texture") == null, "environment table uses the rainy asset as the complete wet-day background")
+	_assert(environment_table is Dictionary and environment_table.size() == 7, "one environment table defines every story day")
+	_assert(environment_table is Dictionary and environment_table.get(4, {}).get("base_path") == RAIN_STORE_BACKGROUND.resource_path and environment_table.get(4, {}).get("full_background", false), "environment table uses the rainy asset as the complete wet-day background")
+	_assert(environment_table.get(5, {}).get("base_path") == "" and environment_table.get(5, {}).get("sunbeams", false), "Day 5 returns to the standard sunny environment")
+	_assert(environment_table.get(6, {}).get("base_path") == FIESTA_BACKGROUND.resource_path and environment_table.get(6, {}).get("brownout_path") == FIESTA_BROWNOUT_BACKGROUND.resource_path and environment_table.get(6, {}).get("brownout_at_game_minute") == 360, "Day 6 keeps fiesta and brownout assets plus its tunable 2 PM trigger in the environment table")
+	_assert(environment_table.get(1, {}).get("evening_path") == EVENING_BACKGROUND.resource_path and environment_table.get(4, {}).get("evening_path") == "" and environment_table.get(6, {}).get("evening_path") == "", "only sunny days configure the evening asset")
 	_assert(weather_grade != null and weather_grade.z_index < 30 and is_zero_approx(weather_grade.color.a), "Day 1 starts with an inactive grade below the HUD")
 	_assert(main.get_node_or_null("RainCanvasTint") == null, "the environment does not use a global CanvasModulate")
 	_assert(main.get_node_or_null("RainFlicker") != null, "main scene owns the one-time rain flicker")
@@ -73,7 +82,15 @@ func _initialize() -> void:
 		debug_day.pressed = true
 		main.call("_unhandled_input", debug_day)
 		await create_timer(0.55).timeout
-		_assert(int(main.get("campaign").day) == 1 and not day_one_street.visible and not day_one_rain.visible and main_renderer.get_node("EmptyBackground").texture == RAIN_STORE_BACKGROUND and is_zero_approx(day_one_sunbeams.modulate.a) and not main_renderer.get_node("FrontBackground").visible, "debug day shortcut previews Day 5 without changing story progress")
+		_assert(int(main.get("campaign").day) == 1 and not day_one_street.visible and not day_one_rain.visible and day_one_sunbeams.visible and main_renderer.get_node("FrontBackground").visible, "debug day shortcut previews sunny Day 5 without changing story progress")
+		main.call("apply_environment", 1)
+		_assert(main.has_method("set_environment_game_minute"), "main exposes a time-based environment update hook")
+		if main.has_method("set_environment_game_minute"):
+			main.call("set_environment_game_minute", 540)
+			var evening_fade := main_renderer.get_node_or_null("EnvironmentFadeBackground") as TextureRect
+			_assert(evening_fade != null and evening_fade.texture == EVENING_BACKGROUND and is_equal_approx(evening_fade.modulate.a, 0.5), "5 PM crossfades a sunny day to the evening image")
+		main.call("apply_environment", 6)
+		_assert(main.has_method("trigger_day_six_brownout"), "main exposes a Day 6 brownout trigger")
 		main.call("apply_environment", 7)
 		_assert(main_renderer.get_node("FrontBackground").visible and main_renderer.get_node("FrontBackground").material == null and rainy_sill != null and not rainy_sill.visible and main_renderer.get_node("EmptyBackground").texture != RAIN_STORE_BACKGROUND, "sunny Day 7 restores the sunny foreground and base")
 	main.queue_free()
