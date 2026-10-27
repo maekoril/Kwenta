@@ -8,6 +8,7 @@ func _initialize() -> void:
 	_test_missing_cue_is_safe()
 	_test_registered_one_shot_is_reported()
 	_test_new_ambience_replaces_the_previous_cue()
+	_test_missing_ambience_stops_the_previous_loop()
 	_test_default_cues_resolve()
 	if failures > 0:
 		push_error("%d audio assertion(s) failed." % failures)
@@ -42,6 +43,16 @@ func _test_new_ambience_replaces_the_previous_cue() -> void:
 	_assert(audio.current_ambience == "rain", "rain becomes the active ambience")
 	_assert(audio.set_ambience("fiesta"), "registered fiesta ambience is accepted")
 	_assert(audio.current_ambience == "fiesta", "fiesta replaces rain as the single active ambience")
+	audio.free()
+
+func _test_missing_ambience_stops_the_previous_loop() -> void:
+	var audio: Variant = _new_audio()
+	if audio == null:
+		return
+	audio.register_cue("rain", AudioStreamWAV.new())
+	_assert(audio.set_ambience("rain"), "registered ambience starts")
+	_assert(not audio.set_ambience("missing"), "missing ambience is rejected")
+	_assert(audio.current_ambience.is_empty(), "missing ambience clears the previous loop safely")
 	audio.free()
 
 func _test_default_cues_resolve() -> void:

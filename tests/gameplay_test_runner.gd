@@ -330,9 +330,10 @@ func _test_audio_cue_routing_matches_gameplay_results() -> void:
 	if not main.has_method("audio_cues_for_delivery") or not main.has_method("audio_cues_for_payment") or not main.has_method("ambience_for_environment_day"):
 		main.free()
 		return
-	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.WRONG_PRODUCT) == ["reject"], "wrong delivery routes to rejection audio")
-	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.ACCEPTED) == ["correct"], "accepted delivery routes to confirmation audio")
-	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.COMPLETED) == ["correct"], "completed delivery routes to confirmation audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.WRONG_PRODUCT, false) == ["reject"], "wrong delivery routes to rejection audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.ACCEPTED, false) == ["correct"], "accepted delivery routes to confirmation audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.COMPLETED, true) == ["correct", "sale"], "immediate completed sales route to confirmation then sale audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.COMPLETED, false) == ["correct"], "completed orders awaiting change do not play the sale cue yet")
 	_assert(main.call("audio_cues_for_payment", PaymentState.Result.EXACT) == ["sale"], "exact change routes to the completed-sale audio")
 	_assert(main.call("audio_cues_for_payment", PaymentState.Result.SHORT) == ["reject"], "short change routes to rejection audio")
 	_assert(main.call("ambience_for_environment_day", 4) == "rain", "rain day routes to rain ambience")

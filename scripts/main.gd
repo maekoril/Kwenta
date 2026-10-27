@@ -580,7 +580,6 @@ func _on_product_dropped(customer_id: String, product_id: String) -> void:
 			source.call("play_reject")
 
 func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
-	_play_audio_cues(["pickup"])
 	var actor := _customer_actor_at(viewport_position)
 	if actor == null:
 		source.call("finish_drag", false)
@@ -600,7 +599,8 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		return false
 	var actor: Control = customer_actors.get(customer_id)
 	var result := shift.deliver_product(customer_id, product_id)
-	_play_audio_cues(audio_cues_for_delivery(result))
+	var sale_completed := result == OrderState.DeliveryResult.COMPLETED and (not is_instance_valid(actor) or not _is_waiting_for_change(actor))
+	_play_audio_cues(audio_cues_for_delivery(result, sale_completed))
 	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
 		if is_instance_valid(actor):
 			actor.call("play_wrong_drop")
@@ -612,10 +612,13 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 			actor.call("play_happy")
 	return true
 
-func audio_cues_for_delivery(result: int) -> Array[String]:
+func audio_cues_for_delivery(result: int, sale_completed: bool) -> Array[String]:
 	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
 		return ["reject"]
-	return ["correct"]
+	var cues: Array[String] = ["correct"]
+	if result == OrderState.DeliveryResult.COMPLETED and sale_completed:
+		cues.append("sale")
+	return cues
 
 func audio_cues_for_payment(result: int) -> Array[String]:
 	if result == PaymentState.Result.SHORT:

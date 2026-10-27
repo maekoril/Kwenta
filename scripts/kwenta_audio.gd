@@ -55,6 +55,7 @@ func set_ambience(cue_name: String) -> bool:
 		return true
 	var stream := cue_streams.get(cue_name) as AudioStream
 	if stream == null:
+		_stop_ambience()
 		return false
 	if current_ambience == cue_name:
 		return true
