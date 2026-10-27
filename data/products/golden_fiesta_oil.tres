@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://c3imfsuufgytf"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/bottles/golden_state_warriors_oil_crate.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/bottles/golden_state_warriors_oil_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "cooking_oil"
+display_name = "Golden State Warriors Oil"
+price = 40
+shelf_location = "Shelf Row B"
+stacked_texture_key = "cooking_oil"
+single_unit_texture_key = "cooking_oil"
+display_scale = 1.9
+unlock_day = 8
