@@ -8,6 +8,7 @@ func _initialize() -> void:
 	_test_missing_cue_is_safe()
 	_test_registered_one_shot_is_reported()
 	_test_new_ambience_replaces_the_previous_cue()
+	_test_default_cues_resolve()
 	if failures > 0:
 		push_error("%d audio assertion(s) failed." % failures)
 		quit(1)
@@ -41,6 +42,19 @@ func _test_new_ambience_replaces_the_previous_cue() -> void:
 	_assert(audio.current_ambience == "rain", "rain becomes the active ambience")
 	_assert(audio.set_ambience("fiesta"), "registered fiesta ambience is accepted")
 	_assert(audio.current_ambience == "fiesta", "fiesta replaces rain as the single active ambience")
+	audio.free()
+
+func _test_default_cues_resolve() -> void:
+	var audio: Variant = _new_audio()
+	if audio == null:
+		return
+	_assert(audio.has_method("register_default_cues"), "KwentaAudio can register the shipped cue set")
+	if not audio.has_method("register_default_cues"):
+		audio.free()
+		return
+	audio.register_default_cues()
+	for cue_name in ["pickup", "correct", "reject", "sale", "timeout", "rain", "fiesta"]:
+		_assert(audio.has_cue(cue_name), "default cue resolves: %s" % cue_name)
 	audio.free()
 
 func _new_audio() -> Variant:

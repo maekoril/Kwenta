@@ -8,6 +8,16 @@ var current_ambience := ""
 var _cue_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
 
+const DEFAULT_CUE_PATHS := {
+	"pickup": "res://assets/audio/sfx/pickup.mp3",
+	"correct": "res://assets/audio/sfx/correct.wav",
+	"reject": "res://assets/audio/sfx/reject.mp3",
+	"sale": "res://assets/audio/sfx/sale.wav",
+	"timeout": "res://assets/audio/sfx/timeout.mp3",
+	"rain": "res://assets/audio/ambience/rain.ogg",
+	"fiesta": "res://assets/audio/ambience/fiesta.ogg",
+}
+
 func _ready() -> void:
 	_ensure_players()
 
@@ -15,6 +25,15 @@ func register_cue(cue_name: String, stream: AudioStream) -> void:
 	if cue_name.is_empty() or stream == null:
 		return
 	cue_streams[cue_name] = stream
+
+func register_default_cues() -> void:
+	for cue_name in DEFAULT_CUE_PATHS:
+		var stream := load(str(DEFAULT_CUE_PATHS[cue_name])) as AudioStream
+		if stream == null:
+			continue
+		if stream is AudioStreamOggVorbis and (cue_name == "rain" or cue_name == "fiesta"):
+			stream.loop = true
+		register_cue(cue_name, stream)
 
 func has_cue(cue_name: String) -> bool:
 	return cue_streams.get(cue_name) is AudioStream
