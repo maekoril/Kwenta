@@ -86,6 +86,7 @@ func _ready() -> void:
 	_build_store_layer_renderer()
 	audio = KWENTA_AUDIO.new()
 	audio.register_default_cues()
+	audio.register_default_music()
 	add_child(audio)
 	atmosphere = STORE_ATMOSPHERE.new()
 	add_child(atmosphere)
@@ -243,6 +244,7 @@ func apply_environment(day: int) -> void:
 	environment_settings = ENVIRONMENT_BY_DAY.get(day, ENVIRONMENT_BY_DAY[1])
 	if audio != null:
 		audio.set_ambience(ambience_for_environment_day(day))
+		audio.set_music(music_for_environment_day(day))
 	_prepare_environment_textures(environment_settings)
 	var settings := _runtime_environment_settings("base_path")
 	var grade := get_node_or_null("WeatherGrade") as ColorRect
@@ -293,6 +295,8 @@ func trigger_day_six_brownout() -> void:
 	if brownout_texture == null:
 		return
 	day_six_brownout_triggered = true
+	if audio != null:
+		audio.set_music(music_for_brownout())
 	_play_brownout_flicker()
 	store_layer_renderer.start_environment_crossfade(brownout_texture, 1.5)
 	brownout_crossfade_tween = create_tween()
@@ -445,6 +449,7 @@ func _on_bubble_choice(index: int) -> void:
 	_select_story_choice(current_choice_data, current_choice_ids[index])
 
 func _on_bubble_advanced() -> void:
+	_play_audio_cues(["conversation"])
 	story_beat_index += 1
 	_show_current_story_beat()
 
@@ -492,6 +497,7 @@ func _rebuild_product_shelf() -> void:
 		drag_item.size = slot.size
 		drag_item.modulate.a = 0.0
 		product_layer.add_child(drag_item)
+		drag_item.connect("product_drag_started", _on_product_drag_started)
 		drag_item.connect("product_released", _on_product_drag_released)
 		product_items_by_id[game_id] = drag_item
 		shadow_rects.append(display_rect)
@@ -579,6 +585,9 @@ func _on_product_dropped(customer_id: String, product_id: String) -> void:
 		if is_instance_valid(source):
 			source.call("play_reject")
 
+func _on_product_drag_started(_product_id: String) -> void:
+	_play_audio_cues(["pickup"])
+
 func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
 	var actor := _customer_actor_at(viewport_position)
 	if actor == null:
@@ -628,11 +637,19 @@ func audio_cues_for_payment(result: int) -> Array[String]:
 	return []
 
 func ambience_for_environment_day(day: int) -> String:
+	if day == 6:
+		return "fiesta"
+	return ""
+
+func music_for_environment_day(day: int) -> String:
 	if day == 4:
 		return "rain"
 	if day == 6:
 		return "fiesta"
-	return ""
+	return "normal"
+
+func music_for_brownout() -> String:
+	return "intense"
 
 func _play_audio_cues(cue_names: Array[String]) -> void:
 	if audio == null:

@@ -1,15 +1,19 @@
 # Kwenta Audio Credits
 
-All audio in this first pass is **CC0**. Attribution is not legally required, but the source records are retained for the team and for future replacement decisions.
+The active audio pass uses the user-provided Pixabay downloads in `assets/audio/pixabay/`. The source pages and creator names were not included with the downloaded files, so their exact Pixabay URLs must be recorded before release.
 
-| In-game cue | File | Creator | Source | License |
-| --- | --- | --- | --- | --- |
-| Pickup | `assets/audio/sfx/pickup.mp3` | Musheran | [Item Pickup / Key](https://opengameart.org/content/item-pickup-key) | CC0 |
-| Correct delivery | `assets/audio/sfx/correct.wav` | Bobjt | [Gem collect SFX](https://opengameart.org/content/gem-collect-sfx) | CC0 |
-| Wrong delivery | `assets/audio/sfx/reject.mp3` | Joth | [7 Assorted Sound Effects](https://opengameart.org/content/7-assorted-sound-effects-menu-level-up) — Menu Error | CC0 |
-| Completed sale | `assets/audio/sfx/sale.wav` | Spring Spring | [Purchasing Sound Effect](https://opengameart.org/content/purchasing-sound-effect) | CC0 |
-| Customer timeout | `assets/audio/sfx/timeout.mp3` | Joth | [7 Assorted Sound Effects](https://opengameart.org/content/7-assorted-sound-effects-menu-level-up) — Transition | CC0 |
-| Rain ambience | `assets/audio/ambience/rain.ogg` | Kresiek The Furry | [AMB Rain Loop 1](https://opengameart.org/content/amb-rain-loop-1) | CC0 |
-| Fiesta bed | `assets/audio/ambience/fiesta.ogg` | congusbongus | [My Street](https://opengameart.org/content/my-street) | CC0 |
+| In-game use | File |
+| --- | --- |
+| Product pickup | `assets/audio/pixabay/sfx/pick_up.mp3` |
+| Correct delivery | `assets/audio/pixabay/sfx/correct_item.mp3` |
+| Wrong delivery | `assets/audio/pixabay/sfx/wrong_item.mp3` |
+| Completed sale | `assets/audio/pixabay/sfx/sale_completed.mp3` |
+| Patience warning / timeout | `assets/audio/pixabay/sfx/patience_warning.mp3` |
+| Dialogue advance | `assets/audio/pixabay/sfx/convo.mp3` |
+| Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
+| Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
+| Fiesta-day music | `assets/audio/pixabay/music/fiesta_day.mp3` |
+| Day 6 brownout music | `assets/audio/pixabay/music/intense_music.mp3` |
+| Fiesta background bed | `assets/audio/pixabay/ambience/fiesta_day_bg.mp3` |
 
-Downloaded 2026-10-27. These are temporary first-pass assets selected from the free-source research set; they can be replaced later with original recordings or commissioned music without changing semantic cue names in code.
+Downloaded 2026-10-27. Before release, add the exact Pixabay download-page URL, creator, and license record for each file above. The older OpenGameArt files remain in the repository only as inactive fallback assets; no active cue maps to them.

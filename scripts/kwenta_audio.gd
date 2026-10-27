@@ -2,20 +2,30 @@ class_name KwentaAudio
 extends Node
 
 var cue_streams: Dictionary = {}
+var music_streams: Dictionary = {}
 var last_played_cue := ""
 var current_ambience := ""
+var current_music := ""
 
 var _cue_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
+var _music_player: AudioStreamPlayer
 
 const DEFAULT_CUE_PATHS := {
-	"pickup": "res://assets/audio/sfx/pickup.mp3",
-	"correct": "res://assets/audio/sfx/correct.wav",
-	"reject": "res://assets/audio/sfx/reject.mp3",
-	"sale": "res://assets/audio/sfx/sale.wav",
-	"timeout": "res://assets/audio/sfx/timeout.mp3",
-	"rain": "res://assets/audio/ambience/rain.ogg",
-	"fiesta": "res://assets/audio/ambience/fiesta.ogg",
+	"pickup": "res://assets/audio/pixabay/sfx/pick_up.mp3",
+	"correct": "res://assets/audio/pixabay/sfx/correct_item.mp3",
+	"reject": "res://assets/audio/pixabay/sfx/wrong_item.mp3",
+	"sale": "res://assets/audio/pixabay/sfx/sale_completed.mp3",
+	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
+	"conversation": "res://assets/audio/pixabay/sfx/convo.mp3",
+	"fiesta": "res://assets/audio/pixabay/ambience/fiesta_day_bg.mp3",
+}
+
+const DEFAULT_MUSIC_PATHS := {
+	"normal": "res://assets/audio/pixabay/music/normal_store_days.mp3",
+	"rain": "res://assets/audio/pixabay/music/rainy_day.mp3",
+	"fiesta": "res://assets/audio/pixabay/music/fiesta_day.mp3",
+	"intense": "res://assets/audio/pixabay/music/intense_music.mp3",
 }
 
 func _ready() -> void:
@@ -31,12 +41,28 @@ func register_default_cues() -> void:
 		var stream := load(str(DEFAULT_CUE_PATHS[cue_name])) as AudioStream
 		if stream == null:
 			continue
-		if stream is AudioStreamOggVorbis and (cue_name == "rain" or cue_name == "fiesta"):
+		if stream is AudioStreamMP3 and cue_name == "fiesta":
 			stream.loop = true
 		register_cue(cue_name, stream)
 
+func register_music(track_name: String, stream: AudioStream) -> void:
+	if track_name.is_empty() or stream == null:
+		return
+	if stream is AudioStreamMP3:
+		stream.loop = true
+	music_streams[track_name] = stream
+
+func register_default_music() -> void:
+	for track_name in DEFAULT_MUSIC_PATHS:
+		var stream := load(str(DEFAULT_MUSIC_PATHS[track_name])) as AudioStream
+		if stream != null:
+			register_music(track_name, stream)
+
 func has_cue(cue_name: String) -> bool:
 	return cue_streams.get(cue_name) is AudioStream
+
+func has_music(track_name: String) -> bool:
+	return music_streams.get(track_name) is AudioStream
 
 func play_cue(cue_name: String) -> bool:
 	var stream := cue_streams.get(cue_name) as AudioStream
@@ -71,6 +97,28 @@ func _stop_ambience() -> void:
 	if _ambience_player != null:
 		_ambience_player.stop()
 
+func set_music(track_name: String) -> bool:
+	if track_name.is_empty():
+		_stop_music()
+		return true
+	var stream := music_streams.get(track_name) as AudioStream
+	if stream == null:
+		_stop_music()
+		return false
+	if current_music == track_name:
+		return true
+	current_music = track_name
+	_ensure_players()
+	if is_inside_tree():
+		_music_player.stream = stream
+		_music_player.play()
+	return true
+
+func _stop_music() -> void:
+	current_music = ""
+	if _music_player != null:
+		_music_player.stop()
+
 func _ensure_players() -> void:
 	if _cue_player == null:
 		_cue_player = AudioStreamPlayer.new()
@@ -82,3 +130,8 @@ func _ensure_players() -> void:
 		_ambience_player.name = "AmbiencePlayer"
 		_ambience_player.volume_db = -20.0
 		add_child(_ambience_player)
+	if _music_player == null:
+		_music_player = AudioStreamPlayer.new()
+		_music_player.name = "MusicPlayer"
+		_music_player.volume_db = -16.0
+		add_child(_music_player)
