@@ -24,11 +24,11 @@ func _test_live_bubble_routes_to_the_dialogue_player() -> void:
 	await process_frame
 	main.bubble.show_beat("Aling Cora", "May kailangan ka ba ngayon?", null, "")
 	await process_frame
-	var player := main.audio.get_node_or_null("DialoguePlayer") as AudioStreamPlayer
+	var player := main.audio.get_node_or_null("CuePlayer") as AudioStreamPlayer
 	var expected_stream := load(CONVERSATION_STREAM_PATH) as AudioStream
-	_assert(main.audio.current_dialogue == "conversation", "a live dialogue bubble starts the conversation stream")
-	_assert(player != null and player.stream != null, "the dialogue player receives the audible conversation stream")
-	_assert(player != null and player.stream == expected_stream, "a live dialogue bubble uses convo.mp3")
+	_assert(main.audio.current_dialogue.is_empty(), "a live dialogue bubble does not start the looping dialogue channel")
+	_assert(player != null and player.stream != null, "the cue player receives the conversation stream")
+	_assert(player != null and player.stream == expected_stream, "a live dialogue bubble plays convo.mp3 once")
 	main.queue_free()
 
 func _assert(condition: bool, message: String) -> void:

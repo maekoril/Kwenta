@@ -456,7 +456,7 @@ func _on_bubble_advanced() -> void:
 
 func _on_bubble_conversation_started() -> void:
 	if audio != null:
-		audio.set_dialogue("conversation")
+		audio.play_cue("conversation")
 
 func _on_bubble_conversation_finished() -> void:
 	if audio != null:
