@@ -11,6 +11,7 @@ func _initialize() -> void:
 	_test_missing_ambience_stops_the_previous_loop()
 	_test_new_music_replaces_the_previous_track()
 	_test_dialogue_loop_stops_explicitly()
+	_test_dialogue_loop_asset_has_audible_phrase_length()
 	_test_sale_clip_is_short_and_immediate()
 	_test_default_cues_resolve()
 	if failures > 0:
@@ -89,6 +90,12 @@ func _test_dialogue_loop_stops_explicitly() -> void:
 	_assert(audio.set_dialogue(""), "empty dialogue cue stops the loop")
 	_assert(audio.current_dialogue.is_empty(), "dialogue clears only when explicitly stopped")
 	audio.free()
+
+func _test_dialogue_loop_asset_has_audible_phrase_length() -> void:
+	var stream := load("res://assets/audio/pixabay/sfx/muffled_dialogue_blip.wav") as AudioStream
+	_assert(stream != null, "dialogue loop asset is available")
+	if stream != null:
+		_assert(stream.get_length() >= 1.5, "dialogue loop has a recognizable talking phrase instead of a single tiny blip")
 
 func _test_sale_clip_is_short_and_immediate() -> void:
 	var stream := load("res://assets/audio/pixabay/sfx/cash_register_sale.wav") as AudioStream
