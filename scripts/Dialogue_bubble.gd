@@ -38,6 +38,7 @@ signal choice_made(index: int)
 signal typing_blip
 signal conversation_started
 signal conversation_finished
+signal speech_started
 signal _title_done
 
 # --- Look (all values are for 1920x1080). Reuse these for the HUD later. ---
@@ -421,6 +422,8 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 
 	visible = true
 	_begin_conversation()
+	if not narration:
+		speech_started.emit()
 	if not is_equal_approx(_dim.color.a, DIM_ALPHA):
 		create_tween().tween_property(_dim, "color:a", DIM_ALPHA, 0.25)
 	_group.modulate.a = 0.0

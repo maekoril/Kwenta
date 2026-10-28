@@ -442,8 +442,8 @@ func _build_bubble() -> void:
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
 	bubble.choice_made.connect(_on_bubble_choice)
-	bubble.conversation_started.connect(_on_bubble_conversation_started)
 	bubble.conversation_finished.connect(_on_bubble_conversation_finished)
+	bubble.speech_started.connect(_on_bubble_speech_started)
 
 func _on_bubble_choice(index: int) -> void:
 	if index < 0 or index >= current_choice_ids.size():
@@ -454,7 +454,7 @@ func _on_bubble_advanced() -> void:
 	story_beat_index += 1
 	_show_current_story_beat()
 
-func _on_bubble_conversation_started() -> void:
+func _on_bubble_speech_started() -> void:
 	if audio != null:
 		audio.play_cue("conversation")
 
