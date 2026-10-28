@@ -10,6 +10,8 @@ func _initialize() -> void:
 	_test_new_ambience_replaces_the_previous_cue()
 	_test_missing_ambience_stops_the_previous_loop()
 	_test_new_music_replaces_the_previous_track()
+	_test_dialogue_loop_stops_explicitly()
+	_test_sale_clip_is_short_and_immediate()
 	_test_default_cues_resolve()
 	if failures > 0:
 		push_error("%d audio assertion(s) failed." % failures)
@@ -72,6 +74,27 @@ func _test_new_music_replaces_the_previous_track() -> void:
 	_assert(audio.set_music("rain"), "rain background music is accepted")
 	_assert(audio.current_music == "rain", "rain music replaces the normal track")
 	audio.free()
+
+func _test_dialogue_loop_stops_explicitly() -> void:
+	var audio: Variant = _new_audio()
+	if audio == null:
+		return
+	_assert(audio.has_method("set_dialogue"), "KwentaAudio can start a dialogue loop")
+	if not audio.has_method("set_dialogue"):
+		audio.free()
+		return
+	audio.register_cue("conversation", AudioStreamWAV.new())
+	_assert(audio.set_dialogue("conversation"), "a registered dialogue cue starts looping")
+	_assert(audio.current_dialogue == "conversation", "dialogue stays active after text typing ends")
+	_assert(audio.set_dialogue(""), "empty dialogue cue stops the loop")
+	_assert(audio.current_dialogue.is_empty(), "dialogue clears only when explicitly stopped")
+	audio.free()
+
+func _test_sale_clip_is_short_and_immediate() -> void:
+	var stream := load("res://assets/audio/pixabay/sfx/cash_register_sale.wav") as AudioStream
+	_assert(stream != null, "trimmed sale clip is available")
+	if stream != null:
+		_assert(stream.get_length() <= 1.0, "trimmed sale clip does not retain the long delayed source")
 
 func _test_default_cues_resolve() -> void:
 	var audio: Variant = _new_audio()

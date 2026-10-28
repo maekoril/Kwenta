@@ -6,16 +6,18 @@ var music_streams: Dictionary = {}
 var last_played_cue := ""
 var current_ambience := ""
 var current_music := ""
+var current_dialogue := ""
 
 var _cue_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
 var _music_player: AudioStreamPlayer
+var _dialogue_player: AudioStreamPlayer
 
 const DEFAULT_CUE_PATHS := {
 	"pickup": "res://assets/audio/pixabay/sfx/pick_up.mp3",
 	"correct": "res://assets/audio/pixabay/sfx/correct_item.wav",
 	"reject": "res://assets/audio/pixabay/sfx/wrong_item.mp3",
-	"sale": "res://assets/audio/pixabay/sfx/cash_register.wav",
+	"sale": "res://assets/audio/pixabay/sfx/cash_register_sale.wav",
 	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
 	"conversation": "res://assets/audio/pixabay/sfx/muffled_dialogue_blip.wav",
 	"fiesta": "res://assets/audio/pixabay/ambience/fiesta_day_bg.mp3",
@@ -119,6 +121,32 @@ func _stop_music() -> void:
 	if _music_player != null:
 		_music_player.stop()
 
+func set_dialogue(cue_name: String) -> bool:
+	if cue_name.is_empty():
+		_stop_dialogue()
+		return true
+	var stream := cue_streams.get(cue_name) as AudioStream
+	if stream == null:
+		_stop_dialogue()
+		return false
+	if current_dialogue == cue_name:
+		return true
+	if stream is AudioStreamWAV:
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	elif stream is AudioStreamMP3:
+		stream.loop = true
+	current_dialogue = cue_name
+	_ensure_players()
+	if is_inside_tree():
+		_dialogue_player.stream = stream
+		_dialogue_player.play()
+	return true
+
+func _stop_dialogue() -> void:
+	current_dialogue = ""
+	if _dialogue_player != null:
+		_dialogue_player.stop()
+
 func _ensure_players() -> void:
 	if _cue_player == null:
 		_cue_player = AudioStreamPlayer.new()
@@ -135,3 +163,8 @@ func _ensure_players() -> void:
 		_music_player.name = "MusicPlayer"
 		_music_player.volume_db = -16.0
 		add_child(_music_player)
+	if _dialogue_player == null:
+		_dialogue_player = AudioStreamPlayer.new()
+		_dialogue_player.name = "DialoguePlayer"
+		_dialogue_player.volume_db = -22.0
+		add_child(_dialogue_player)

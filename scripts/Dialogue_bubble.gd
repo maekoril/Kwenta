@@ -36,6 +36,8 @@ extends Control
 signal advanced
 signal choice_made(index: int)
 signal typing_blip
+signal conversation_started
+signal conversation_finished
 signal _title_done
 
 # --- Look (all values are for 1920x1080). Reuse these for the HUD later. ---
@@ -93,6 +95,7 @@ var _busy := false
 var _choosing := false
 var _choices_ready := false
 var _last_blip_character := 0
+var _conversation_active := false
 var _type_tween: Tween
 var _bob_tween: Tween
 var _hint_tween: Tween
@@ -349,6 +352,7 @@ func title_card(text: String) -> void:
 func close() -> void:
 	if not visible:
 		return
+	_end_conversation()
 	for t in [_bob_tween, _hint_tween, _breath_tween, _portrait_tween]:
 		if t:
 			t.kill()
@@ -415,6 +419,7 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	_set_portrait(portrait_tex, char_key, right_side)
 
 	visible = true
+	_begin_conversation()
 	if not is_equal_approx(_dim.color.a, DIM_ALPHA):
 		create_tween().tween_property(_dim, "color:a", DIM_ALPHA, 0.25)
 	_group.modulate.a = 0.0
@@ -507,6 +512,18 @@ func _reveal_text(progress: float) -> void:
 	if revealed_characters >= _last_blip_character + 3:
 		_last_blip_character = revealed_characters
 		typing_blip.emit()
+
+func _begin_conversation() -> void:
+	if _conversation_active:
+		return
+	_conversation_active = true
+	conversation_started.emit()
+
+func _end_conversation() -> void:
+	if not _conversation_active:
+		return
+	_conversation_active = false
+	conversation_finished.emit()
 
 
 func _character_of(portrait_id: String) -> String:
