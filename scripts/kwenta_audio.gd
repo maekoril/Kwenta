@@ -166,5 +166,5 @@ func _ensure_players() -> void:
 	if _dialogue_player == null:
 		_dialogue_player = AudioStreamPlayer.new()
 		_dialogue_player.name = "DialoguePlayer"
-		_dialogue_player.volume_db = -12.0
+		_dialogue_player.volume_db = -2.0
 		add_child(_dialogue_player)

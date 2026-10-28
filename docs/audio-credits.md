@@ -9,7 +9,7 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | Wrong delivery | `assets/audio/pixabay/sfx/wrong_item.mp3` |
 | Completed sale | `assets/audio/pixabay/sfx/cash_register_sale.wav`, trimmed from `assets/audio/inbox/cash_register.wav` to its first strong register hit |
 | Patience warning / timeout | `assets/audio/pixabay/sfx/patience_warning.mp3` |
-| Dialogue loop | `assets/audio/pixabay/sfx/muffled_dialogue_blip.wav`, accurately extracted from `assets/audio/inbox/muffled.mp3` (first, lowest pitch bank) and gain-matched for gameplay |
+| Dialogue loop | `assets/audio/pixabay/sfx/muffled_dialogue_blip.wav`, accurately extracted from `assets/audio/inbox/muffled.mp3` (first, lowest pitch bank) and gain-matched above the store music |
 | Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
 | Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
 | Fiesta-day music | `assets/audio/pixabay/music/fiesta_day.mp3` |
