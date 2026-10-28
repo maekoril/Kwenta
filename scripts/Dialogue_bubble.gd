@@ -332,6 +332,7 @@ func ask(speaker: String, prompt: String, options: Array, portrait_tex: Texture2
 
 
 func title_card(text: String) -> void:
+	_end_conversation()
 	if _close_tween:
 		_close_tween.kill()
 	_set_portrait(null, "", false)
@@ -350,9 +351,9 @@ func title_card(text: String) -> void:
 
 
 func close() -> void:
+	_end_conversation()
 	if not visible:
 		return
-	_end_conversation()
 	for t in [_bob_tween, _hint_tween, _breath_tween, _portrait_tween]:
 		if t:
 			t.kill()
@@ -697,3 +698,6 @@ func _finish_close() -> void:
 	visible = false
 	_portrait.visible = false
 	_choices.visible = false
+
+func _exit_tree() -> void:
+	_end_conversation()

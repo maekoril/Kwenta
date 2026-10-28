@@ -129,17 +129,17 @@ func set_dialogue(cue_name: String) -> bool:
 	if stream == null:
 		_stop_dialogue()
 		return false
-	if current_dialogue == cue_name:
-		return true
 	if stream is AudioStreamWAV:
 		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	elif stream is AudioStreamMP3:
 		stream.loop = true
-	current_dialogue = cue_name
 	_ensure_players()
+	current_dialogue = cue_name
 	if is_inside_tree():
-		_dialogue_player.stream = stream
-		_dialogue_player.play()
+		if _dialogue_player.stream != stream:
+			_dialogue_player.stream = stream
+		if not _dialogue_player.playing:
+			_dialogue_player.play()
 	return true
 
 func _stop_dialogue() -> void:
