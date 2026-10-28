@@ -5,11 +5,11 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | In-game use | File |
 | --- | --- |
 | Product pickup | `assets/audio/pixabay/sfx/pick_up.mp3` |
-| Correct delivery | `assets/audio/pixabay/sfx/correct_item.mp3` |
+| Correct delivery | `assets/audio/pixabay/sfx/correct_item.wav` (replaced 2026-10-28) |
 | Wrong delivery | `assets/audio/pixabay/sfx/wrong_item.mp3` |
-| Completed sale | `assets/audio/pixabay/sfx/sale_completed.mp3` |
+| Completed sale | `assets/audio/pixabay/sfx/cash_register.wav` |
 | Patience warning / timeout | `assets/audio/pixabay/sfx/patience_warning.mp3` |
-| Dialogue advance | `assets/audio/pixabay/sfx/convo.mp3` |
+| Dialogue typewriter | `assets/audio/pixabay/sfx/muffled_dialogue_blip.wav`, extracted from `assets/audio/inbox/muffled.mp3` (first, lowest pitch bank) |
 | Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
 | Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
 | Fiesta-day music | `assets/audio/pixabay/music/fiesta_day.mp3` |

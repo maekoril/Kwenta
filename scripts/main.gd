@@ -442,6 +442,7 @@ func _build_bubble() -> void:
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
 	bubble.choice_made.connect(_on_bubble_choice)
+	bubble.typing_blip.connect(_on_bubble_typing_blip)
 
 func _on_bubble_choice(index: int) -> void:
 	if index < 0 or index >= current_choice_ids.size():
@@ -449,9 +450,11 @@ func _on_bubble_choice(index: int) -> void:
 	_select_story_choice(current_choice_data, current_choice_ids[index])
 
 func _on_bubble_advanced() -> void:
-	_play_audio_cues(["conversation"])
 	story_beat_index += 1
 	_show_current_story_beat()
+
+func _on_bubble_typing_blip() -> void:
+	_play_audio_cues(["conversation"])
 
 func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()

@@ -13,11 +13,11 @@ var _music_player: AudioStreamPlayer
 
 const DEFAULT_CUE_PATHS := {
 	"pickup": "res://assets/audio/pixabay/sfx/pick_up.mp3",
-	"correct": "res://assets/audio/pixabay/sfx/correct_item.mp3",
+	"correct": "res://assets/audio/pixabay/sfx/correct_item.wav",
 	"reject": "res://assets/audio/pixabay/sfx/wrong_item.mp3",
-	"sale": "res://assets/audio/pixabay/sfx/sale_completed.mp3",
+	"sale": "res://assets/audio/pixabay/sfx/cash_register.wav",
 	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
-	"conversation": "res://assets/audio/pixabay/sfx/convo.mp3",
+	"conversation": "res://assets/audio/pixabay/sfx/muffled_dialogue_blip.wav",
 	"fiesta": "res://assets/audio/pixabay/ambience/fiesta_day_bg.mp3",
 }
 
