@@ -30,6 +30,8 @@ const DEFAULT_MUSIC_PATHS := {
 	"intense": "res://assets/audio/pixabay/music/intense_music.mp3",
 }
 
+const CONVERSATION_PENTATONIC := [-8, -5, -3, 0, 2, 4, 7]
+
 func _ready() -> void:
 	_ensure_players()
 
@@ -74,8 +76,13 @@ func play_cue(cue_name: String) -> bool:
 	_ensure_players()
 	if is_inside_tree():
 		_cue_player.stream = stream
+		_cue_player.pitch_scale = _conversation_pitch_scale() if cue_name == "conversation" else 1.0
 		_cue_player.play()
 	return true
+
+func _conversation_pitch_scale() -> float:
+	var semitones := float(CONVERSATION_PENTATONIC.pick_random())
+	return pow(2.0, semitones / 12.0)
 
 func set_ambience(cue_name: String) -> bool:
 	if cue_name.is_empty():
