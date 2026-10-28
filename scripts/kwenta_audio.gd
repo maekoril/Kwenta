@@ -19,7 +19,7 @@ const DEFAULT_CUE_PATHS := {
 	"reject": "res://assets/audio/pixabay/sfx/wrong_item.mp3",
 	"sale": "res://assets/audio/pixabay/sfx/cash_register_sale.wav",
 	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
-	"conversation": "res://assets/audio/pixabay/sfx/muffled_dialogue_blip.wav",
+	"conversation": "res://assets/audio/pixabay/sfx/convo.mp3",
 	"fiesta": "res://assets/audio/pixabay/ambience/fiesta_day_bg.mp3",
 }
 
