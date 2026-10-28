@@ -7,6 +7,7 @@ var last_played_cue := ""
 var current_ambience := ""
 var current_music := ""
 var current_dialogue := ""
+var _last_conversation_semitones := 999
 
 var _cue_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
@@ -81,7 +82,10 @@ func play_cue(cue_name: String) -> bool:
 	return true
 
 func _conversation_pitch_scale() -> float:
-	var semitones := float(CONVERSATION_PENTATONIC.pick_random())
+	var available_semitones := CONVERSATION_PENTATONIC.duplicate()
+	available_semitones.erase(_last_conversation_semitones)
+	var semitones := int(available_semitones.pick_random())
+	_last_conversation_semitones = semitones
 	return pow(2.0, semitones / 12.0)
 
 func set_ambience(cue_name: String) -> bool:

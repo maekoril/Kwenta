@@ -56,6 +56,7 @@ func _test_conversation_cue_uses_pentatonic_pitch_variation() -> void:
 	for pitch_scale in observed_pitch_scales:
 		_assert(_is_allowed_pitch(float(pitch_scale), allowed_pitch_scales), "conversation pitch stays on the pentatonic scale")
 	_assert(_has_multiple_values(observed_pitch_scales), "conversation pitch varies between spoken bubbles")
+	_assert(not _has_repeated_neighbors(observed_pitch_scales), "conversation pitch never repeats on consecutive spoken bubbles")
 	audio.queue_free()
 	await process_frame
 
@@ -71,6 +72,12 @@ func _has_multiple_values(values: Array[float]) -> bool:
 	var first_value := values[0]
 	for value in values:
 		if not is_equal_approx(value, first_value):
+			return true
+	return false
+
+func _has_repeated_neighbors(values: Array[float]) -> bool:
+	for index in range(1, values.size()):
+		if is_equal_approx(values[index], values[index - 1]):
 			return true
 	return false
 
