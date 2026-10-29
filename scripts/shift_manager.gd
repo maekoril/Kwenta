@@ -190,22 +190,39 @@ func _payment_patience_seconds() -> float:
 func _spawn_customer() -> void:
 	if active_customers.size() >= _active_customer_limit():
 		return
+
 	var ids := campaign_state.config.customer_ids
 	if ids.is_empty():
 		return
-	var id := _choose_customer_id()
-	var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
-	var order := OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
+
+	var id: String
+	var order: OrderState
+
+	# --- DAY 1 STORY OVERRIDE: Si Aling Nena at 2 Noodz ---
+	if campaign_state.day == 1 and customer_sequence == 0:
+		id = "aling_nena"
+		order = OrderState.new({"instant_noodles": 2})
+	else:
+		# Random spawn para sa mga susunod na customers
+		id = _choose_customer_id()
+		var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
+		order = OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
+	# ------------------------------------------------------
+
 	if order.requested.is_empty():
 		push_warning("No stocked products are available; customer spawn skipped.")
 		return
+
 	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
+	
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer_sequence += 1
 	customer.instance_id = "%s_%d" % [id, customer_sequence]
+
 	campaign_state.save_customer_trust(id, customer.trust)
 	active_customers.append(customer)
+
 	customers_changed.emit()
 
 func _active_customer_limit() -> int:
