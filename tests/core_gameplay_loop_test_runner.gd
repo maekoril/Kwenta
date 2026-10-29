@@ -2,6 +2,7 @@ extends SceneTree
 
 const CampaignConfigScript = preload("res://scripts/campaign_config.gd")
 const CampaignStateScript = preload("res://scripts/campaign_state.gd")
+const CashTrayScript = preload("res://scripts/cash_tray.gd")
 const CustomerActorScene = preload("res://scenes/customer_slot.tscn")
 const CustomerStateScript = preload("res://scripts/customer_state.gd")
 const OrderDataScript = preload("res://scripts/order_data.gd")
@@ -10,6 +11,7 @@ const ProductDataScript = preload("res://scripts/product_data.gd")
 const ProductDragItemScene = preload("res://scenes/product_drag_item.tscn")
 const ShiftManagerScript = preload("res://scripts/shift_manager.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
+const SukliRulesScript = preload("res://scripts/sukli_rules.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
 const MainScene = preload("res://scenes/main.tscn")
 
@@ -20,6 +22,14 @@ var observed_clock := ""
 var customer_change_count := 0
 
 func _initialize() -> void:
+	_test_sukli_guide_is_limited_to_the_first_two_days()
+	await _test_cash_tray_uses_reference_text_hierarchy()
+	await _test_cash_tray_matches_the_tall_reference_panel()
+	await _test_cash_tray_matches_the_wide_reference_panel()
+	await _test_cash_tray_uses_the_money_tray_texture()
+	await _test_cash_tray_keeps_counter_chips_inside_the_paper()
+	await _test_cash_tray_keeps_large_guided_note_inside_its_paper()
+	await _test_cash_tray_uses_one_even_content_box()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
@@ -35,6 +45,133 @@ func _initialize() -> void:
 	else:
 		print("All core gameplay loop assertions passed.")
 		quit(0)
+
+func _test_sukli_guide_is_limited_to_the_first_two_days() -> void:
+	_assert(SukliRulesScript.sukli_guide_enabled_for_day(1), "the sukli guide is visible on day 1")
+	_assert(SukliRulesScript.sukli_guide_enabled_for_day(2), "the sukli guide is visible on day 2")
+	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(3), "the sukli guide is hidden from day 3")
+	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(7), "the sukli guide remains hidden after day 3")
+
+
+func _test_cash_tray_uses_reference_text_hierarchy() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var bayad := tray.find_child("ListahanBayadValue", true, false) as Label
+	var bili := tray.find_child("ListahanBiliValue", true, false) as Label
+	var sukli := tray.find_child("ListahanSukliValue", true, false) as Label
+	var counter := tray.find_child("CounterReadout", true, false) as Label
+	_assert(bayad != null and bayad.text == "₱50", "the listahan tender uses the peso sign")
+	_assert(bili != null and bili.text == "₱23", "the listahan purchase uses the peso sign")
+	_assert(sukli != null and sukli.text == "₱27", "the large listahan change value uses the peso sign")
+	_assert(counter != null and counter.text == "₱0 / ₱27", "the counter readout uses the peso sign and target")
+	_assert(tray.find_child("BaryaTag", true, false) != null, "the coin compartments have a BARYA tag")
+	_assert(tray.find_child("PeraTag", true, false) != null, "the bill compartments have a PERA tag")
+	tray.queue_free()
+
+
+func _test_cash_tray_matches_the_tall_reference_panel() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * (280.0 / 720.0)
+	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the taller compact panel height")
+	tray.queue_free()
+
+
+func _test_cash_tray_matches_the_wide_reference_panel() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var expected_width := StorefrontLayoutScript.VIEWPORT_SIZE.x * (1000.0 / 1280.0)
+	_assert(is_equal_approx(tray.get("_drawer_size").x, expected_width), "the cash tray uses the compact reference-panel width")
+	tray.queue_free()
+
+
+func _test_cash_tray_uses_the_money_tray_texture() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var tray_art := tray.find_child("MoneyTrayArt", true, false) as TextureRect
+	_assert(tray_art != null, "the cash tray builds a dedicated wooden tray texture node")
+	if tray_art != null:
+		_assert(tray_art.texture != null, "the wooden tray node has a texture assigned")
+	tray.queue_free()
+
+
+func _test_cash_tray_keeps_counter_chips_inside_the_paper() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("counter-test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	for denomination in [1, 5, 10, 20, 50]:
+		tray.call("_on_denomination_tapped", denomination, Button.new())
+	await process_frame
+	var paper := tray.find_child("CounterPanelArt", true, false) as NinePatchRect
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var chips := tray.get("_counter_flow") as HFlowContainer
+	_assert(chips != null and chips.get_child_count() == 5, "all five denominations use one counter chip row")
+	if chips != null:
+		_assert(chips.size.y <= float(tray.get("_unit")) * 36.0, "counter chips stay within the 24px display-height budget")
+		for chip in chips.get_children():
+			_assert(is_equal_approx((chip as Control).position.y, 0.0), "counter chips do not wrap into a second row")
+	_assert(note != null and paper != null and note.size.y > paper.size.y and note.size.y <= paper.size.y + 36.0, "guided Listahan grows only within its permitted 24px display allowance")
+	tray.open_for(customer, false)
+	await process_frame
+	_assert(note != null and paper != null and note.size.y < paper.size.y, "guide-off Listahan compacts without an empty band")
+	tray.queue_free()
+
+
+func _test_cash_tray_keeps_large_guided_note_inside_its_paper() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("large-change-test", OrderStateScript.new({"chips": 1}), 25.0, 200.0)
+	customer.begin_payment(52, 200, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var due := tray.find_child("ListahanSukliValue", true, false) as Label
+	var helper_prefix := tray.find_child("CounterHelperPrefix", true, false) as Label
+	var helper_amount := tray.find_child("CounterHelperAmount", true, false) as Label
+	_assert(due != null and due.text == "₱148", "large guided change retains the peso sign")
+	_assert(note != null and due != null and note.get_global_rect().encloses(due.get_global_rect()), "large guided change remains fully inside the Listahan paper")
+	_assert(due != null and due.get_theme_font_size("font_size") >= 30, "Listahan change value remains the largest note hierarchy")
+	_assert(helper_prefix != null and helper_prefix.text == "Kulang pa", "under-target helper keeps its readable prefix")
+	_assert(helper_amount != null and helper_amount.text == "₱148", "under-target helper emphasizes the remaining peso amount")
+	_assert(helper_amount != null and helper_amount.get_theme_font_size("font_size") >= 30, "helper amount keeps the 20px display emphasis")
+	tray.queue_free()
+
+
+func _test_cash_tray_uses_one_even_content_box() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("padding-test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var drawer_size := tray.get("_drawer_size") as Vector2
+	var content_origin := Vector2(42.0, 42.0)
+	var content_size := drawer_size - Vector2(84.0, 84.0)
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var counter := tray.find_child("CounterPanelArt", true, false) as NinePatchRect
+	var actions := tray.find_child("SukliActions", true, false) as VBoxContainer
+	var money_tray := tray.find_child("MoneyTrayArt", true, false) as TextureRect
+	_assert(note != null and is_equal_approx(note.position.x, content_origin.x), "Listahan begins at the shared content-box left edge")
+	_assert(counter != null and is_equal_approx(counter.position.y, content_origin.y), "counter paper begins at the shared content-box top edge")
+	_assert(actions != null and is_equal_approx(actions.position.x + actions.size.x, content_origin.x + content_size.x), "buttons end at the shared content-box right edge")
+	_assert(money_tray != null and is_equal_approx(money_tray.position.y + money_tray.size.y, content_origin.y + content_size.y), "money tray ends at the shared content-box bottom edge")
+	if money_tray != null:
+		_assert(money_tray.size.x * 0.1419 >= 120.0, "the narrowest money-tray tap area stays at least 80px wide at 1280x720")
+		_assert(money_tray.size.y >= 84.0, "money-tray tap areas stay at least 56px tall at 1280x720")
+	tray.queue_free()
 
 func _test_storefront_defines_core_shift_pacing() -> void:
 	var constants := _layout_constants()

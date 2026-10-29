@@ -35,7 +35,7 @@
 
 **Files:**
 - Create: `scripts/storefront_layout.gd`
-- Create: `assets/backgrounds/kwenta_store_window_background.png`
+- Create: `assets/store/kwenta_layer_pack/bg_front.png`
 - Modify: `tests/gameplay_test_runner.gd`
 - Modify: `scripts/main.gd`
 

@@ -27,15 +27,13 @@ const PAYMENT_PATIENCE_BY_DAY := {2: 20.0, 3: 18.0, 4: 16.0, 5: 15.0, 6: 14.0, 7
 # Each "kulang" (too little) attempt costs this much of the customer's patience.
 const SHORT_PENALTY_SECONDS := 4.0
 
-# Days up to this one also show "SUKLI ₱X" in the tray, as a tutorial. After that
-# the player has to work out the change themselves.
-const SHOW_CHANGE_DUE_UNTIL_DAY := 2
-
 static func is_enabled(day: int) -> bool:
 	return day >= FIRST_CHANGE_DAY
 
-static func shows_change_due(day: int) -> bool:
-	return day <= SHOW_CHANGE_DUE_UNTIL_DAY
+# Central difficulty rule for every Sukli presentation. Days 1–2 teach the
+# calculation; day 3 onward leaves it to the player.
+static func sukli_guide_enabled_for_day(day: int) -> bool:
+	return day == 1 or day == 2
 
 static func max_change(day: int) -> int:
 	return int(MAX_CHANGE_BY_DAY.get(mini(day, 7), 150))

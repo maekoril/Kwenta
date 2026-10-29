@@ -125,10 +125,8 @@ The project currently contains the model and prototype for:
 - `scripts/product_drag_item.gd`: fixed-slot product sprite, scaled preview, and rejection shake.
 - `scripts/customer_slot.gd`: compact window customer, icon-only bubble, patience meter, and drop feedback.
 - Product and customer art atlases in `assets/sprites/`.
-- `assets/backgrounds/kwenta_store_interior_background.png` is the current inside-store background candidate, with empty product shelves and a clear center window; Godot import/runtime alignment remains pending.
+- The runtime storefront uses the layered art in `assets/store/kwenta_layer_pack/`; `bg_empty.png` and `bg_front.png` frame the customer layer.
 - `assets/sprites/kwenta_generic_products.png` is the current transparent generic product atlas; its in-game crop and display sizes need editor review.
-- Older exterior/open-lane backgrounds remain in the project as unused prototype art.
-- The previous `kwenta_store_background.png` has a baked-in person and is not the intended backdrop for moving customer actors.
 
 The current source uses the seller-side composition: product sprites sit on the player's lower shelves/edge strips, while customers and icon order bubbles fit inside the center window. The seven-day story overlay reuses the same palette, panels, and portrait atlas; it does not replace the established storefront or product art direction.
 

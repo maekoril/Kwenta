@@ -13,6 +13,7 @@ const StoryProgressionScript = preload("res://scripts/story_progression.gd")
 const CounterArtScript = preload("res://scripts/counter_art.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
 const OrderBubbleIconScript = preload("res://scripts/order_bubble_icon.gd")
+const MainScript = preload("res://scripts/main.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
 const CustomerPortraitAtlas = preload("res://assets/sprites/customer_portraits_v2.png")
 
@@ -42,6 +43,7 @@ func _initialize() -> void:
 	_test_day_one_products_have_fixed_shelf_slots()
 	_test_customer_positions_fit_the_storefront()
 	_test_order_icon_entries_show_only_undelivered_units()
+	_test_audio_cue_routing_matches_gameplay_results()
 	if failures > 0:
 		push_error("%d gameplay assertion(s) failed." % failures)
 		quit(1)
@@ -319,6 +321,30 @@ func _test_order_icon_entries_show_only_undelivered_units() -> void:
 	_assert(entries.size() == 2, "one icon group is shown per requested product")
 	_assert(entries[0].product_id == "chips" and entries[0].remaining == 1 and not entries[0].completed, "duplicate requests show the remaining unit count")
 	_assert(entries[1].product_id == "soft_drink" and entries[1].remaining == 0 and entries[1].completed, "completed product groups can be ticked or cleared")
+
+func _test_audio_cue_routing_matches_gameplay_results() -> void:
+	var main: Control = MainScript.new()
+	_assert(main.has_method("audio_cues_for_delivery"), "main maps delivery results to semantic audio cues")
+	_assert(main.has_method("audio_cues_for_payment"), "main maps completed payment results to semantic audio cues")
+	_assert(main.has_method("ambience_for_environment_day"), "main maps story days to one ambience cue")
+	_assert(main.has_method("music_for_environment_day"), "main maps story days to one background track")
+	if not main.has_method("audio_cues_for_delivery") or not main.has_method("audio_cues_for_payment") or not main.has_method("ambience_for_environment_day") or not main.has_method("music_for_environment_day"):
+		main.free()
+		return
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.WRONG_PRODUCT, false) == ["reject"], "wrong delivery routes to rejection audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.ACCEPTED, false) == ["correct"], "accepted delivery routes to confirmation audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.COMPLETED, true) == ["correct", "sale"], "immediate completed sales route to confirmation then sale audio")
+	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.COMPLETED, false) == ["correct"], "completed orders awaiting change do not play the sale cue yet")
+	_assert(main.call("audio_cues_for_payment", PaymentState.Result.EXACT) == ["sale"], "exact change routes to the completed-sale audio")
+	_assert(main.call("audio_cues_for_payment", PaymentState.Result.SHORT) == ["reject"], "short change routes to rejection audio")
+	_assert(str(main.call("ambience_for_environment_day", 4)).is_empty(), "rain day keeps ambience clear because its rain track is music")
+	_assert(str(main.call("ambience_for_environment_day", 6)).is_empty(), "Day 6 leaves ambience clear so it does not overlap its music")
+	_assert(str(main.call("ambience_for_environment_day", 1)).is_empty(), "ordinary days do not start an ambience loop")
+	_assert(main.call("music_for_environment_day", 1) == "normal", "ordinary days use the normal store music")
+	_assert(main.call("music_for_environment_day", 4) == "rain", "rain day uses rain music")
+	_assert(main.call("music_for_environment_day", 6) == "intense", "Day 6 starts the intense track before the brownout")
+	_assert(not main.has_method("music_for_brownout"), "the brownout has no separate background-music route")
+	main.free()
 
 func _test_two_customers_keep_separate_orders_and_capacity() -> void:
 	var manager := _make_test_shift(2, 100.0, ["regular", "neighbor"])

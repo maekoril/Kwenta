@@ -124,10 +124,10 @@
 - [ ] **Step 2: Run the test runner.** Expected: shift assertions fail before manager behavior is implemented.
 - [ ] **Step 3: Implement `ShiftManager`** using `OrderState`, `CustomerState`, and `CampaignState`; connect product drags to per-customer drop targets.
 - [ ] **Step 4: Replace the static tray/buttons** in `scripts/main.gd` with the live shelf, separate active customer slots, order bubbles, patience/trust indicators, cash HUD, and shift clock while preserving the pixel-art background.
-- [ ] **Step 5: Change the background reference** to `res://assets/backgrounds/kwenta_store_background.png` so the project no longer depends on an absolute machine path.
+- [ ] **Step 5: Change the background reference** to the layered storefront base at `res://assets/store/kwenta_layer_pack/bg_empty.png` so the project no longer depends on an absolute machine path.
 - [ ] **Step 6: Run the headless model tests and launch the main scene in Godot.** Expected: model tests pass; the scene opens without parse/import errors.
 - [ ] **Step 7: Manually verify with mouse, then Android touch:** correct drag, wrong drag returns, duplicate item delivery, two simultaneous Day 1 customers, and a customer timing out. Confirm all required controls fit within the central 640×360 area.
-- [ ] **Step 8: Commit the tested shift interaction** with only its files staged: `git add scripts/shift_manager.gd scripts/product_drag_item.gd scripts/customer_slot.gd scenes/product_drag_item.tscn scenes/customer_slot.tscn scripts/main.gd scenes/main.tscn tests/gameplay_test_runner.gd assets/backgrounds/kwenta_store_background.png assets/backgrounds/kwenta_store_background.png.import`; then `git commit -m "feat: add customer drag and drop gameplay"`.
+- [ ] **Step 8: Commit the tested shift interaction** with only its files staged: `git add scripts/shift_manager.gd scripts/product_drag_item.gd scripts/customer_slot.gd scenes/product_drag_item.tscn scenes/customer_slot.tscn scripts/main.gd scenes/main.tscn tests/gameplay_test_runner.gd assets/store/kwenta_layer_pack/bg_empty.png`; then `git commit -m "feat: add customer drag and drop gameplay"`.
 
 ### Task 5: Ten-Shift Narrative, Repair Goal, and Endings
 
