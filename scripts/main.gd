@@ -905,7 +905,7 @@ func _on_payment_tapped(customer_id: String) -> void:
 		return
 	for customer in shift.get_active_customers():
 		if customer.instance_id == customer_id and customer.is_paying():
-			cash_tray.open_for(customer, SukliRules.shows_change_due(campaign.day))
+			cash_tray.open_for(customer, SukliRules.sukli_guide_enabled_for_day(campaign.day))
 			return
 
 func _on_change_given(customer_id: String, amount: int) -> void:
@@ -934,7 +934,9 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		PaymentState.Result.OVER:
 			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
-			_float_text(at, "SOBRA  -₱%d" % diff, Color("f6d95e"))
+			_float_text(at, "SOBRA  -₱%d" % diff if SukliRules.sukli_guide_enabled_for_day(campaign.day) else "SOBRA!", Color("f6d95e"))
+			if is_instance_valid(actor):
+				actor.call("play_wrong_drop")
 		_:
 			cash_tray.close()
 

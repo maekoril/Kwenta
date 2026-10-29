@@ -10,6 +10,7 @@ const ProductDataScript = preload("res://scripts/product_data.gd")
 const ProductDragItemScene = preload("res://scenes/product_drag_item.tscn")
 const ShiftManagerScript = preload("res://scripts/shift_manager.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
+const SukliRulesScript = preload("res://scripts/sukli_rules.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
 const MainScene = preload("res://scenes/main.tscn")
 
@@ -20,6 +21,7 @@ var observed_clock := ""
 var customer_change_count := 0
 
 func _initialize() -> void:
+	_test_sukli_guide_is_limited_to_the_first_two_days()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
@@ -35,6 +37,12 @@ func _initialize() -> void:
 	else:
 		print("All core gameplay loop assertions passed.")
 		quit(0)
+
+func _test_sukli_guide_is_limited_to_the_first_two_days() -> void:
+	_assert(SukliRulesScript.sukli_guide_enabled_for_day(1), "the sukli guide is visible on day 1")
+	_assert(SukliRulesScript.sukli_guide_enabled_for_day(2), "the sukli guide is visible on day 2")
+	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(3), "the sukli guide is hidden from day 3")
+	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(7), "the sukli guide remains hidden after day 3")
 
 func _test_storefront_defines_core_shift_pacing() -> void:
 	var constants := _layout_constants()
