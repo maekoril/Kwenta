@@ -330,25 +330,54 @@ func _build_payment_bubble() -> void:
 	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING, ORDER_BUBBLE_PADDING) * 2.0
 	order_grid.columns = 1
 	order_grid.custom_minimum_size = holder_size
+	
 	var holder := Control.new()
 	holder.custom_minimum_size = holder_size
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bill: MoneyIcon = MoneyIcon.new().setup(customer.payment.tendered, 66.0, false)
-	bill.position = Vector2((holder_size.x - bill.size.x) * 0.5, 4.0)
-	holder.add_child(bill)
+	
+	var caption_text := "Sukli ko po?"
+	var cid = customer.customer_id
+	if cid in ["jun", "jun_jun", "mikay", "bea", "paolo", "nina"]:
+		caption_text = "Sukli ko po?"
+	elif cid in ["manong_tomas", "mang_berting", "kuya_ben", "kuya_dodong"]:
+		caption_text = "Sukli ko 'toy?"
+	elif cid in ["aleng_mila", "ate_liza", "aling_nena"]:
+		caption_text = "Sukli ko iho!"
+	else:
+		caption_text = "Sukli ko po?"
+		
 	var caption := Label.new()
-	caption.text = "SUKLI?"
-	caption.add_theme_font_size_override("font_size", 24)
+	caption.text = caption_text
+	caption.add_theme_font_size_override("font_size", 22) # Increased font size
 	caption.add_theme_color_override("font_color", Color("7a4a14"))
-	caption.position = Vector2(0.0, 76.0)
-	caption.size = Vector2(holder_size.x, 30.0)
+	caption.position = Vector2(0.0, (holder_size.y - 24.0) * 0.5) 
+	caption.size = Vector2(holder_size.x, 24.0)
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
 	holder.add_child(caption)
 	order_grid.add_child(holder)
+	
 	_place_bubble(PAYMENT_BUBBLE_SIZE)
-
 func _set_bubble_paying(paying: bool) -> void:
+	if paying == _bubble_paying:
+		return
+	_bubble_paying = paying
+	if paying:
+		name_tag.visible = false
+		patience_bar.visible = false
+		# Pinalitan na natin to ng eksaktong BROWN color gaya ng sa orders
+		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+		
+		# Kung gusto mong steady brown lang at AYAW mo na rin mag-pulse o kumislap, 
+		# burahin mo o lagyan ng '#' sa unahan ang line na ito:
+		# _start_pay_pulse()
+	else:
+		name_tag.visible = true
+		patience_bar.visible = true
+		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+		_stop_pay_pulse()
 	if paying == _bubble_paying:
 		return
 	_bubble_paying = paying
@@ -366,7 +395,8 @@ func _set_bubble_paying(paying: bool) -> void:
 func _start_pay_pulse() -> void:
 	_stop_pay_pulse()
 	_pay_pulse = create_tween().set_loops()
-	_pay_pulse.tween_property(order_bubble, "modulate", Color(1.15, 1.1, 0.9), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Pinalitan ang yellowish modulate ng neutral brightness pulse (1.08, 1.08, 1.08)
+	_pay_pulse.tween_property(order_bubble, "modulate", Color(1.08, 1.08, 1.08), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_pay_pulse.tween_property(order_bubble, "modulate", Color.WHITE, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _stop_pay_pulse() -> void:
