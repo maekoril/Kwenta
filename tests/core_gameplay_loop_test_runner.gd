@@ -27,6 +27,7 @@ func _initialize() -> void:
 	await _test_cash_tray_matches_the_tall_reference_panel()
 	await _test_cash_tray_matches_the_wide_reference_panel()
 	await _test_cash_tray_uses_the_money_tray_texture()
+	await _test_cash_tray_keeps_counter_chips_inside_the_paper()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
@@ -97,6 +98,31 @@ func _test_cash_tray_uses_the_money_tray_texture() -> void:
 	_assert(tray_art != null, "the cash tray builds a dedicated wooden tray texture node")
 	if tray_art != null:
 		_assert(tray_art.texture != null, "the wooden tray node has a texture assigned")
+	tray.queue_free()
+
+
+func _test_cash_tray_keeps_counter_chips_inside_the_paper() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("counter-test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	for denomination in [1, 5, 10, 20, 50]:
+		tray.call("_on_denomination_tapped", denomination, Button.new())
+	await process_frame
+	var paper := tray.find_child("CounterPanelArt", true, false) as NinePatchRect
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var chips := tray.get("_counter_flow") as HFlowContainer
+	_assert(chips != null and chips.get_child_count() == 5, "all five denominations use one counter chip row")
+	if chips != null:
+		_assert(chips.size.y <= float(tray.get("_unit")) * 36.0, "counter chips stay within the 24px display-height budget")
+		for chip in chips.get_children():
+			_assert(is_equal_approx((chip as Control).position.y, 0.0), "counter chips do not wrap into a second row")
+	_assert(note != null and paper != null and is_equal_approx(note.size.y, paper.size.y), "guided Listahan matches the counter paper height")
+	tray.open_for(customer, false)
+	await process_frame
+	_assert(note != null and paper != null and note.size.y < paper.size.y, "guide-off Listahan compacts without an empty band")
 	tray.queue_free()
 
 func _test_storefront_defines_core_shift_pacing() -> void:

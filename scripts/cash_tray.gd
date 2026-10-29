@@ -24,7 +24,6 @@ const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/coun
 const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
 const IBIGAY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const LINISIN_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
-const CLOSE_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/close_button.png")
 const PROGRESS_TRACK_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_track.png")
 const PROGRESS_FILL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_fill.png")
 const MONEY_TEXTURES := {
@@ -39,6 +38,8 @@ const CORNER := 12
 const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
 const SUKLI_PANEL_HEIGHT_RATIO := 280.0 / 720.0
 const SUKLI_PANEL_BOTTOM_MARGIN_RATIO := 6.0 / 720.0
+const NOTE_GUIDED_HEIGHT_RATIO := 0.39
+const NOTE_UNGUIDED_HEIGHT_RATIO := 0.30
 const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.0, 0.1419), Vector2(0.1419, 0.2724), Vector2(0.2724, 0.4010), Vector2(0.4010, 0.6629), Vector2(0.6629, 1.0)]
 const FILLED_TRAY_TEXTURE_ASPECT_RATIO := 1050.0 / 176.0
 
@@ -58,8 +59,8 @@ var _due_label: Label
 var _list_change_row: HBoxContainer
 var _list_rule: HSeparator
 var _list_rows: VBoxContainer
-var _list_top_spacer: Control
-var _list_bottom_spacer: Control
+var _list_spacers: Array[Control] = []
+var _note_paper: NinePatchRect
 var _counter_total_label: Label
 var _counter_flow: HFlowContainer
 var _progress_bar: TextureProgressBar
@@ -102,9 +103,9 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_due_label.visible = _guide_enabled
 	_list_change_row.visible = _guide_enabled
 	_list_rule.visible = _guide_enabled
-	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_list_top_spacer.visible = not _guide_enabled
-	_list_bottom_spacer.visible = true
+	_note_paper.size.y = _drawer_size.y * (NOTE_GUIDED_HEIGHT_RATIO if _guide_enabled else NOTE_UNGUIDED_HEIGHT_RATIO)
+	for index in _list_spacers.size():
+		_list_spacers[index].visible = _guide_enabled or index < 2
 	_progress_bar.visible = _guide_enabled
 	_helper_label.visible = _guide_enabled
 	_refresh_pile_total()
@@ -151,47 +152,40 @@ func _build_drawer() -> void:
 	_build_counter_tray(canvas)
 	_build_drawer_slots(canvas)
 	_build_actions(canvas)
-	_build_close_button(canvas)
 
 
 func _build_listahan_note(canvas: Control) -> void:
-	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
-	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
-	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.902)
-	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(note)
+	_note_paper = _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
+	_note_paper.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
+	_note_paper.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * NOTE_GUIDED_HEIGHT_RATIO)
+	_note_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(_note_paper)
 	var content := MarginContainer.new()
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
-	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
-	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
-	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
+	content.add_theme_constant_override("margin_left", int(_unit * 21.0))
+	content.add_theme_constant_override("margin_right", int(_unit * 21.0))
+	content.add_theme_constant_override("margin_top", int(_unit * 18.0))
 	content.add_theme_constant_override("margin_bottom", int(_unit * 18.0))
-	note.add_child(content)
+	_note_paper.add_child(content)
 	_list_rows = VBoxContainer.new()
-	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_list_rows.add_theme_constant_override("separation", int(_unit * 5.0))
+	_list_rows.add_theme_constant_override("separation", 0)
 	content.add_child(_list_rows)
 	var title_holder := CenterContainer.new()
 	title_holder.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	var tag := _wood_tag("LISTAHAN", "ListahanTag", int(21.0 * _unit), GOLD, INK)
-	tag.custom_minimum_size = Vector2(note.size.x * 0.63, _unit * 24.0)
+	tag.custom_minimum_size = Vector2(_note_paper.size.x * 0.63, _unit * 24.0)
 	title_holder.add_child(tag)
 	_list_rows.add_child(title_holder)
-	_list_top_spacer = Control.new()
-	_list_top_spacer.name = "ListahanTopSpacer"
-	_list_top_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_list_top_spacer.visible = false
-	_list_rows.add_child(_list_top_spacer)
+	_list_rows.add_child(_list_spacer())
 	_bayad_label = _money_row(_list_rows, "BAYAD", "ListahanBayadValue", int(24.0 * _unit), INK)
+	_list_rows.add_child(_list_spacer())
 	_total_label = _money_row(_list_rows, "BILI", "ListahanBiliValue", int(24.0 * _unit), INK)
-	_list_bottom_spacer = Control.new()
-	_list_bottom_spacer.name = "ListahanBottomSpacer"
-	_list_bottom_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_list_rows.add_child(_list_bottom_spacer)
+	_list_rows.add_child(_list_spacer())
 	_list_rule = HSeparator.new()
 	_list_rule.custom_minimum_size = Vector2(0.0, _unit * 4.0)
 	_list_rule.add_theme_stylebox_override("separator", _dashed_rule())
 	_list_rows.add_child(_list_rule)
+	_list_rows.add_child(_list_spacer())
 	_list_change_row = HBoxContainer.new()
 	_list_change_row.custom_minimum_size = Vector2(0.0, _unit * 36.0)
 	var change_label := _label("SUKLI", int(21.0 * _unit), INK)
@@ -207,6 +201,13 @@ func _build_listahan_note(canvas: Control) -> void:
 	_list_rows.add_child(_list_change_row)
 
 
+func _list_spacer() -> Control:
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list_spacers.append(spacer)
+	return spacer
+
+
 func _build_counter_tray(canvas: Control) -> void:
 	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 10, 10)
 	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.055)
@@ -217,11 +218,11 @@ func _build_counter_tray(canvas: Control) -> void:
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
 	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
-	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
-	content.add_theme_constant_override("margin_bottom", int(_unit * 10.0))
+	content.add_theme_constant_override("margin_top", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_bottom", int(_unit * 15.0))
 	tray.add_child(content)
 	var rows := VBoxContainer.new()
-	rows.add_theme_constant_override("separation", int(_unit * 5.0))
+	rows.add_theme_constant_override("separation", int(_unit * 6.0))
 	content.add_child(rows)
 	var headline := HBoxContainer.new()
 	headline.custom_minimum_size = Vector2(0.0, _unit * 24.0)
@@ -234,21 +235,28 @@ func _build_counter_tray(canvas: Control) -> void:
 	_counter_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_counter_total_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	headline.add_child(_counter_total_label)
+	var progress_slot := Control.new()
+	progress_slot.custom_minimum_size = Vector2(0.0, _unit * 21.0)
+	rows.add_child(progress_slot)
 	_progress_bar = TextureProgressBar.new()
+	_progress_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	_progress_bar.min_value = 0.0
-	_progress_bar.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	_progress_bar.texture_under = PROGRESS_TRACK_TEXTURE
 	_progress_bar.texture_progress = PROGRESS_FILL_TEXTURE
 	_progress_bar.nine_patch_stretch = true
-	rows.add_child(_progress_bar)
+	progress_slot.add_child(_progress_bar)
+	var helper_slot := Control.new()
+	helper_slot.custom_minimum_size = Vector2(0.0, _unit * 18.0)
+	rows.add_child(helper_slot)
 	_helper_label = _label("", int(18.0 * _unit), INK)
 	_helper_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_helper_label.custom_minimum_size = Vector2(0.0, _unit * 18.0)
-	rows.add_child(_helper_label)
+	_helper_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
+	helper_slot.add_child(_helper_label)
 	_counter_flow = HFlowContainer.new()
-	_counter_flow.add_theme_constant_override("h_separation", int(_unit * 8.0))
-	_counter_flow.add_theme_constant_override("v_separation", int(_unit * 6.0))
-	_counter_flow.custom_minimum_size = Vector2(0.0, _unit * 40.0)
+	_counter_flow.name = "CounterChipRow"
+	_counter_flow.add_theme_constant_override("h_separation", int(_unit * 9.0))
+	_counter_flow.add_theme_constant_override("v_separation", 0)
+	_counter_flow.custom_minimum_size = Vector2(0.0, _unit * 36.0)
 	rows.add_child(_counter_flow)
 
 
@@ -329,14 +337,6 @@ func _build_actions(canvas: Control) -> void:
 	canvas.add_child(_msg_label)
 
 
-func _build_close_button(canvas: Control) -> void:
-	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 7, 7)
-	close_button.position = Vector2(_drawer_size.x * 0.94, _drawer_size.y * 0.055)
-	close_button.size = Vector2(_unit * 51.0, _unit * 51.0)
-	close_button.pressed.connect(close)
-	canvas.add_child(close_button)
-
-
 func _drawer_slot(value: int, slot_width: float) -> Button:
 	var button := _button("", int(16.0 * _unit), Color.TRANSPARENT)
 	button.custom_minimum_size = Vector2(maxf(_unit * 90.0, slot_width - _unit * 3.0), _drawer_size.y * 0.32)
@@ -391,10 +391,13 @@ func _refresh_pile_total() -> void:
 		_progress_bar.max_value = maxf(1.0, float(_change_due))
 		_progress_bar.value = minf(float(total), float(_change_due))
 		if total < _change_due:
+			_progress_bar.tint_progress = Color.WHITE
 			_helper_label.text = "Kulang pa %s" % _money_text(_change_due - total)
 		elif total == _change_due:
+			_progress_bar.tint_progress = GREEN
 			_helper_label.text = "Eksakto!"
 		else:
+			_progress_bar.tint_progress = RED
 			_helper_label.text = "Sobra ng %s" % _money_text(total - _change_due)
 	else:
 		_counter_total_label.text = _money_text(total)
@@ -405,16 +408,17 @@ func _refresh_pile_total() -> void:
 
 func _counter_piece(value: int, count: int) -> Button:
 	var piece := _button("", int(16.0 * _unit), PAPER)
-	piece.custom_minimum_size = Vector2(_drawer_size.x * 0.060, _drawer_size.y * 0.116)
+	piece.custom_minimum_size = Vector2(_drawer_size.x * 0.052, _unit * 36.0)
 	piece.add_theme_stylebox_override("normal", _box(PAPER, INK, _unit * 4.0, _unit * 2.0, 4))
 	var icon := _money_texture_rect(_money_texture(value), "CounterMoney%d" % value)
-	icon.position = Vector2(_unit * 6.0, _unit * 6.0)
-	icon.size = Vector2(piece.custom_minimum_size.x * 0.52, piece.custom_minimum_size.y - _unit * 12.0)
+	icon.position = Vector2(_unit * 4.0, _unit * 4.5)
+	icon.size = Vector2(_unit * 27.0, _unit * 27.0)
 	piece.add_child(icon)
 	var badge := _label("x%d" % count, int(21.0 * _unit), INK)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.position = Vector2(piece.custom_minimum_size.x * 0.48, _unit * 8.0)
-	badge.size = Vector2(piece.custom_minimum_size.x * 0.45, _unit * 30.0)
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	badge.position = Vector2(piece.custom_minimum_size.x * 0.50, _unit * 3.0)
+	badge.size = Vector2(piece.custom_minimum_size.x * 0.46, _unit * 30.0)
 	piece.add_child(badge)
 	piece.pressed.connect(_remove_one_of.bind(value))
 	return piece
