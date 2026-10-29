@@ -28,6 +28,7 @@ func _initialize() -> void:
 	await _test_cash_tray_matches_the_wide_reference_panel()
 	await _test_cash_tray_uses_the_money_tray_texture()
 	await _test_cash_tray_keeps_counter_chips_inside_the_paper()
+	await _test_cash_tray_uses_one_even_content_box()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
@@ -123,6 +124,31 @@ func _test_cash_tray_keeps_counter_chips_inside_the_paper() -> void:
 	tray.open_for(customer, false)
 	await process_frame
 	_assert(note != null and paper != null and note.size.y < paper.size.y, "guide-off Listahan compacts without an empty band")
+	tray.queue_free()
+
+
+func _test_cash_tray_uses_one_even_content_box() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("padding-test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var drawer_size := tray.get("_drawer_size") as Vector2
+	var content_origin := Vector2(42.0, 42.0)
+	var content_size := drawer_size - Vector2(84.0, 84.0)
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var counter := tray.find_child("CounterPanelArt", true, false) as NinePatchRect
+	var actions := tray.find_child("SukliActions", true, false) as VBoxContainer
+	var money_tray := tray.find_child("MoneyTrayArt", true, false) as TextureRect
+	_assert(note != null and is_equal_approx(note.position.x, content_origin.x), "Listahan begins at the shared content-box left edge")
+	_assert(counter != null and is_equal_approx(counter.position.y, content_origin.y), "counter paper begins at the shared content-box top edge")
+	_assert(actions != null and is_equal_approx(actions.position.x + actions.size.x, content_origin.x + content_size.x), "buttons end at the shared content-box right edge")
+	_assert(money_tray != null and is_equal_approx(money_tray.position.y + money_tray.size.y, content_origin.y + content_size.y), "money tray ends at the shared content-box bottom edge")
+	if money_tray != null:
+		_assert(money_tray.size.x * 0.1419 >= 120.0, "the narrowest money-tray tap area stays at least 80px wide at 1280x720")
+		_assert(money_tray.size.y >= 84.0, "money-tray tap areas stay at least 56px tall at 1280x720")
 	tray.queue_free()
 
 func _test_storefront_defines_core_shift_pacing() -> void:

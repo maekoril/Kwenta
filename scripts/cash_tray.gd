@@ -38,7 +38,11 @@ const CORNER := 12
 const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
 const SUKLI_PANEL_HEIGHT_RATIO := 280.0 / 720.0
 const SUKLI_PANEL_BOTTOM_MARGIN_RATIO := 6.0 / 720.0
-const NOTE_GUIDED_HEIGHT_RATIO := 0.39
+const PANEL_RIM_THICKNESS := 18.0
+const CONTENT_PADDING := 24.0
+const CONTENT_GAP := 21.0
+const TRAY_VERTICAL_GAP := 21.0
+const TRAY_SCALE := 0.95
 const NOTE_UNGUIDED_HEIGHT_RATIO := 0.30
 const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.0, 0.1419), Vector2(0.1419, 0.2724), Vector2(0.2724, 0.4010), Vector2(0.4010, 0.6629), Vector2(0.6629, 1.0)]
 const FILLED_TRAY_TEXTURE_ASPECT_RATIO := 1050.0 / 176.0
@@ -52,6 +56,9 @@ var _font: Font
 var _panel: PanelContainer
 var _drawer_position := Vector2.ZERO
 var _drawer_size := Vector2.ZERO
+var _content_box := Rect2()
+var _top_row_height := 0.0
+var _tray_display_size := Vector2.ZERO
 var _unit := 1.0
 var _bayad_label: Label
 var _total_label: Label
@@ -79,6 +86,7 @@ func _ready() -> void:
 	_unit = StorefrontLayout.VIEWPORT_SIZE.y / 1080.0
 	_drawer_size = Vector2(StorefrontLayout.VIEWPORT_SIZE.x * SUKLI_PANEL_WIDTH_RATIO, StorefrontLayout.VIEWPORT_SIZE.y * SUKLI_PANEL_HEIGHT_RATIO)
 	_drawer_position = Vector2((StorefrontLayout.VIEWPORT_SIZE.x - _drawer_size.x) * 0.5, StorefrontLayout.VIEWPORT_SIZE.y - _drawer_size.y - StorefrontLayout.VIEWPORT_SIZE.y * SUKLI_PANEL_BOTTOM_MARGIN_RATIO)
+	_configure_content_box()
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = _drawer_size
 	_panel.size = _drawer_size
@@ -103,7 +111,7 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_due_label.visible = _guide_enabled
 	_list_change_row.visible = _guide_enabled
 	_list_rule.visible = _guide_enabled
-	_note_paper.size.y = _drawer_size.y * (NOTE_GUIDED_HEIGHT_RATIO if _guide_enabled else NOTE_UNGUIDED_HEIGHT_RATIO)
+	_note_paper.size.y = _top_row_height if _guide_enabled else _drawer_size.y * NOTE_UNGUIDED_HEIGHT_RATIO
 	for index in _list_spacers.size():
 		_list_spacers[index].visible = _guide_enabled or index < 2
 	_progress_bar.visible = _guide_enabled
@@ -154,10 +162,19 @@ func _build_drawer() -> void:
 	_build_actions(canvas)
 
 
+func _configure_content_box() -> void:
+	var inner_origin := Vector2(PANEL_RIM_THICKNESS, PANEL_RIM_THICKNESS)
+	var inner_size := _drawer_size - Vector2(PANEL_RIM_THICKNESS * 2.0, PANEL_RIM_THICKNESS * 2.0)
+	_content_box = Rect2(inner_origin + Vector2(CONTENT_PADDING, CONTENT_PADDING), inner_size - Vector2(CONTENT_PADDING * 2.0, CONTENT_PADDING * 2.0))
+	var tray_width := _drawer_size.x * 0.70 * TRAY_SCALE
+	_tray_display_size = Vector2(tray_width, tray_width / FILLED_TRAY_TEXTURE_ASPECT_RATIO)
+	_top_row_height = _content_box.size.y - _tray_display_size.y - TRAY_VERTICAL_GAP
+
+
 func _build_listahan_note(canvas: Control) -> void:
 	_note_paper = _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
-	_note_paper.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
-	_note_paper.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * NOTE_GUIDED_HEIGHT_RATIO)
+	_note_paper.position = _content_box.position
+	_note_paper.size = Vector2(_drawer_size.x * 0.215, _top_row_height)
 	_note_paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(_note_paper)
 	var content := MarginContainer.new()
@@ -210,8 +227,10 @@ func _list_spacer() -> Control:
 
 func _build_counter_tray(canvas: Control) -> void:
 	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 10, 10)
-	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.055)
-	tray.size = Vector2(_drawer_size.x * 0.45, _drawer_size.y * 0.39)
+	var note_width := _note_paper.size.x
+	var actions_width := _drawer_size.x * 0.16
+	tray.position = Vector2(_content_box.position.x + note_width + CONTENT_GAP, _content_box.position.y)
+	tray.size = Vector2(_content_box.end.x - actions_width - CONTENT_GAP - tray.position.x, _top_row_height)
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(tray)
 	var content := MarginContainer.new()
@@ -262,12 +281,8 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(FILLED_MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	var tray_width := _drawer_size.x * 0.70
-	var tray_height := tray_width / FILLED_TRAY_TEXTURE_ASPECT_RATIO
-	# Keep the fixed-ratio art clear of the full-height Listahan note while
-	# retaining its visual center beneath the counter and action columns.
-	drawer.position = Vector2(_drawer_size.x * 0.255, _drawer_size.y * 0.48)
-	drawer.size = Vector2(tray_width, tray_height)
+	drawer.position = _content_box.end - _tray_display_size
+	drawer.size = _tray_display_size
 	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
 	var group_tags := Control.new()
@@ -281,16 +296,16 @@ func _build_drawer_slots(canvas: Control) -> void:
 	coin_tag.anchor_bottom = 0.0
 	coin_tag.offset_left = 0.0
 	coin_tag.offset_right = 0.0
-	coin_tag.offset_top = -_unit * 22.0
-	coin_tag.offset_bottom = -_unit * 2.0
+	coin_tag.offset_top = -TRAY_VERTICAL_GAP + _unit * 0.5
+	coin_tag.offset_bottom = -_unit * 0.5
 	group_tags.add_child(coin_tag)
 	var bill_tag := _wood_tag("PERA", "PeraTag", int(20.0 * _unit), WOOD, PAPER)
 	bill_tag.anchor_left = 0.65
 	bill_tag.anchor_right = 0.77
 	bill_tag.anchor_top = 0.0
 	bill_tag.anchor_bottom = 0.0
-	bill_tag.offset_top = -_unit * 22.0
-	bill_tag.offset_bottom = -_unit * 2.0
+	bill_tag.offset_top = -TRAY_VERTICAL_GAP + _unit * 0.5
+	bill_tag.offset_bottom = -_unit * 0.5
 	group_tags.add_child(bill_tag)
 	var slots := Control.new()
 	slots.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
@@ -305,7 +320,7 @@ func _build_drawer_slots(canvas: Control) -> void:
 	for index in SukliRules.DENOMINATIONS.size():
 		var value: int = SukliRules.DENOMINATIONS[index]
 		var bounds: Vector2 = TRAY_COMPARTMENT_BOUNDS[index]
-		var slot := _drawer_slot(value, _drawer_size.x * (bounds.y - bounds.x))
+		var slot := _drawer_slot(value, drawer.size.x * (bounds.y - bounds.x))
 		slot.anchor_left = bounds.x
 		slot.anchor_right = bounds.y
 		slot.anchor_top = 0.0
@@ -316,7 +331,8 @@ func _build_drawer_slots(canvas: Control) -> void:
 
 func _build_actions(canvas: Control) -> void:
 	var actions := VBoxContainer.new()
-	actions.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.055)
+	actions.name = "SukliActions"
+	actions.position = Vector2(_content_box.end.x - _drawer_size.x * 0.16, _content_box.position.y)
 	actions.size = Vector2(_drawer_size.x * 0.16, _drawer_size.y * 0.35)
 	actions.add_theme_constant_override("separation", int(_unit * 4.0))
 	canvas.add_child(actions)
@@ -332,14 +348,14 @@ func _build_actions(canvas: Control) -> void:
 	_msg_label = _label("", int(18.0 * _unit), PAPER)
 	_msg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_msg_label.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.397)
-	_msg_label.size = Vector2(_drawer_size.x * 0.16, _drawer_size.y * 0.03)
+	_msg_label.position = actions.position + Vector2(_unit * 3.0, actions.size.y + _unit * 4.0)
+	_msg_label.size = Vector2(actions.size.x - _unit * 3.0, _drawer_size.y * 0.03)
 	canvas.add_child(_msg_label)
 
 
 func _drawer_slot(value: int, slot_width: float) -> Button:
 	var button := _button("", int(16.0 * _unit), Color.TRANSPARENT)
-	button.custom_minimum_size = Vector2(maxf(_unit * 90.0, slot_width - _unit * 3.0), _drawer_size.y * 0.32)
+	button.custom_minimum_size = Vector2(slot_width, _drawer_size.y * 0.32)
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
