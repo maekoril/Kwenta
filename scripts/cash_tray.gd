@@ -18,7 +18,7 @@ const RED := Color("#c0392b")
 const FONT_PATH := "res://assets/fonts/PixelifySans-Regular.ttf"
 const PESO := "₱"
 const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/walnut_panel_background.png")
-const MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_tray.png")
+const FILLED_MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_tray_filled.png")
 const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/listahan_note.png")
 const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/counter_paper.png")
 const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
@@ -39,10 +39,8 @@ const CORNER := 12
 const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
 const SUKLI_PANEL_HEIGHT_RATIO := 280.0 / 720.0
 const SUKLI_PANEL_BOTTOM_MARGIN_RATIO := 6.0 / 720.0
-const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.02, 0.138), Vector2(0.148, 0.270), Vector2(0.280, 0.402), Vector2(0.414, 0.658), Vector2(0.672, 0.972)]
-const TRAY_FLOOR_TOP_RATIO := 0.24
-const TRAY_FLOOR_BOTTOM_RATIO := 0.81
-const TRAY_TEXTURE_ASPECT_RATIO := 1020.0 / 166.0
+const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.0, 0.1419), Vector2(0.1419, 0.2724), Vector2(0.2724, 0.4010), Vector2(0.4010, 0.6629), Vector2(0.6629, 1.0)]
+const FILLED_TRAY_TEXTURE_ASPECT_RATIO := 1050.0 / 176.0
 
 var customer_id: String = ""
 var _pile: Array[int] = []
@@ -159,7 +157,7 @@ func _build_drawer() -> void:
 func _build_listahan_note(canvas: Control) -> void:
 	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
 	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
-	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.39)
+	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.902)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(note)
 	var content := MarginContainer.new()
@@ -167,7 +165,7 @@ func _build_listahan_note(canvas: Control) -> void:
 	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
 	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
 	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
-	content.add_theme_constant_override("margin_bottom", int(_unit * 10.0))
+	content.add_theme_constant_override("margin_bottom", int(_unit * 18.0))
 	note.add_child(content)
 	_list_rows = VBoxContainer.new()
 	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -255,10 +253,12 @@ func _build_counter_tray(canvas: Control) -> void:
 
 
 func _build_drawer_slots(canvas: Control) -> void:
-	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	var tray_width := _drawer_size.x * 0.698
-	var tray_height := tray_width / TRAY_TEXTURE_ASPECT_RATIO
-	drawer.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.48)
+	var drawer := _texture_rect(FILLED_MONEY_TRAY_TEXTURE, "MoneyTrayArt")
+	var tray_width := _drawer_size.x * 0.70
+	var tray_height := tray_width / FILLED_TRAY_TEXTURE_ASPECT_RATIO
+	# Keep the fixed-ratio art clear of the full-height Listahan note while
+	# retaining its visual center beneath the counter and action columns.
+	drawer.position = Vector2(_drawer_size.x * 0.255, _drawer_size.y * 0.48)
 	drawer.size = Vector2(tray_width, tray_height)
 	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
@@ -270,17 +270,19 @@ func _build_drawer_slots(canvas: Control) -> void:
 	coin_tag.anchor_left = 0.15
 	coin_tag.anchor_right = 0.27
 	coin_tag.anchor_top = 0.0
-	coin_tag.anchor_bottom = 0.16
+	coin_tag.anchor_bottom = 0.0
 	coin_tag.offset_left = 0.0
 	coin_tag.offset_right = 0.0
-	coin_tag.offset_top = 0.0
-	coin_tag.offset_bottom = 0.0
+	coin_tag.offset_top = -_unit * 22.0
+	coin_tag.offset_bottom = -_unit * 2.0
 	group_tags.add_child(coin_tag)
 	var bill_tag := _wood_tag("PERA", "PeraTag", int(20.0 * _unit), WOOD, PAPER)
 	bill_tag.anchor_left = 0.65
 	bill_tag.anchor_right = 0.77
 	bill_tag.anchor_top = 0.0
-	bill_tag.anchor_bottom = 0.16
+	bill_tag.anchor_bottom = 0.0
+	bill_tag.offset_top = -_unit * 22.0
+	bill_tag.offset_bottom = -_unit * 2.0
 	group_tags.add_child(bill_tag)
 	var slots := Control.new()
 	slots.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
@@ -298,17 +300,10 @@ func _build_drawer_slots(canvas: Control) -> void:
 		var slot := _drawer_slot(value, _drawer_size.x * (bounds.y - bounds.x))
 		slot.anchor_left = bounds.x
 		slot.anchor_right = bounds.y
-		slot.anchor_top = TRAY_FLOOR_TOP_RATIO
-		slot.anchor_bottom = TRAY_FLOOR_BOTTOM_RATIO
+		slot.anchor_top = 0.0
+		slot.anchor_bottom = 1.0
 		slot.pressed.connect(_on_denomination_tapped.bind(value, slot))
 		slots.add_child(slot)
-	var front_lip := _texture_rect(_tray_front_lip_texture(), "MoneyTrayFrontLip")
-	front_lip.anchor_top = TRAY_FLOOR_BOTTOM_RATIO
-	front_lip.anchor_bottom = 1.0
-	front_lip.anchor_left = 0.0
-	front_lip.anchor_right = 1.0
-	front_lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	drawer.add_child(front_lip)
 
 
 func _build_actions(canvas: Control) -> void:
@@ -348,24 +343,21 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	var icon := _money_texture_rect(_money_texture(value), "Money%d" % value)
-	icon.anchor_left = 0.125
-	icon.anchor_top = 0.375
-	icon.anchor_right = 0.875
-	icon.anchor_bottom = 1.075
-	var money_caption := _label(_money_text(value), int(21.0 * _unit), INK)
-	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	money_caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
-	icon.add_child(money_caption)
-	button.add_child(icon)
+	var feedback := ColorRect.new()
+	feedback.name = "TapFeedback"
+	feedback.color = Color(1.0, 0.87, 0.35, 0.0)
+	feedback.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
+	feedback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(feedback)
 	return button
 
 
 func _on_denomination_tapped(value: int, slot: Button) -> void:
-	slot.pivot_offset = slot.size * 0.5
-	slot.scale = Vector2(0.92, 0.92)
-	create_tween().tween_property(slot, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var feedback := slot.get_node_or_null("TapFeedback") as ColorRect
+	if feedback:
+		var feedback_tween := create_tween()
+		feedback_tween.tween_property(feedback, "color:a", 0.18, 0.04)
+		feedback_tween.tween_property(feedback, "color:a", 0.0, 0.04)
 	_pile.append(value)
 	_refresh_pile_total()
 
@@ -533,13 +525,6 @@ func _art_patch(texture: Texture2D, node_name: String, margin_x: int, margin_y: 
 
 func _money_texture(value: int) -> Texture2D:
 	return MONEY_TEXTURES.get(value) as Texture2D
-
-
-func _tray_front_lip_texture() -> AtlasTexture:
-	var front_lip := AtlasTexture.new()
-	front_lip.atlas = MONEY_TRAY_TEXTURE
-	front_lip.region = Rect2(0.0, MONEY_TRAY_TEXTURE.get_height() * TRAY_FLOOR_BOTTOM_RATIO, MONEY_TRAY_TEXTURE.get_width(), MONEY_TRAY_TEXTURE.get_height() * (1.0 - TRAY_FLOOR_BOTTOM_RATIO))
-	return front_lip
 
 
 func _money_texture_rect(texture: Texture2D, node_name: String) -> TextureRect:
