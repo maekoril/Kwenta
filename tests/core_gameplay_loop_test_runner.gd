@@ -75,8 +75,8 @@ func _test_cash_tray_matches_the_tall_reference_panel() -> void:
 	var tray := CashTrayScript.new() as Control
 	root.add_child(tray)
 	await process_frame
-	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * (230.0 / 720.0)
-	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the compact bottom-docked panel height")
+	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * (280.0 / 720.0)
+	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the taller compact panel height")
 	tray.queue_free()
 
 

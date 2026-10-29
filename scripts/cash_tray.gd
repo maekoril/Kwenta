@@ -37,8 +37,12 @@ const MONEY_TEXTURES := {
 const BORDER_W := 6
 const CORNER := 12
 const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
-const SUKLI_PANEL_HEIGHT_RATIO := 230.0 / 720.0
+const SUKLI_PANEL_HEIGHT_RATIO := 280.0 / 720.0
+const SUKLI_PANEL_BOTTOM_MARGIN_RATIO := 6.0 / 720.0
 const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.02, 0.138), Vector2(0.148, 0.270), Vector2(0.280, 0.402), Vector2(0.414, 0.658), Vector2(0.672, 0.972)]
+const TRAY_FLOOR_TOP_RATIO := 0.24
+const TRAY_FLOOR_BOTTOM_RATIO := 0.81
+const TRAY_TEXTURE_ASPECT_RATIO := 1020.0 / 166.0
 
 var customer_id: String = ""
 var _pile: Array[int] = []
@@ -75,7 +79,7 @@ func _ready() -> void:
 		_font = load(FONT_PATH)
 	_unit = StorefrontLayout.VIEWPORT_SIZE.y / 1080.0
 	_drawer_size = Vector2(StorefrontLayout.VIEWPORT_SIZE.x * SUKLI_PANEL_WIDTH_RATIO, StorefrontLayout.VIEWPORT_SIZE.y * SUKLI_PANEL_HEIGHT_RATIO)
-	_drawer_position = Vector2((StorefrontLayout.VIEWPORT_SIZE.x - _drawer_size.x) * 0.5, StorefrontLayout.VIEWPORT_SIZE.y - _drawer_size.y)
+	_drawer_position = Vector2((StorefrontLayout.VIEWPORT_SIZE.x - _drawer_size.x) * 0.5, StorefrontLayout.VIEWPORT_SIZE.y - _drawer_size.y - StorefrontLayout.VIEWPORT_SIZE.y * SUKLI_PANEL_BOTTOM_MARGIN_RATIO)
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = _drawer_size
 	_panel.size = _drawer_size
@@ -155,7 +159,7 @@ func _build_drawer() -> void:
 func _build_listahan_note(canvas: Control) -> void:
 	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
 	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
-	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.893)
+	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.39)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(note)
 	var content := MarginContainer.new()
@@ -252,8 +256,10 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	drawer.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.46)
-	drawer.size = Vector2(_drawer_size.x * 0.678, _drawer_size.y * 0.48)
+	var tray_width := _drawer_size.x * 0.71
+	var tray_height := tray_width / TRAY_TEXTURE_ASPECT_RATIO
+	drawer.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.48)
+	drawer.size = Vector2(tray_width, tray_height)
 	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
 	var group_tags := Control.new()
@@ -292,10 +298,17 @@ func _build_drawer_slots(canvas: Control) -> void:
 		var slot := _drawer_slot(value, _drawer_size.x * (bounds.y - bounds.x))
 		slot.anchor_left = bounds.x
 		slot.anchor_right = bounds.y
-		slot.anchor_top = 0.20
-		slot.anchor_bottom = 0.94
+		slot.anchor_top = TRAY_FLOOR_TOP_RATIO
+		slot.anchor_bottom = TRAY_FLOOR_BOTTOM_RATIO
 		slot.pressed.connect(_on_denomination_tapped.bind(value, slot))
 		slots.add_child(slot)
+	var front_lip := _texture_rect(_tray_front_lip_texture(), "MoneyTrayFrontLip")
+	front_lip.anchor_top = TRAY_FLOOR_BOTTOM_RATIO
+	front_lip.anchor_bottom = 1.0
+	front_lip.anchor_left = 0.0
+	front_lip.anchor_right = 1.0
+	front_lip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drawer.add_child(front_lip)
 
 
 func _build_actions(canvas: Control) -> void:
@@ -336,10 +349,10 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	var icon := _money_texture_rect(_money_texture(value), "Money%d" % value)
-	icon.anchor_left = 0.10
-	icon.anchor_top = 0.08
-	icon.anchor_right = 0.90
-	icon.anchor_bottom = 0.92
+	icon.anchor_left = 0.125
+	icon.anchor_top = 0.375
+	icon.anchor_right = 0.875
+	icon.anchor_bottom = 1.075
 	var money_caption := _label(_money_text(value), int(21.0 * _unit), INK)
 	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -520,6 +533,13 @@ func _art_patch(texture: Texture2D, node_name: String, margin_x: int, margin_y: 
 
 func _money_texture(value: int) -> Texture2D:
 	return MONEY_TEXTURES.get(value) as Texture2D
+
+
+func _tray_front_lip_texture() -> AtlasTexture:
+	var front_lip := AtlasTexture.new()
+	front_lip.atlas = MONEY_TRAY_TEXTURE
+	front_lip.region = Rect2(0.0, MONEY_TRAY_TEXTURE.get_height() * TRAY_FLOOR_BOTTOM_RATIO, MONEY_TRAY_TEXTURE.get_width(), MONEY_TRAY_TEXTURE.get_height() * (1.0 - TRAY_FLOOR_BOTTOM_RATIO))
+	return front_lip
 
 
 func _money_texture_rect(texture: Texture2D, node_name: String) -> TextureRect:
