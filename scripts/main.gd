@@ -295,8 +295,6 @@ func trigger_day_six_brownout() -> void:
 	if brownout_texture == null:
 		return
 	day_six_brownout_triggered = true
-	if audio != null:
-		audio.set_music(music_for_brownout())
 	_play_brownout_flicker()
 	store_layer_renderer.start_environment_crossfade(brownout_texture, 1.5)
 	brownout_crossfade_tween = create_tween()
@@ -654,11 +652,8 @@ func music_for_environment_day(day: int) -> String:
 	if day == 4:
 		return "rain"
 	if day == 6:
-		return "fiesta"
+		return "intense"
 	return "normal"
-
-func music_for_brownout() -> String:
-	return "intense"
 
 func _play_audio_cues(cue_names: Array[String]) -> void:
 	if audio == null:

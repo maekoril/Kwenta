@@ -27,7 +27,6 @@ const DEFAULT_CUE_PATHS := {
 const DEFAULT_MUSIC_PATHS := {
 	"normal": "res://assets/audio/pixabay/music/normal_store_days.mp3",
 	"rain": "res://assets/audio/pixabay/music/rainy_day.mp3",
-	"fiesta": "res://assets/audio/pixabay/music/fiesta_day.mp3",
 	"intense": "res://assets/audio/pixabay/music/intense_music.mp3",
 }
 

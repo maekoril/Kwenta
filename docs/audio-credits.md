@@ -12,8 +12,7 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | Dialogue start cue | `assets/audio/pixabay/sfx/convo.mp3` |
 | Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
 | Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
-| Fiesta-day music | `assets/audio/pixabay/music/fiesta_day.mp3` |
-| Day 6 brownout music | `assets/audio/pixabay/music/intense_music.mp3` |
+| Day 6 fiesta music, continuing through the brownout | `assets/audio/pixabay/music/intense_music.mp3` |
 | Fiesta background bed | `assets/audio/pixabay/ambience/fiesta_day_bg.mp3` |
 
 Downloaded 2026-10-27. Before release, add the exact Pixabay download-page URL, creator, and license record for each file above. The older OpenGameArt files remain in the repository only as inactive fallback assets; no active cue maps to them.

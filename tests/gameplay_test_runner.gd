@@ -328,8 +328,7 @@ func _test_audio_cue_routing_matches_gameplay_results() -> void:
 	_assert(main.has_method("audio_cues_for_payment"), "main maps completed payment results to semantic audio cues")
 	_assert(main.has_method("ambience_for_environment_day"), "main maps story days to one ambience cue")
 	_assert(main.has_method("music_for_environment_day"), "main maps story days to one background track")
-	_assert(main.has_method("music_for_brownout"), "main maps the Day 6 brownout to its rush track")
-	if not main.has_method("audio_cues_for_delivery") or not main.has_method("audio_cues_for_payment") or not main.has_method("ambience_for_environment_day") or not main.has_method("music_for_environment_day") or not main.has_method("music_for_brownout"):
+	if not main.has_method("audio_cues_for_delivery") or not main.has_method("audio_cues_for_payment") or not main.has_method("ambience_for_environment_day") or not main.has_method("music_for_environment_day"):
 		main.free()
 		return
 	_assert(main.call("audio_cues_for_delivery", OrderStateScript.DeliveryResult.WRONG_PRODUCT, false) == ["reject"], "wrong delivery routes to rejection audio")
@@ -343,8 +342,8 @@ func _test_audio_cue_routing_matches_gameplay_results() -> void:
 	_assert(str(main.call("ambience_for_environment_day", 1)).is_empty(), "ordinary days do not start an ambience loop")
 	_assert(main.call("music_for_environment_day", 1) == "normal", "ordinary days use the normal store music")
 	_assert(main.call("music_for_environment_day", 4) == "rain", "rain day uses rain music")
-	_assert(main.call("music_for_environment_day", 6) == "fiesta", "fiesta day uses fiesta music")
-	_assert(main.call("music_for_brownout") == "intense", "brownout uses the intense rush track")
+	_assert(main.call("music_for_environment_day", 6) == "intense", "Day 6 starts the intense track before the brownout")
+	_assert(not main.has_method("music_for_brownout"), "the brownout has no separate background-music route")
 	main.free()
 
 func _test_two_customers_keep_separate_orders_and_capacity() -> void:

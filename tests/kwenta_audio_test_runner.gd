@@ -159,7 +159,7 @@ func _test_default_cues_resolve() -> void:
 	for cue_name in ["pickup", "correct", "reject", "sale", "timeout", "conversation", "fiesta"]:
 		_assert(audio.has_cue(cue_name), "default cue resolves: %s" % cue_name)
 	audio.register_default_music()
-	for track_name in ["normal", "rain", "fiesta", "intense"]:
+	for track_name in ["normal", "rain", "intense"]:
 		_assert(audio.has_music(track_name), "default music resolves: %s" % track_name)
 	audio.free()
 
