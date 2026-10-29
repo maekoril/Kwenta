@@ -2,6 +2,7 @@ extends SceneTree
 
 const CampaignConfigScript = preload("res://scripts/campaign_config.gd")
 const CampaignStateScript = preload("res://scripts/campaign_state.gd")
+const CashTrayScript = preload("res://scripts/cash_tray.gd")
 const CustomerActorScene = preload("res://scenes/customer_slot.tscn")
 const CustomerStateScript = preload("res://scripts/customer_state.gd")
 const OrderDataScript = preload("res://scripts/order_data.gd")
@@ -22,6 +23,10 @@ var customer_change_count := 0
 
 func _initialize() -> void:
 	_test_sukli_guide_is_limited_to_the_first_two_days()
+	await _test_cash_tray_uses_reference_text_hierarchy()
+	await _test_cash_tray_matches_the_tall_reference_panel()
+	await _test_cash_tray_matches_the_wide_reference_panel()
+	await _test_cash_tray_uses_the_money_tray_texture()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
 	_test_timeout_notifies_the_scene_before_replacement_spawn()
@@ -43,6 +48,56 @@ func _test_sukli_guide_is_limited_to_the_first_two_days() -> void:
 	_assert(SukliRulesScript.sukli_guide_enabled_for_day(2), "the sukli guide is visible on day 2")
 	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(3), "the sukli guide is hidden from day 3")
 	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(7), "the sukli guide remains hidden after day 3")
+
+
+func _test_cash_tray_uses_reference_text_hierarchy() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("test", OrderStateScript.new({"chips": 1}), 25.0, 50.0)
+	customer.begin_payment(23, 50, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var bayad := tray.find_child("ListahanBayadValue", true, false) as Label
+	var bili := tray.find_child("ListahanBiliValue", true, false) as Label
+	var sukli := tray.find_child("ListahanSukliValue", true, false) as Label
+	var counter := tray.find_child("CounterReadout", true, false) as Label
+	_assert(bayad != null and bayad.text == "₱50", "the listahan tender uses the peso sign")
+	_assert(bili != null and bili.text == "₱23", "the listahan purchase uses the peso sign")
+	_assert(sukli != null and sukli.text == "₱27", "the large listahan change value uses the peso sign")
+	_assert(counter != null and counter.text == "₱0 / ₱27", "the counter readout uses the peso sign and target")
+	_assert(tray.find_child("BaryaTag", true, false) != null, "the coin compartments have a BARYA tag")
+	_assert(tray.find_child("PeraTag", true, false) != null, "the bill compartments have a PERA tag")
+	tray.queue_free()
+
+
+func _test_cash_tray_matches_the_tall_reference_panel() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * 0.40
+	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the bottom-docked reference-panel height")
+	tray.queue_free()
+
+
+func _test_cash_tray_matches_the_wide_reference_panel() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var expected_width := StorefrontLayoutScript.VIEWPORT_SIZE.x * 0.96
+	_assert(is_equal_approx(tray.get("_drawer_size").x, expected_width), "the cash tray spans the wide reference-panel width")
+	tray.queue_free()
+
+
+func _test_cash_tray_uses_the_money_tray_texture() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var tray_art := tray.find_child("MoneyTrayArt", true, false) as TextureRect
+	_assert(tray_art != null, "the cash tray builds a dedicated wooden tray texture node")
+	if tray_art != null:
+		_assert(tray_art.texture != null, "the wooden tray node has a texture assigned")
+	tray.queue_free()
 
 func _test_storefront_defines_core_shift_pacing() -> void:
 	var constants := _layout_constants()
