@@ -28,6 +28,7 @@ func _initialize() -> void:
 	await _test_cash_tray_matches_the_wide_reference_panel()
 	await _test_cash_tray_uses_the_money_tray_texture()
 	await _test_cash_tray_keeps_counter_chips_inside_the_paper()
+	await _test_cash_tray_keeps_large_guided_note_inside_its_paper()
 	await _test_cash_tray_uses_one_even_content_box()
 	_test_storefront_defines_core_shift_pacing()
 	_test_shift_caps_window_customers_and_uses_core_patience()
@@ -120,10 +121,31 @@ func _test_cash_tray_keeps_counter_chips_inside_the_paper() -> void:
 		_assert(chips.size.y <= float(tray.get("_unit")) * 36.0, "counter chips stay within the 24px display-height budget")
 		for chip in chips.get_children():
 			_assert(is_equal_approx((chip as Control).position.y, 0.0), "counter chips do not wrap into a second row")
-	_assert(note != null and paper != null and is_equal_approx(note.size.y, paper.size.y), "guided Listahan matches the counter paper height")
+	_assert(note != null and paper != null and note.size.y > paper.size.y and note.size.y <= paper.size.y + 36.0, "guided Listahan grows only within its permitted 24px display allowance")
 	tray.open_for(customer, false)
 	await process_frame
 	_assert(note != null and paper != null and note.size.y < paper.size.y, "guide-off Listahan compacts without an empty band")
+	tray.queue_free()
+
+
+func _test_cash_tray_keeps_large_guided_note_inside_its_paper() -> void:
+	var tray := CashTrayScript.new() as Control
+	root.add_child(tray)
+	await process_frame
+	var customer := CustomerStateScript.new("large-change-test", OrderStateScript.new({"chips": 1}), 25.0, 200.0)
+	customer.begin_payment(52, 200, 12.0)
+	tray.open_for(customer, true)
+	await process_frame
+	var note := tray.find_child("ListahanPaper", true, false) as NinePatchRect
+	var due := tray.find_child("ListahanSukliValue", true, false) as Label
+	var helper_prefix := tray.find_child("CounterHelperPrefix", true, false) as Label
+	var helper_amount := tray.find_child("CounterHelperAmount", true, false) as Label
+	_assert(due != null and due.text == "₱148", "large guided change retains the peso sign")
+	_assert(note != null and due != null and note.get_global_rect().encloses(due.get_global_rect()), "large guided change remains fully inside the Listahan paper")
+	_assert(due != null and due.get_theme_font_size("font_size") >= 30, "Listahan change value remains the largest note hierarchy")
+	_assert(helper_prefix != null and helper_prefix.text == "Kulang pa", "under-target helper keeps its readable prefix")
+	_assert(helper_amount != null and helper_amount.text == "₱148", "under-target helper emphasizes the remaining peso amount")
+	_assert(helper_amount != null and helper_amount.get_theme_font_size("font_size") >= 30, "helper amount keeps the 20px display emphasis")
 	tray.queue_free()
 
 
