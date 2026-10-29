@@ -217,24 +217,33 @@ func _make_order_item(entry: Dictionary) -> Control:
 	var item := Control.new()
 	item.custom_minimum_size = Vector2(ORDER_ICON_CELL_SIZE, ORDER_ICON_CELL_SIZE)
 	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	var product_id: String = str(entry.product_id)
 	var icon: Control = ORDER_BUBBLE_ICON.new()
 	icon.set("icon_texture", COUNTER_ART.product_icon(product_id, PRODUCT_ATLAS))
 	icon.size = Vector2(ORDER_ICON_CELL_SIZE, ORDER_ICON_CELL_SIZE)
 	icon.modulate = Color("a4a4a4") if entry.completed else Color.WHITE
 	item.add_child(icon)
+
 	var quantity := Label.new()
-	quantity.text = "✓" if entry.completed else ("×%d" % int(entry.remaining) if int(entry.requested) > 1 else "")
-	quantity.add_theme_font_size_override("font_size", 18)
-	quantity.add_theme_color_override("font_color", Color("478c45") if entry.completed else Color("493326"))
-	quantity.position = Vector2(27, 27)
-	quantity.size = Vector2(30, 30)
+	quantity.text = "" if entry.completed else "x%d" % int(entry.remaining)
+	
+	# --- MGA IDINAGDAG PARA LUMITAW ANG NUMBER ---
+	quantity.add_theme_font_size_override("font_size", 22)
+	quantity.add_theme_color_override("font_color", Color("478c45") if entry.completed else Color("000000"))
+	quantity.add_theme_color_override("font_outline_color", Color.WHITE)
+	quantity.add_theme_constant_override("outline_size", 6)
+	
+	# --- INILIPAT SA BOTTOM-RIGHT ---
+	quantity.position = Vector2(44, 50)
+	quantity.size = Vector2(40, 30)
 	quantity.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	quantity.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	quantity.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	quantity.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	item.add_child(quantity)
-	return item
 
+	return item
+	
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	var can_accept: bool = customer != null and customer.active and customer.phase == CustomerState.Phase.ORDERING and data is Dictionary and data.has("product_id")
 	if _drop_hovered != can_accept:

@@ -1,5 +1,5 @@
 {
-  "title": "Kwenta: Ang Susi",
+  "title": "Kwenta",
   "prologue": [
 	{"speaker": "Narrator", "portrait": "", "text": "Umaga sa kwarto ni Tonyo. Nasa ilalim ng kama ang school bag niya, halata na may kalahating tapos na cardboard poster na nakausli."},
 	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tonyo. Tumawag ang adviser mo. Hindi ka na naman ba pumasok?"},
@@ -18,7 +18,7 @@
 	  "day": 1,
 	  "title": "Ayoko Na",
 	  "intro": [
-		{"speaker": "Narrator", "portrait": "", "text": "Itinaas ni Tonyo ang shutter habang humihikab. Agad niyang napansin na mayroong mga sulat-kamay na presyo sa estante, ang iba't ibang mga produkto sa loob ng tindahan."},
+		{"speaker": "Narrator", "portrait": "", "text": "Itinaas ni Tonyo ang shutter habang humihikab. Agad niyang napansin na mayroong mga sulat-kamay na presyo sa estante ang iba't ibang mga produkto sa loob ng tindahan."},
 		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Ano ba iyan, imbis na naglalaro na ako sa labas. Hays buhay"},
 		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Pero, isang linggo lang naman... kaya ko 'to. Konting benta lang to, tapos tulog."},
 		{"speaker": "Mang Berting", "portrait": "mang_berting", "text": "Tonyo! Si Cora nasaan?"},
@@ -48,7 +48,7 @@
 	},
 	{
 	  "day": 2,
-	  "title": "Mali ang Sukli",
+	  "title": "Maling Sukli",
 	  "intro": [
 		{"speaker": "Narrator", "portrait": "", "text": "Mas maraming customer ngayon. Nagdikit si Tonyo ng maliliit na arrow sa estante para maalala niyang mag-double-check."},
 		{"speaker": "Aling Nena", "portrait": "aling_nena_haggling", "text": "Tonyo, ₱26 na lang 'yung Giga Sardines. Suki naman ako, 'di ba?"},
