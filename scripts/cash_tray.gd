@@ -17,7 +17,7 @@ const GREEN := Color("#4caa56")
 const RED := Color("#c0392b")
 const FONT_PATH := "res://assets/fonts/PixelifySans-Regular.ttf"
 const PESO := "₱"
-const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/drawer_frame.png")
+const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/walnut_panel_background.png")
 const MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_tray.png")
 const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/listahan_note.png")
 const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/counter_paper.png")
@@ -133,7 +133,7 @@ func _build_drawer() -> void:
 	var canvas := Control.new()
 	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 22, 20)
+	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 24, 24)
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	_panel.add_child(frame)
 	_panel.add_child(canvas)
@@ -234,8 +234,9 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.51)
-	drawer.size = Vector2(_drawer_size.x * 0.755, _drawer_size.y * 0.48)
+	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.50)
+	drawer.size = Vector2(_drawer_size.x * 0.603, _drawer_size.y * 0.42)
+	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
 	var group_tags := Control.new()
 	group_tags.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
