@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://btwdu7xgb1igg"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/feeta_stack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/feeta_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "biscuits"
+display_name = "Feeta"
+price = 8
+shelf_location = "Shelf Row A"
+stacked_texture_key = "biscuits"
+single_unit_texture_key = "biscuits"
+display_scale = 2.5
