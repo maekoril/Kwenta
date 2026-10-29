@@ -54,6 +54,7 @@ var _total_label: Label
 var _due_label: Label
 var _list_change_row: HBoxContainer
 var _list_rule: HSeparator
+var _list_rows: VBoxContainer
 var _counter_total_label: Label
 var _counter_flow: HFlowContainer
 var _progress_bar: TextureProgressBar
@@ -96,6 +97,7 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_due_label.visible = _guide_enabled
 	_list_change_row.visible = _guide_enabled
 	_list_rule.visible = _guide_enabled
+	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN if _guide_enabled else BoxContainer.ALIGNMENT_CENTER
 	_progress_bar.visible = _guide_enabled
 	_helper_label.visible = _guide_enabled
 	_refresh_pile_total()
@@ -147,9 +149,8 @@ func _build_drawer() -> void:
 
 func _build_listahan_note(canvas: Control) -> void:
 	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
-	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.07)
-	note.position.y = _drawer_size.y * 0.04
-	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.39)
+	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.055)
+	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.893)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(note)
 	var content := MarginContainer.new()
@@ -159,22 +160,22 @@ func _build_listahan_note(canvas: Control) -> void:
 	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
 	content.add_theme_constant_override("margin_bottom", int(_unit * 10.0))
 	note.add_child(content)
-	var rows := VBoxContainer.new()
-	rows.alignment = BoxContainer.ALIGNMENT_CENTER
-	rows.add_theme_constant_override("separation", int(_unit * 2.0))
-	content.add_child(rows)
+	_list_rows = VBoxContainer.new()
+	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_list_rows.add_theme_constant_override("separation", int(_unit * 4.0))
+	content.add_child(_list_rows)
 	var title_holder := CenterContainer.new()
 	title_holder.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	var tag := _wood_tag("LISTAHAN", "ListahanTag", int(21.0 * _unit), GOLD, INK)
 	tag.custom_minimum_size = Vector2(note.size.x * 0.63, _unit * 24.0)
 	title_holder.add_child(tag)
-	rows.add_child(title_holder)
-	_bayad_label = _money_row(rows, "BAYAD", "ListahanBayadValue", int(21.0 * _unit), INK)
-	_total_label = _money_row(rows, "BILI", "ListahanBiliValue", int(21.0 * _unit), INK)
+	_list_rows.add_child(title_holder)
+	_bayad_label = _money_row(_list_rows, "BAYAD", "ListahanBayadValue", int(21.0 * _unit), INK)
+	_total_label = _money_row(_list_rows, "BILI", "ListahanBiliValue", int(21.0 * _unit), INK)
 	_list_rule = HSeparator.new()
 	_list_rule.custom_minimum_size = Vector2(0.0, _unit * 4.0)
 	_list_rule.add_theme_stylebox_override("separator", _dashed_rule())
-	rows.add_child(_list_rule)
+	_list_rows.add_child(_list_rule)
 	_list_change_row = HBoxContainer.new()
 	_list_change_row.custom_minimum_size = Vector2(0.0, _unit * 36.0)
 	var change_label := _label("SUKLI", int(21.0 * _unit), INK)
@@ -182,16 +183,17 @@ func _build_listahan_note(canvas: Control) -> void:
 	_list_change_row.add_child(change_label)
 	_due_label = _label("", int(36.0 * _unit), GREEN)
 	_due_label.name = "ListahanSukliValue"
-	_due_label.custom_minimum_size = Vector2(_unit * 76.0, 0.0)
+	_due_label.custom_minimum_size = Vector2(_unit * 90.0, 0.0)
+	_due_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_due_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_due_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_list_change_row.add_child(_due_label)
-	rows.add_child(_list_change_row)
+	_list_rows.add_child(_list_change_row)
 
 
 func _build_counter_tray(canvas: Control) -> void:
 	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 10, 10)
-	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.04)
+	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.055)
 	tray.size = Vector2(_drawer_size.x * 0.45, _drawer_size.y * 0.39)
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(tray)
@@ -236,7 +238,7 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.435)
+	drawer.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.46)
 	drawer.size = Vector2(_drawer_size.x * 0.678, _drawer_size.y * 0.48)
 	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
@@ -278,17 +280,17 @@ func _build_drawer_slots(canvas: Control) -> void:
 
 func _build_actions(canvas: Control) -> void:
 	var actions := VBoxContainer.new()
-	actions.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.04)
+	actions.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.055)
 	actions.size = Vector2(_drawer_size.x * 0.16, _drawer_size.y * 0.35)
-	actions.add_theme_constant_override("separation", int(_unit * 8.0))
+	actions.add_theme_constant_override("separation", int(_unit * 4.0))
 	canvas.add_child(actions)
 	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 9, 9)
-	_give_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.22)
+	_give_button.custom_minimum_size = Vector2(0.0, _unit * 69.0)
 	_give_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_give_button.pressed.connect(_on_give_pressed)
 	actions.add_child(_give_button)
 	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 8, 8)
-	clear_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.10)
+	clear_button.custom_minimum_size = Vector2(0.0, _unit * 66.0)
 	clear_button.pressed.connect(_clear_pile)
 	actions.add_child(clear_button)
 	_msg_label = _label("", int(18.0 * _unit), PAPER)
@@ -301,7 +303,7 @@ func _build_actions(canvas: Control) -> void:
 
 func _build_close_button(canvas: Control) -> void:
 	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 7, 7)
-	close_button.position = Vector2(_drawer_size.x * 0.94, _drawer_size.y * 0.015)
+	close_button.position = Vector2(_drawer_size.x * 0.94, _drawer_size.y * 0.055)
 	close_button.size = Vector2(_unit * 51.0, _unit * 51.0)
 	close_button.pressed.connect(close)
 	canvas.add_child(close_button)
@@ -314,10 +316,10 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	var icon := _money_texture_rect(_money_texture(value), "Money%d" % value)
-	icon.anchor_left = 0.06
-	icon.anchor_top = 0.05
-	icon.anchor_right = 0.94
-	icon.anchor_bottom = 0.84
+	icon.anchor_left = 0.075
+	icon.anchor_top = 0.07
+	icon.anchor_right = 0.925
+	icon.anchor_bottom = 0.93
 	var money_caption := _label(_money_text(value), int(21.0 * _unit), INK)
 	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
