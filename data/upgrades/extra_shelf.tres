@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="StoreUpgradeData" load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/store_upgrade_data.gd" id="1"]
+[resource]
+script = ExtResource("1")
+id = "extra_shelf"
+display_name = "Extra Shelf"
+purchase_cost = 250
+offer_after_day = 3
+product_ids = Array[String]( ["bread", "eggs"] )
