@@ -1,28 +1,33 @@
 {
   "title": "Kwenta: Ang Susi",
   "prologue": [
-	{"speaker": "Narrator", "portrait": "", "text": "Umaga sa kwarto ni Tonyo. Nasa ilalim ng kama ang school bag niya, may kalahating tapos na cardboard poster na nakausli."},
-	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tonyo. Tumawag ang adviser mo. Hindi ka na naman pumasok."},
+	{"speaker": "Narrator", "portrait": "", "text": "Umaga sa kwarto ni Tonyo. Nasa ilalim ng kama ang school bag niya, halata na may kalahating tapos na cardboard poster na nakausli."},
+	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tonyo. Tumawag ang adviser mo. Hindi ka na naman ba pumasok?"},
 	{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Ma, masakit po kasi ang tiyan ko..."},
-	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tiyan? Kahapon nakita kitang naglalaro ng tumbang preso hanggang gabi."},
-	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tumawag din si Nanay Dolor. Nilalagnat si Lola. Kailangan kong umuwi sa probinsya ng isang linggo."},
-	{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Isang linggo?! Sino po ang magbabantay ng tindahan?"},
+	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tiyan? Kahapon nakita kitang naglalaro ng tumbang preso! Umabot ka na hanggang gabi."},
+	{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Ah, eh ano po eh..."},
+	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Tumawag din si Nanay Dolor. Nilalagnat ang Inay, Kailangan kong umuwi sa probinsya. Doon muna ako ng isang linggo."},
+	{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Isang linggo?! Paano na ako nay? Paano ang tindahan? Sino po ang magbabantay ng tindahan?"},
 	{"speaker": "Aling Cora", "portrait": "aling_cora", "text": "Ikaw."},
 	{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Ako?! Ma, wala po akong alam diyan!"},
-	{"speaker": "Aling Cora", "portrait": "aling_cora_reading", "text": "Edi matuto ka. Nandito lahat: presyo, bilin, listahan ng utang. Ikaw muna ang bahala. Kwentahin mo lahat."},
-	{"speaker": "Narrator", "portrait": "", "text": "Ibinigay niya kay Tonyo ang lumang kuwaderno. Sa pabalat, isang salita: KWENTA."}
+	{"speaker": "Aling Cora", "portrait": "aling_cora_reading", "text": "Edi 	matuto ka. Nandito lahat: presyo, bilin, listahan ng utang. Ikaw na muna ang bahala."},
+	{"speaker": "Narrator", "portrait": "", "text": "Ibinigay niya kay Tonyo ang lumang kuwaderno."}
   ],
   "days": [
 	{
 	  "day": 1,
-	  "title": "Ayoko Nito",
+	  "title": "Ayoko Na",
 	  "intro": [
-		{"speaker": "Narrator", "portrait": "", "text": "Itinaas ni Tonyo ang shutter habang humihikab. May mga sulat-kamay na presyo sa estante: Noodz ₱15, Kapeko Blanca ₱7, Bread-winner ₱35."},
-		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Isang linggo... kaya ko 'to. Konting benta lang, tapos tulog."},
-		{"speaker": "Mang Berting", "portrait": "mang_berting", "text": "Tonyo! Si Cora nasaan? Isang Kapeko at isang tinapay nga."},
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Umuwi po sa probinsya. Ako muna."},
-		{"speaker": "Mang Berting", "portrait": "mang_berting_impatient", "text": "Ikaw? Sige, 'wag mong ipagkamali 'yung presyo ha."},
-		{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Dalawang Clean shampoo muna. Babalik ako para sa totoong pamimili kapag napatunayan mong kaya mo."}
+		{"speaker": "Narrator", "portrait": "", "text": "Itinaas ni Tonyo ang shutter habang humihikab. Agad niyang napansin na mayroong mga sulat-kamay na presyo sa estante, ang iba't ibang mga produkto sa loob ng tindahan."},
+		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Ano ba iyan, imbis na naglalaro na ako sa labas. Hays buhay"},
+		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Pero, isang linggo lang naman... kaya ko 'to. Konting benta lang to, tapos tulog."},
+		{"speaker": "Mang Berting", "portrait": "mang_berting", "text": "Tonyo! Si Cora nasaan?"},
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Umuwi po sa probinsya."},
+		{"speaker": "Mang Berting", "portrait": "mang_berting", "text": "Ahh, paano ang tindahan?"},
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Ako raw po muna, nong."},
+		{"speaker": "Mang Berting", "portrait": "mang_berting_impatient", "text": "Ikaw? Haha! Sige, galingan mo ha? 'wag kang tatamarin iho."},
+		{"speaker": "Narrator", "portrait": "", "text": "At 'di kalaunan ay dumating na rin ang una niyang customer"},
+		{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Toy pambilan, dalawang noodz nga."}
 	  ],
 	  "outro": [
 		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Tonyo! Tara na, laro na tayo! Tumbang preso!"},
@@ -68,7 +73,7 @@
 		]}
 	  ],
 	  "callbacks": [
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mali ako ng sukli kay Aling Nena. Dapat mas maingat."}
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mali ako ng sukli kay Aling Nena. Dapat mas maingat para hindi na ito maulit."}
 	  ]
 	},
 	{
@@ -76,7 +81,7 @@
 	  "title": "Tara Na!",
 	  "intro": [
 		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mang Berting, sobra po 'yung bayad niyo kahapon.", "when_choice": "day2_overpayment", "when_value": "return"},
-		{"speaker": "Mang Berting", "portrait": "mang_berting_happy", "text": "Aba! Hindi ko pa nga napansin. Mabait ka palang bata. Sige, ito, tip mo.", "when_choice": "day2_overpayment", "when_value": "return"},
+		{"speaker": "Mang Berting", "portrait": "mang_berting_happy", "text": "Aba! Hindi ko nga napansin. Mabait ka palang bata. Sige, ito, tip mo.", "when_choice": "day2_overpayment", "when_value": "return"},
 		{"speaker": "Narrator", "portrait": "", "text": "Tahimik na bumili si Mang Berting at umalis.", "when_choice": "day2_overpayment", "when_value": "keep"},
 		{"speaker": "Narrator", "portrait": "", "text": "Pagdating ng hapon, nagsimula ang dagsa ng mga estudyante."},
 		{"speaker": "Bea", "portrait": "bea_sad", "text": "Kuya Tonyo! Bakit wala ka sa school? Bukas na 'yung deadline ng project. Kinakabahan nga ako magpresent."},
