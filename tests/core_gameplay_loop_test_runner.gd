@@ -75,8 +75,8 @@ func _test_cash_tray_matches_the_tall_reference_panel() -> void:
 	var tray := CashTrayScript.new() as Control
 	root.add_child(tray)
 	await process_frame
-	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * 0.40
-	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the bottom-docked reference-panel height")
+	var expected_height := StorefrontLayoutScript.VIEWPORT_SIZE.y * (230.0 / 720.0)
+	_assert(is_equal_approx(tray.get("_drawer_size").y, expected_height), "the cash tray uses the compact bottom-docked panel height")
 	tray.queue_free()
 
 
@@ -84,8 +84,8 @@ func _test_cash_tray_matches_the_wide_reference_panel() -> void:
 	var tray := CashTrayScript.new() as Control
 	root.add_child(tray)
 	await process_frame
-	var expected_width := StorefrontLayoutScript.VIEWPORT_SIZE.x * 0.96
-	_assert(is_equal_approx(tray.get("_drawer_size").x, expected_width), "the cash tray spans the wide reference-panel width")
+	var expected_width := StorefrontLayoutScript.VIEWPORT_SIZE.x * (1000.0 / 1280.0)
+	_assert(is_equal_approx(tray.get("_drawer_size").x, expected_width), "the cash tray uses the compact reference-panel width")
 	tray.queue_free()
 
 

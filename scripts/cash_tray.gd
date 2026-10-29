@@ -22,7 +22,6 @@ const MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_t
 const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/listahan_note.png")
 const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/counter_paper.png")
 const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
-const NAME_PLATE_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/name_plate.png")
 const IBIGAY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const LINISIN_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
 const CLOSE_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/close_button.png")
@@ -37,6 +36,8 @@ const MONEY_TEXTURES := {
 }
 const BORDER_W := 6
 const CORNER := 12
+const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
+const SUKLI_PANEL_HEIGHT_RATIO := 230.0 / 720.0
 
 var customer_id: String = ""
 var _pile: Array[int] = []
@@ -69,7 +70,7 @@ func _ready() -> void:
 	if ResourceLoader.exists(FONT_PATH):
 		_font = load(FONT_PATH)
 	_unit = StorefrontLayout.VIEWPORT_SIZE.y / 1080.0
-	_drawer_size = Vector2(StorefrontLayout.VIEWPORT_SIZE.x * 0.96, StorefrontLayout.VIEWPORT_SIZE.y * 0.40)
+	_drawer_size = Vector2(StorefrontLayout.VIEWPORT_SIZE.x * SUKLI_PANEL_WIDTH_RATIO, StorefrontLayout.VIEWPORT_SIZE.y * SUKLI_PANEL_HEIGHT_RATIO)
 	_drawer_position = Vector2((StorefrontLayout.VIEWPORT_SIZE.x - _drawer_size.x) * 0.5, StorefrontLayout.VIEWPORT_SIZE.y - _drawer_size.y)
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = _drawer_size
@@ -133,7 +134,7 @@ func _build_drawer() -> void:
 	var canvas := Control.new()
 	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 24, 24)
+	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 18, 18)
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	_panel.add_child(frame)
 	_panel.add_child(canvas)
@@ -145,40 +146,41 @@ func _build_drawer() -> void:
 
 
 func _build_listahan_note(canvas: Control) -> void:
-	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 14, 12)
+	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 10, 10)
 	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.07)
-	note.size = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.42)
+	note.position.y = _drawer_size.y * 0.04
+	note.size = Vector2(_drawer_size.x * 0.215, _drawer_size.y * 0.39)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(note)
 	var content := MarginContainer.new()
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
-	content.add_theme_constant_override("margin_left", int(_unit * 28.0))
-	content.add_theme_constant_override("margin_right", int(_unit * 28.0))
-	content.add_theme_constant_override("margin_top", int(_unit * 18.0))
-	content.add_theme_constant_override("margin_bottom", int(_unit * 18.0))
+	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
+	content.add_theme_constant_override("margin_bottom", int(_unit * 10.0))
 	note.add_child(content)
 	var rows := VBoxContainer.new()
 	rows.alignment = BoxContainer.ALIGNMENT_CENTER
-	rows.add_theme_constant_override("separation", int(_unit * 4.0))
+	rows.add_theme_constant_override("separation", int(_unit * 2.0))
 	content.add_child(rows)
 	var title_holder := CenterContainer.new()
-	title_holder.custom_minimum_size = Vector2(0.0, _unit * 28.0)
+	title_holder.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	var tag := _wood_tag("LISTAHAN", "ListahanTag", int(21.0 * _unit), GOLD, INK)
-	tag.custom_minimum_size = Vector2(note.size.x * 0.63, _unit * 28.0)
+	tag.custom_minimum_size = Vector2(note.size.x * 0.63, _unit * 24.0)
 	title_holder.add_child(tag)
 	rows.add_child(title_holder)
-	_bayad_label = _money_row(rows, "BAYAD", "ListahanBayadValue", int(20.0 * _unit), INK)
-	_total_label = _money_row(rows, "BILI", "ListahanBiliValue", int(20.0 * _unit), INK)
+	_bayad_label = _money_row(rows, "BAYAD", "ListahanBayadValue", int(21.0 * _unit), INK)
+	_total_label = _money_row(rows, "BILI", "ListahanBiliValue", int(21.0 * _unit), INK)
 	_list_rule = HSeparator.new()
 	_list_rule.custom_minimum_size = Vector2(0.0, _unit * 4.0)
 	_list_rule.add_theme_stylebox_override("separator", _dashed_rule())
 	rows.add_child(_list_rule)
 	_list_change_row = HBoxContainer.new()
-	_list_change_row.custom_minimum_size = Vector2(0.0, _unit * 34.0)
-	var change_label := _label("SUKLI", int(22.0 * _unit), INK)
+	_list_change_row.custom_minimum_size = Vector2(0.0, _unit * 36.0)
+	var change_label := _label("SUKLI", int(21.0 * _unit), INK)
 	change_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list_change_row.add_child(change_label)
-	_due_label = _label("", int(34.0 * _unit), GREEN)
+	_due_label = _label("", int(36.0 * _unit), GREEN)
 	_due_label.name = "ListahanSukliValue"
 	_due_label.custom_minimum_size = Vector2(_unit * 76.0, 0.0)
 	_due_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -188,28 +190,28 @@ func _build_listahan_note(canvas: Control) -> void:
 
 
 func _build_counter_tray(canvas: Control) -> void:
-	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 14, 12)
-	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.07)
-	tray.size = Vector2(_drawer_size.x * 0.47, _drawer_size.y * 0.42)
+	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 10, 10)
+	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.04)
+	tray.size = Vector2(_drawer_size.x * 0.45, _drawer_size.y * 0.39)
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(tray)
 	var content := MarginContainer.new()
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
-	content.add_theme_constant_override("margin_left", int(_unit * 30.0))
-	content.add_theme_constant_override("margin_right", int(_unit * 30.0))
-	content.add_theme_constant_override("margin_top", int(_unit * 18.0))
-	content.add_theme_constant_override("margin_bottom", int(_unit * 16.0))
+	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_top", int(_unit * 10.0))
+	content.add_theme_constant_override("margin_bottom", int(_unit * 10.0))
 	tray.add_child(content)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", int(_unit * 5.0))
 	content.add_child(rows)
 	var headline := HBoxContainer.new()
-	headline.custom_minimum_size = Vector2(0.0, _unit * 28.0)
+	headline.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	rows.add_child(headline)
-	var heading := _label("NASA COUNTER", int(23.0 * _unit), INK)
+	var heading := _label("NASA COUNTER", int(22.0 * _unit), INK)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	headline.add_child(heading)
-	_counter_total_label = _label("P0", int(42.0 * _unit), INK)
+	_counter_total_label = _label("P0", int(36.0 * _unit), INK)
 	_counter_total_label.name = "CounterReadout"
 	_counter_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_counter_total_label.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -221,21 +223,21 @@ func _build_counter_tray(canvas: Control) -> void:
 	_progress_bar.texture_progress = PROGRESS_FILL_TEXTURE
 	_progress_bar.nine_patch_stretch = true
 	rows.add_child(_progress_bar)
-	_helper_label = _label("", int(20.0 * _unit), INK)
+	_helper_label = _label("", int(18.0 * _unit), INK)
 	_helper_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_helper_label.custom_minimum_size = Vector2(0.0, _unit * 22.0)
+	_helper_label.custom_minimum_size = Vector2(0.0, _unit * 18.0)
 	rows.add_child(_helper_label)
 	_counter_flow = HFlowContainer.new()
 	_counter_flow.add_theme_constant_override("h_separation", int(_unit * 8.0))
 	_counter_flow.add_theme_constant_override("v_separation", int(_unit * 6.0))
-	_counter_flow.custom_minimum_size = Vector2(0.0, _unit * 42.0)
+	_counter_flow.custom_minimum_size = Vector2(0.0, _unit * 40.0)
 	rows.add_child(_counter_flow)
 
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.50)
-	drawer.size = Vector2(_drawer_size.x * 0.603, _drawer_size.y * 0.42)
+	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.435)
+	drawer.size = Vector2(_drawer_size.x * 0.678, _drawer_size.y * 0.48)
 	drawer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	canvas.add_child(drawer)
 	var group_tags := Control.new()
@@ -244,7 +246,7 @@ func _build_drawer_slots(canvas: Control) -> void:
 	var coin_tag := _wood_tag("BARYA", "BaryaTag", int(20.0 * _unit), WOOD, PAPER)
 	coin_tag.set_anchors_preset(Control.PRESET_CENTER_TOP, false)
 	coin_tag.anchor_left = 0.15
-	coin_tag.anchor_right = 0.40
+	coin_tag.anchor_right = 0.27
 	coin_tag.anchor_top = 0.02
 	coin_tag.anchor_bottom = 0.18
 	coin_tag.offset_left = 0.0
@@ -253,8 +255,8 @@ func _build_drawer_slots(canvas: Control) -> void:
 	coin_tag.offset_bottom = 0.0
 	group_tags.add_child(coin_tag)
 	var bill_tag := _wood_tag("PERA", "PeraTag", int(20.0 * _unit), WOOD, PAPER)
-	bill_tag.anchor_left = 0.53
-	bill_tag.anchor_right = 0.82
+	bill_tag.anchor_left = 0.65
+	bill_tag.anchor_right = 0.77
 	bill_tag.anchor_top = 0.02
 	bill_tag.anchor_bottom = 0.18
 	group_tags.add_child(bill_tag)
@@ -276,31 +278,31 @@ func _build_drawer_slots(canvas: Control) -> void:
 
 func _build_actions(canvas: Control) -> void:
 	var actions := VBoxContainer.new()
-	actions.position = Vector2(_drawer_size.x * 0.77, _drawer_size.y * 0.08)
-	actions.size = Vector2(_drawer_size.x * 0.17, _drawer_size.y * 0.40)
-	actions.add_theme_constant_override("separation", int(_unit * 12.0))
+	actions.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.04)
+	actions.size = Vector2(_drawer_size.x * 0.16, _drawer_size.y * 0.35)
+	actions.add_theme_constant_override("separation", int(_unit * 8.0))
 	canvas.add_child(actions)
-	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 12, 12)
-	_give_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.24)
+	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 9, 9)
+	_give_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.22)
 	_give_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_give_button.pressed.connect(_on_give_pressed)
 	actions.add_child(_give_button)
-	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 11, 10)
-	clear_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.11)
+	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 8, 8)
+	clear_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.10)
 	clear_button.pressed.connect(_clear_pile)
 	actions.add_child(clear_button)
 	_msg_label = _label("", int(18.0 * _unit), PAPER)
 	_msg_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_msg_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_msg_label.position = Vector2(_drawer_size.x * 0.77, _drawer_size.y * 0.455)
-	_msg_label.size = Vector2(_drawer_size.x * 0.17, _drawer_size.y * 0.025)
+	_msg_label.position = Vector2(_drawer_size.x * 0.76, _drawer_size.y * 0.397)
+	_msg_label.size = Vector2(_drawer_size.x * 0.16, _drawer_size.y * 0.03)
 	canvas.add_child(_msg_label)
 
 
 func _build_close_button(canvas: Control) -> void:
-	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 8, 8)
-	close_button.position = Vector2(_drawer_size.x * 0.947, _drawer_size.y * 0.018)
-	close_button.size = Vector2(_unit * 60.0, _unit * 60.0)
+	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 7, 7)
+	close_button.position = Vector2(_drawer_size.x * 0.94, _drawer_size.y * 0.015)
+	close_button.size = Vector2(_unit * 51.0, _unit * 51.0)
 	close_button.pressed.connect(close)
 	canvas.add_child(close_button)
 
@@ -313,31 +315,15 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	var icon := _money_texture_rect(_money_texture(value), "Money%d" % value)
 	icon.anchor_left = 0.06
-	icon.anchor_top = 0.02
+	icon.anchor_top = 0.05
 	icon.anchor_right = 0.94
-	icon.anchor_bottom = 0.67
-	var money_caption := _label(_money_text(value), int((18 if value < 20 else 20) * _unit), INK)
+	icon.anchor_bottom = 0.84
+	var money_caption := _label(_money_text(value), int(21.0 * _unit), INK)
 	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	money_caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	icon.add_child(money_caption)
 	button.add_child(icon)
-	var plate := PanelContainer.new()
-	plate.name = "DenominationPlate%d" % value
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	plate.anchor_left = 0.10
-	plate.anchor_top = 0.70
-	plate.anchor_right = 0.90
-	plate.anchor_bottom = 0.98
-	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	var plate_art := _art_patch(NAME_PLATE_TEXTURE, "DenominationPlateArt%d" % value, 7, 6)
-	plate_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
-	plate.add_child(plate_art)
-	var caption := _label(_money_text(value), int(20.0 * _unit), PAPER)
-	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	plate.add_child(caption)
-	button.add_child(plate)
 	return button
 
 
@@ -392,13 +378,13 @@ func _refresh_pile_total() -> void:
 
 func _counter_piece(value: int, count: int) -> Button:
 	var piece := _button("", int(16.0 * _unit), PAPER)
-	piece.custom_minimum_size = Vector2(_drawer_size.x * 0.060, _drawer_size.y * 0.10)
+	piece.custom_minimum_size = Vector2(_drawer_size.x * 0.060, _drawer_size.y * 0.116)
 	piece.add_theme_stylebox_override("normal", _box(PAPER, INK, _unit * 4.0, _unit * 2.0, 4))
 	var icon := _money_texture_rect(_money_texture(value), "CounterMoney%d" % value)
 	icon.position = Vector2(_unit * 6.0, _unit * 6.0)
 	icon.size = Vector2(piece.custom_minimum_size.x * 0.52, piece.custom_minimum_size.y - _unit * 12.0)
 	piece.add_child(icon)
-	var badge := _label("x%d" % count, int(20.0 * _unit), INK)
+	var badge := _label("x%d" % count, int(21.0 * _unit), INK)
 	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	badge.position = Vector2(piece.custom_minimum_size.x * 0.48, _unit * 8.0)
 	badge.size = Vector2(piece.custom_minimum_size.x * 0.45, _unit * 30.0)
@@ -459,7 +445,7 @@ func _money_text(value: int) -> String:
 
 func _money_row(parent: VBoxContainer, label_text: String, value_name: String, font_size: int, color: Color) -> Label:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0.0, _unit * 24.0)
+	row.custom_minimum_size = Vector2(0.0, _unit * 21.0)
 	var label := _label(label_text, font_size, color)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
@@ -476,7 +462,7 @@ func _wood_tag(text: String, node_name: String, font_size: int, background: Colo
 	tag.name = node_name
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	var art := _art_patch(WOODEN_TAG_TEXTURE, "%sArt" % node_name, 8, 6)
+	var art := _art_patch(WOODEN_TAG_TEXTURE, "%sArt" % node_name, 6, 5)
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	tag.add_child(art)
 	var label := _label(text, font_size, color)
