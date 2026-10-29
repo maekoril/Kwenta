@@ -256,7 +256,7 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	var tray_width := _drawer_size.x * 0.71
+	var tray_width := _drawer_size.x * 0.698
 	var tray_height := tray_width / TRAY_TEXTURE_ASPECT_RATIO
 	drawer.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.48)
 	drawer.size = Vector2(tray_width, tray_height)
