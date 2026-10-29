@@ -17,22 +17,23 @@ const GREEN := Color("#4caa56")
 const RED := Color("#c0392b")
 const FONT_PATH := "res://assets/fonts/PixelifySans-Regular.ttf"
 const PESO := "₱"
-const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/drawer_frame.png")
-const MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/money_tray.png")
-const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/listahan_note.png")
-const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/counter_paper.png")
-const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/wooden_tag.png")
-const NAME_PLATE_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/name_plate.png")
-const IBIGAY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/ibigay_button.png")
-const LINISIN_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/linisin_button.png")
-const CLOSE_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/close_button.png")
-const PROGRESS_BAR_SHEET_TEXTURE := preload("res://assets/sprites/ui/sukli/trimmed/progress_bar_sheet.png")
+const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/drawer_frame.png")
+const MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_tray.png")
+const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/listahan_note.png")
+const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/counter_paper.png")
+const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
+const NAME_PLATE_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/name_plate.png")
+const IBIGAY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const LINISIN_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
+const CLOSE_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/close_button.png")
+const PROGRESS_TRACK_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_track.png")
+const PROGRESS_FILL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_fill.png")
 const MONEY_TEXTURES := {
-	1: preload("res://assets/sprites/ui/sukli/trimmed/coin_1.png"),
-	5: preload("res://assets/sprites/ui/sukli/trimmed/coin_5.png"),
-	10: preload("res://assets/sprites/ui/sukli/trimmed/coin_10.png"),
-	20: preload("res://assets/sprites/ui/sukli/trimmed/bill_20.png"),
-	50: preload("res://assets/sprites/ui/sukli/trimmed/bill_50.png"),
+	1: preload("res://assets/sprites/ui/sukli/sized/coin_1.png"),
+	5: preload("res://assets/sprites/ui/sukli/sized/coin_5.png"),
+	10: preload("res://assets/sprites/ui/sukli/sized/coin_10.png"),
+	20: preload("res://assets/sprites/ui/sukli/sized/bill_20.png"),
+	50: preload("res://assets/sprites/ui/sukli/sized/bill_50.png"),
 }
 const BORDER_W := 6
 const CORNER := 12
@@ -132,7 +133,7 @@ func _build_drawer() -> void:
 	var canvas := Control.new()
 	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 88, 82)
+	var frame := _art_patch(DRAWER_FRAME_TEXTURE, "DrawerFrameArt", 22, 20)
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	_panel.add_child(frame)
 	_panel.add_child(canvas)
@@ -144,7 +145,7 @@ func _build_drawer() -> void:
 
 
 func _build_listahan_note(canvas: Control) -> void:
-	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 62, 58)
+	var note := _art_patch(LISTAHAN_PAPER_TEXTURE, "ListahanPaper", 14, 12)
 	note.position = Vector2(_drawer_size.x * 0.04, _drawer_size.y * 0.07)
 	note.size = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.42)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -158,7 +159,7 @@ func _build_listahan_note(canvas: Control) -> void:
 	note.add_child(content)
 	var rows := VBoxContainer.new()
 	rows.alignment = BoxContainer.ALIGNMENT_CENTER
-	rows.add_theme_constant_override("separation", int(_unit * 7.0))
+	rows.add_theme_constant_override("separation", int(_unit * 4.0))
 	content.add_child(rows)
 	var title_holder := CenterContainer.new()
 	title_holder.custom_minimum_size = Vector2(0.0, _unit * 28.0)
@@ -179,6 +180,7 @@ func _build_listahan_note(canvas: Control) -> void:
 	_list_change_row.add_child(change_label)
 	_due_label = _label("", int(34.0 * _unit), GREEN)
 	_due_label.name = "ListahanSukliValue"
+	_due_label.custom_minimum_size = Vector2(_unit * 76.0, 0.0)
 	_due_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_due_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_list_change_row.add_child(_due_label)
@@ -186,7 +188,7 @@ func _build_listahan_note(canvas: Control) -> void:
 
 
 func _build_counter_tray(canvas: Control) -> void:
-	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 70, 56)
+	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 14, 12)
 	tray.position = Vector2(_drawer_size.x * 0.28, _drawer_size.y * 0.07)
 	tray.size = Vector2(_drawer_size.x * 0.47, _drawer_size.y * 0.42)
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -214,9 +216,9 @@ func _build_counter_tray(canvas: Control) -> void:
 	headline.add_child(_counter_total_label)
 	_progress_bar = TextureProgressBar.new()
 	_progress_bar.min_value = 0.0
-	_progress_bar.custom_minimum_size = Vector2(0.0, _unit * 18.0)
-	_progress_bar.texture_under = _progress_atlas(Rect2(0, 0, 1887, 172))
-	_progress_bar.texture_progress = _progress_atlas(Rect2(0, 260, 1887, 175))
+	_progress_bar.custom_minimum_size = Vector2(0.0, _unit * 24.0)
+	_progress_bar.texture_under = PROGRESS_TRACK_TEXTURE
+	_progress_bar.texture_progress = PROGRESS_FILL_TEXTURE
 	_progress_bar.nine_patch_stretch = true
 	rows.add_child(_progress_bar)
 	_helper_label = _label("", int(20.0 * _unit), INK)
@@ -232,8 +234,8 @@ func _build_counter_tray(canvas: Control) -> void:
 
 func _build_drawer_slots(canvas: Control) -> void:
 	var drawer := _texture_rect(MONEY_TRAY_TEXTURE, "MoneyTrayArt")
-	drawer.position = Vector2(_drawer_size.x * 0.24, _drawer_size.y * 0.48)
-	drawer.size = Vector2(_drawer_size.x * 0.735, _drawer_size.y * 0.51)
+	drawer.position = Vector2(_drawer_size.x * 0.22, _drawer_size.y * 0.51)
+	drawer.size = Vector2(_drawer_size.x * 0.755, _drawer_size.y * 0.48)
 	canvas.add_child(drawer)
 	var group_tags := Control.new()
 	group_tags.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
@@ -277,12 +279,12 @@ func _build_actions(canvas: Control) -> void:
 	actions.size = Vector2(_drawer_size.x * 0.17, _drawer_size.y * 0.40)
 	actions.add_theme_constant_override("separation", int(_unit * 12.0))
 	canvas.add_child(actions)
-	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 65, 62)
+	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 12, 12)
 	_give_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.24)
 	_give_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_give_button.pressed.connect(_on_give_pressed)
 	actions.add_child(_give_button)
-	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 70, 48)
+	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 11, 10)
 	clear_button.custom_minimum_size = Vector2(0.0, _drawer_size.y * 0.11)
 	clear_button.pressed.connect(_clear_pile)
 	actions.add_child(clear_button)
@@ -295,9 +297,9 @@ func _build_actions(canvas: Control) -> void:
 
 
 func _build_close_button(canvas: Control) -> void:
-	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 90, 90)
+	var close_button := _art_button("X", int(24.0 * _unit), CLOSE_BUTTON_TEXTURE, 8, 8)
 	close_button.position = Vector2(_drawer_size.x * 0.947, _drawer_size.y * 0.018)
-	close_button.size = Vector2(_drawer_size.x * 0.030, _drawer_size.y * 0.105)
+	close_button.size = Vector2(_unit * 60.0, _unit * 60.0)
 	close_button.pressed.connect(close)
 	canvas.add_child(close_button)
 
@@ -313,6 +315,11 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	icon.anchor_top = 0.02
 	icon.anchor_right = 0.94
 	icon.anchor_bottom = 0.67
+	var money_caption := _label(_money_text(value), int((18 if value < 20 else 20) * _unit), INK)
+	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	money_caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
+	icon.add_child(money_caption)
 	button.add_child(icon)
 	var plate := PanelContainer.new()
 	plate.name = "DenominationPlate%d" % value
@@ -322,7 +329,7 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	plate.anchor_right = 0.90
 	plate.anchor_bottom = 0.98
 	plate.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	var plate_art := _art_patch(NAME_PLATE_TEXTURE, "DenominationPlateArt%d" % value, 62, 48)
+	var plate_art := _art_patch(NAME_PLATE_TEXTURE, "DenominationPlateArt%d" % value, 7, 6)
 	plate_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	plate.add_child(plate_art)
 	var caption := _label(_money_text(value), int(20.0 * _unit), PAPER)
@@ -468,7 +475,7 @@ func _wood_tag(text: String, node_name: String, font_size: int, background: Colo
 	tag.name = node_name
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tag.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	var art := _art_patch(WOODEN_TAG_TEXTURE, "%sArt" % node_name, 65, 48)
+	var art := _art_patch(WOODEN_TAG_TEXTURE, "%sArt" % node_name, 8, 6)
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	tag.add_child(art)
 	var label := _label(text, font_size, color)
@@ -500,13 +507,6 @@ func _art_patch(texture: Texture2D, node_name: String, margin_x: int, margin_y: 
 	patch.patch_margin_bottom = margin_y
 	patch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return patch
-
-
-func _progress_atlas(region: Rect2) -> AtlasTexture:
-	var texture := AtlasTexture.new()
-	texture.atlas = PROGRESS_BAR_SHEET_TEXTURE
-	texture.region = region
-	return texture
 
 
 func _money_texture(value: int) -> Texture2D:
