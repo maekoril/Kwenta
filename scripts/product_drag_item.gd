@@ -4,6 +4,7 @@ const DEFAULT_STORE_DISPLAY_SCALE: float = 1.6
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 
 signal product_released(product_id: String, viewport_position: Vector2, source: Control)
+signal product_drag_started(product_id: String)
 
 static var _active_drag_owner: Control
 
@@ -122,6 +123,7 @@ func _begin_drag(viewport_position: Vector2, touch_index: int) -> void:
 	_drag_active = true
 	_drag_touch_index = touch_index
 	_active_drag_owner = self
+	product_drag_started.emit(product_id)
 	var preview := ProductDragPreview.new()
 	preview.preview_texture = _item_icon
 	preview.preview_size = _get_drag_preview_size()

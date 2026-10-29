@@ -8,6 +8,7 @@ const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portrai
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
+const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
 const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
 const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_rain.png"
@@ -55,6 +56,7 @@ var pending_choice_index: int = 0
 var showing_shift_results: bool = false
 var story_complete: bool = false
 var cash_tray: CashTray
+var audio: KwentaAudio
 var atmosphere
 var ENVIRONMENT_BY_DAY: Dictionary = {
 	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
@@ -82,6 +84,10 @@ func _ready() -> void:
 		var product: ProductData = product_resource
 		products_by_id[product.id] = product
 	_build_store_layer_renderer()
+	audio = KWENTA_AUDIO.new()
+	audio.register_default_cues()
+	audio.register_default_music()
+	add_child(audio)
 	atmosphere = STORE_ATMOSPHERE.new()
 	add_child(atmosphere)
 	_build_environment_layers()
@@ -236,6 +242,9 @@ func apply_environment(day: int) -> void:
 	if brownout_crossfade_tween != null and brownout_crossfade_tween.is_valid():
 		brownout_crossfade_tween.kill()
 	environment_settings = ENVIRONMENT_BY_DAY.get(day, ENVIRONMENT_BY_DAY[1])
+	if audio != null:
+		audio.set_ambience(ambience_for_environment_day(day))
+		audio.set_music(music_for_environment_day(day))
 	_prepare_environment_textures(environment_settings)
 	var settings := _runtime_environment_settings("base_path")
 	var grade := get_node_or_null("WeatherGrade") as ColorRect
@@ -431,6 +440,8 @@ func _build_bubble() -> void:
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
 	bubble.choice_made.connect(_on_bubble_choice)
+	bubble.conversation_finished.connect(_on_bubble_conversation_finished)
+	bubble.speech_started.connect(_on_bubble_speech_started)
 
 func _on_bubble_choice(index: int) -> void:
 	if index < 0 or index >= current_choice_ids.size():
@@ -440,6 +451,14 @@ func _on_bubble_choice(index: int) -> void:
 func _on_bubble_advanced() -> void:
 	story_beat_index += 1
 	_show_current_story_beat()
+
+func _on_bubble_speech_started() -> void:
+	if audio != null:
+		audio.play_cue("conversation")
+
+func _on_bubble_conversation_finished() -> void:
+	if audio != null:
+		audio.set_dialogue("")
 
 func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -485,6 +504,7 @@ func _rebuild_product_shelf() -> void:
 		drag_item.size = slot.size
 		drag_item.modulate.a = 0.0
 		product_layer.add_child(drag_item)
+		drag_item.connect("product_drag_started", _on_product_drag_started)
 		drag_item.connect("product_released", _on_product_drag_released)
 		product_items_by_id[game_id] = drag_item
 		shadow_rects.append(display_rect)
@@ -518,6 +538,7 @@ func _on_customers_changed() -> void:
 	_sync_cash_tray()
 
 func _on_customer_timed_out(customer_instance_id: String) -> void:
+	_play_audio_cues(["timeout"])
 	var actor: Control = customer_actors.get(customer_instance_id)
 	if is_instance_valid(actor):
 		actor.call("play_annoyed")
@@ -571,6 +592,9 @@ func _on_product_dropped(customer_id: String, product_id: String) -> void:
 		if is_instance_valid(source):
 			source.call("play_reject")
 
+func _on_product_drag_started(_product_id: String) -> void:
+	_play_audio_cues(["pickup"])
+
 func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
 	var actor := _customer_actor_at(viewport_position)
 	if actor == null:
@@ -591,6 +615,8 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		return false
 	var actor: Control = customer_actors.get(customer_id)
 	var result := shift.deliver_product(customer_id, product_id)
+	var sale_completed := result == OrderState.DeliveryResult.COMPLETED and (not is_instance_valid(actor) or not _is_waiting_for_change(actor))
+	_play_audio_cues(audio_cues_for_delivery(result, sale_completed))
 	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
 		if is_instance_valid(actor):
 			actor.call("play_wrong_drop")
@@ -601,6 +627,37 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		if result == OrderState.DeliveryResult.COMPLETED and not _is_waiting_for_change(actor):
 			actor.call("play_happy")
 	return true
+
+func audio_cues_for_delivery(result: int, sale_completed: bool) -> Array[String]:
+	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
+		return ["reject"]
+	var cues: Array[String] = ["correct"]
+	if result == OrderState.DeliveryResult.COMPLETED and sale_completed:
+		cues.append("sale")
+	return cues
+
+func audio_cues_for_payment(result: int) -> Array[String]:
+	if result == PaymentState.Result.SHORT:
+		return ["reject"]
+	if result == PaymentState.Result.EXACT or result == PaymentState.Result.OVER:
+		return ["sale"]
+	return []
+
+func ambience_for_environment_day(day: int) -> String:
+	return ""
+
+func music_for_environment_day(day: int) -> String:
+	if day == 4:
+		return "rain"
+	if day == 6:
+		return "intense"
+	return "normal"
+
+func _play_audio_cues(cue_names: Array[String]) -> void:
+	if audio == null:
+		return
+	for cue_name in cue_names:
+		audio.play_cue(cue_name)
 
 func _update_clock(value: String) -> void:
 	clock_label.text = value
@@ -863,16 +920,19 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
 	match result:
 		PaymentState.Result.SHORT:
+			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.show_short()
 			if is_instance_valid(actor):
 				actor.call("play_wrong_drop")
 			_float_text(at, "KULANG!", Color("ff8a7a"))
 		PaymentState.Result.EXACT:
+			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
 			_float_text(at, "TAMA!", Color("d9efaa"))
 			if is_instance_valid(actor):
 				actor.call("play_happy")
 		PaymentState.Result.OVER:
+			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
 			_float_text(at, "SOBRA  -₱%d" % diff, Color("f6d95e"))
 		_:

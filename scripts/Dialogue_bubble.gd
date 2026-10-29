@@ -35,6 +35,10 @@ extends Control
 
 signal advanced
 signal choice_made(index: int)
+signal typing_blip
+signal conversation_started
+signal conversation_finished
+signal speech_started
 signal _title_done
 
 # --- Look (all values are for 1920x1080). Reuse these for the HUD later. ---
@@ -91,6 +95,8 @@ var _typing := false
 var _busy := false
 var _choosing := false
 var _choices_ready := false
+var _last_blip_character := 0
+var _conversation_active := false
 var _type_tween: Tween
 var _bob_tween: Tween
 var _hint_tween: Tween
@@ -327,6 +333,7 @@ func ask(speaker: String, prompt: String, options: Array, portrait_tex: Texture2
 
 
 func title_card(text: String) -> void:
+	_end_conversation()
 	if _close_tween:
 		_close_tween.kill()
 	_set_portrait(null, "", false)
@@ -345,6 +352,7 @@ func title_card(text: String) -> void:
 
 
 func close() -> void:
+	_end_conversation()
 	if not visible:
 		return
 	for t in [_bob_tween, _hint_tween, _breath_tween, _portrait_tween]:
@@ -413,6 +421,9 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	_set_portrait(portrait_tex, char_key, right_side)
 
 	visible = true
+	_begin_conversation()
+	if not narration:
+		speech_started.emit()
 	if not is_equal_approx(_dim.color.a, DIM_ALPHA):
 		create_tween().tween_property(_dim, "color:a", DIM_ALPHA, 0.25)
 	_group.modulate.a = 0.0
@@ -493,12 +504,30 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	# --- typewriter ---
 	_typing = true
 	_busy = false
+	_last_blip_character = 0
 	var dur := maxf(0.2, _text.get_total_character_count() / CHARS_PER_SEC)
 	_type_tween = create_tween()
-	_type_tween.tween_property(_text, "visible_ratio", 1.0, dur)
+	_type_tween.tween_method(_reveal_text, 0.0, 1.0, dur)
 	_type_tween.finished.connect(_finish_typing)
-	# Optional: a short blip every couple of characters (tween_method on
-	# visible_characters + an AudioStreamPlayer) sells it a lot.
+
+func _reveal_text(progress: float) -> void:
+	_text.visible_ratio = progress
+	var revealed_characters := int(floor(float(_text.get_total_character_count()) * progress))
+	if revealed_characters >= _last_blip_character + 3:
+		_last_blip_character = revealed_characters
+		typing_blip.emit()
+
+func _begin_conversation() -> void:
+	if _conversation_active:
+		return
+	_conversation_active = true
+	conversation_started.emit()
+
+func _end_conversation() -> void:
+	if not _conversation_active:
+		return
+	_conversation_active = false
+	conversation_finished.emit()
 
 
 func _character_of(portrait_id: String) -> String:
@@ -672,3 +701,6 @@ func _finish_close() -> void:
 	visible = false
 	_portrait.visible = false
 	_choices.visible = false
+
+func _exit_tree() -> void:
+	_end_conversation()
