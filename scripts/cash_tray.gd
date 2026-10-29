@@ -38,6 +38,7 @@ const BORDER_W := 6
 const CORNER := 12
 const SUKLI_PANEL_WIDTH_RATIO := 1000.0 / 1280.0
 const SUKLI_PANEL_HEIGHT_RATIO := 230.0 / 720.0
+const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.02, 0.138), Vector2(0.148, 0.270), Vector2(0.280, 0.402), Vector2(0.414, 0.658), Vector2(0.672, 0.972)]
 
 var customer_id: String = ""
 var _pile: Array[int] = []
@@ -55,6 +56,8 @@ var _due_label: Label
 var _list_change_row: HBoxContainer
 var _list_rule: HSeparator
 var _list_rows: VBoxContainer
+var _list_top_spacer: Control
+var _list_bottom_spacer: Control
 var _counter_total_label: Label
 var _counter_flow: HFlowContainer
 var _progress_bar: TextureProgressBar
@@ -97,7 +100,9 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_due_label.visible = _guide_enabled
 	_list_change_row.visible = _guide_enabled
 	_list_rule.visible = _guide_enabled
-	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN if _guide_enabled else BoxContainer.ALIGNMENT_CENTER
+	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_list_top_spacer.visible = not _guide_enabled
+	_list_bottom_spacer.visible = true
 	_progress_bar.visible = _guide_enabled
 	_helper_label.visible = _guide_enabled
 	_refresh_pile_total()
@@ -162,7 +167,7 @@ func _build_listahan_note(canvas: Control) -> void:
 	note.add_child(content)
 	_list_rows = VBoxContainer.new()
 	_list_rows.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_list_rows.add_theme_constant_override("separation", int(_unit * 4.0))
+	_list_rows.add_theme_constant_override("separation", int(_unit * 5.0))
 	content.add_child(_list_rows)
 	var title_holder := CenterContainer.new()
 	title_holder.custom_minimum_size = Vector2(0.0, _unit * 24.0)
@@ -170,8 +175,17 @@ func _build_listahan_note(canvas: Control) -> void:
 	tag.custom_minimum_size = Vector2(note.size.x * 0.63, _unit * 24.0)
 	title_holder.add_child(tag)
 	_list_rows.add_child(title_holder)
-	_bayad_label = _money_row(_list_rows, "BAYAD", "ListahanBayadValue", int(21.0 * _unit), INK)
-	_total_label = _money_row(_list_rows, "BILI", "ListahanBiliValue", int(21.0 * _unit), INK)
+	_list_top_spacer = Control.new()
+	_list_top_spacer.name = "ListahanTopSpacer"
+	_list_top_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list_top_spacer.visible = false
+	_list_rows.add_child(_list_top_spacer)
+	_bayad_label = _money_row(_list_rows, "BAYAD", "ListahanBayadValue", int(24.0 * _unit), INK)
+	_total_label = _money_row(_list_rows, "BILI", "ListahanBiliValue", int(24.0 * _unit), INK)
+	_list_bottom_spacer = Control.new()
+	_list_bottom_spacer.name = "ListahanBottomSpacer"
+	_list_bottom_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list_rows.add_child(_list_bottom_spacer)
 	_list_rule = HSeparator.new()
 	_list_rule.custom_minimum_size = Vector2(0.0, _unit * 4.0)
 	_list_rule.add_theme_stylebox_override("separator", _dashed_rule())
@@ -249,8 +263,8 @@ func _build_drawer_slots(canvas: Control) -> void:
 	coin_tag.set_anchors_preset(Control.PRESET_CENTER_TOP, false)
 	coin_tag.anchor_left = 0.15
 	coin_tag.anchor_right = 0.27
-	coin_tag.anchor_top = 0.02
-	coin_tag.anchor_bottom = 0.18
+	coin_tag.anchor_top = 0.0
+	coin_tag.anchor_bottom = 0.16
 	coin_tag.offset_left = 0.0
 	coin_tag.offset_right = 0.0
 	coin_tag.offset_top = 0.0
@@ -259,16 +273,22 @@ func _build_drawer_slots(canvas: Control) -> void:
 	var bill_tag := _wood_tag("PERA", "PeraTag", int(20.0 * _unit), WOOD, PAPER)
 	bill_tag.anchor_left = 0.65
 	bill_tag.anchor_right = 0.77
-	bill_tag.anchor_top = 0.02
-	bill_tag.anchor_bottom = 0.18
+	bill_tag.anchor_top = 0.0
+	bill_tag.anchor_bottom = 0.16
 	group_tags.add_child(bill_tag)
 	var slots := Control.new()
 	slots.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	drawer.add_child(slots)
-	var compartment_bounds := [Vector2(0.02, 0.138), Vector2(0.148, 0.270), Vector2(0.280, 0.402), Vector2(0.414, 0.658), Vector2(0.672, 0.972)]
+	var coin_group_center := (TRAY_COMPARTMENT_BOUNDS[0].x + TRAY_COMPARTMENT_BOUNDS[2].y) * 0.5
+	var bill_group_center := (TRAY_COMPARTMENT_BOUNDS[3].x + TRAY_COMPARTMENT_BOUNDS[4].y) * 0.5
+	var tag_width_ratio := 0.12
+	coin_tag.anchor_left = coin_group_center - tag_width_ratio * 0.5
+	coin_tag.anchor_right = coin_group_center + tag_width_ratio * 0.5
+	bill_tag.anchor_left = bill_group_center - tag_width_ratio * 0.5
+	bill_tag.anchor_right = bill_group_center + tag_width_ratio * 0.5
 	for index in SukliRules.DENOMINATIONS.size():
 		var value: int = SukliRules.DENOMINATIONS[index]
-		var bounds: Vector2 = compartment_bounds[index]
+		var bounds: Vector2 = TRAY_COMPARTMENT_BOUNDS[index]
 		var slot := _drawer_slot(value, _drawer_size.x * (bounds.y - bounds.x))
 		slot.anchor_left = bounds.x
 		slot.anchor_right = bounds.y
@@ -316,10 +336,10 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	var icon := _money_texture_rect(_money_texture(value), "Money%d" % value)
-	icon.anchor_left = 0.075
-	icon.anchor_top = 0.07
-	icon.anchor_right = 0.925
-	icon.anchor_bottom = 0.93
+	icon.anchor_left = 0.10
+	icon.anchor_top = 0.08
+	icon.anchor_right = 0.90
+	icon.anchor_bottom = 0.92
 	var money_caption := _label(_money_text(value), int(21.0 * _unit), INK)
 	money_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	money_caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -447,7 +467,7 @@ func _money_text(value: int) -> String:
 
 func _money_row(parent: VBoxContainer, label_text: String, value_name: String, font_size: int, color: Color) -> Label:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0.0, _unit * 21.0)
+	row.custom_minimum_size = Vector2(0.0, _unit * 24.0)
 	var label := _label(label_text, font_size, color)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
