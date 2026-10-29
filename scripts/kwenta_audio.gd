@@ -21,7 +21,6 @@ const DEFAULT_CUE_PATHS := {
 	"sale": "res://assets/audio/pixabay/sfx/cash_register_sale.wav",
 	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
 	"conversation": "res://assets/audio/pixabay/sfx/convo.mp3",
-	"fiesta": "res://assets/audio/pixabay/ambience/fiesta_day_bg.mp3",
 }
 
 const DEFAULT_MUSIC_PATHS := {
@@ -45,8 +44,6 @@ func register_default_cues() -> void:
 		var stream := load(str(DEFAULT_CUE_PATHS[cue_name])) as AudioStream
 		if stream == null:
 			continue
-		if stream is AudioStreamMP3 and cue_name == "fiesta":
-			stream.loop = true
 		register_cue(cue_name, stream)
 
 func register_music(track_name: String, stream: AudioStream) -> void:

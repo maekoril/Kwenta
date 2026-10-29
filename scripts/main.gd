@@ -644,8 +644,6 @@ func audio_cues_for_payment(result: int) -> Array[String]:
 	return []
 
 func ambience_for_environment_day(day: int) -> String:
-	if day == 6:
-		return "fiesta"
 	return ""
 
 func music_for_environment_day(day: int) -> String:

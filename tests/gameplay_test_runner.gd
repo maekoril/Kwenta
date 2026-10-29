@@ -338,7 +338,7 @@ func _test_audio_cue_routing_matches_gameplay_results() -> void:
 	_assert(main.call("audio_cues_for_payment", PaymentState.Result.EXACT) == ["sale"], "exact change routes to the completed-sale audio")
 	_assert(main.call("audio_cues_for_payment", PaymentState.Result.SHORT) == ["reject"], "short change routes to rejection audio")
 	_assert(str(main.call("ambience_for_environment_day", 4)).is_empty(), "rain day keeps ambience clear because its rain track is music")
-	_assert(main.call("ambience_for_environment_day", 6) == "fiesta", "fiesta day routes to fiesta ambience")
+	_assert(str(main.call("ambience_for_environment_day", 6)).is_empty(), "Day 6 leaves ambience clear so it does not overlap its music")
 	_assert(str(main.call("ambience_for_environment_day", 1)).is_empty(), "ordinary days do not start an ambience loop")
 	_assert(main.call("music_for_environment_day", 1) == "normal", "ordinary days use the normal store music")
 	_assert(main.call("music_for_environment_day", 4) == "rain", "rain day uses rain music")
