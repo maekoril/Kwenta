@@ -50,6 +50,17 @@ const HELPER_RED := Color("#992f25")
 const TRAY_COMPARTMENT_BOUNDS := [Vector2(0.0, 0.1419), Vector2(0.1419, 0.2724), Vector2(0.2724, 0.4010), Vector2(0.4010, 0.6629), Vector2(0.6629, 1.0)]
 const FILLED_TRAY_TEXTURE_ASPECT_RATIO := 1050.0 / 176.0
 
+# Counter chips: the money the player has already placed on the counter.
+# Heights/widths are in "unit" space (multiplied by _unit at runtime).
+const CHIP_MAX_HEIGHT := 76.0
+const CHIP_MIN_HEIGHT := 40.0
+const CHIP_COIN_WIDTH_RATIO := 1.1
+const CHIP_BILL_WIDTH_RATIO := 1.55
+const CHIP_ICON_PADDING := 7.0
+const CHIP_BADGE_SIZE := Vector2(44.0, 28.0)
+const STATUS_COLUMN_WIDTH := 210.0
+const COUNTER_EMPTY_TEXT := "ILAGAY DITO ANG SUKLI"
+
 var customer_id: String = ""
 var _pile: Array[int] = []
 var _open := false
@@ -72,7 +83,11 @@ var _list_rows: VBoxContainer
 var _list_spacers: Array[Control] = []
 var _note_paper: NinePatchRect
 var _counter_total_label: Label
+var _counter_status: VBoxContainer
 var _counter_flow: HFlowContainer
+var _counter_empty_label: Label
+var _chip_height := 72.0
+var _pop_value := -1
 var _progress_bar: TextureProgressBar
 var _helper_row: HBoxContainer
 var _helper_prefix: Label
@@ -121,6 +136,8 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 		_list_spacers[index].visible = _guide_enabled or index < 2
 	_progress_bar.visible = _guide_enabled
 	_helper_row.visible = _guide_enabled
+	# Without the guide there is no bar/helper text, so the chips get the full width.
+	_counter_status.visible = _guide_enabled
 	_refresh_pile_total()
 	visible = true
 	if not _open:
@@ -232,6 +249,16 @@ func _list_spacer(height: float) -> Control:
 	return spacer
 
 
+# Layout of the "NASA COUNTER" parchment:
+#
+#   NASA COUNTER                                  P35 / P73     <- headline
+#   [slim progress bar ]   +---------------------------------+
+#   [ Kulang pa P38    ]   | [P20] [P10] [P5 x2]  (big chips)|  <- body
+#                          +---------------------------------+
+#
+# The old layout stacked everything vertically, which left only ~27 units of
+# height for the chips. Splitting the body into a status column (left) and a
+# chip "well" (right) lets the chips use the full body height instead.
 func _build_counter_tray(canvas: Control) -> void:
 	var tray := _art_patch(COUNTER_PANEL_TEXTURE, "CounterPanelArt", 10, 10)
 	var note_width := _note_paper.size.x
@@ -240,10 +267,12 @@ func _build_counter_tray(canvas: Control) -> void:
 	tray.size = Vector2(_content_box.end.x - actions_width - CONTENT_GAP - tray.position.x, _top_row_height)
 	tray.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(tray)
+	# Whatever height is left after margins, headline and well padding goes to the chips.
+	_chip_height = clampf(_top_row_height - _unit * 76.0, _unit * CHIP_MIN_HEIGHT, _unit * CHIP_MAX_HEIGHT)
 	var content := MarginContainer.new()
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	content.add_theme_constant_override("margin_left", int(_unit * 15.0))
-	content.add_theme_constant_override("margin_right", int(_unit * 15.0))
+	content.add_theme_constant_override("margin_right", int(_unit * 26.0))
 	content.add_theme_constant_override("margin_top", int(_unit * 15.0))
 	content.add_theme_constant_override("margin_bottom", int(_unit * 15.0))
 	tray.add_child(content)
@@ -261,9 +290,23 @@ func _build_counter_tray(canvas: Control) -> void:
 	_counter_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_counter_total_label.size_flags_horizontal = Control.SIZE_SHRINK_END
 	headline.add_child(_counter_total_label)
+
+	var body := HBoxContainer.new()
+	body.name = "CounterBody"
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", int(_unit * 14.0))
+	rows.add_child(body)
+
+	# Left: progress bar + helper text (guide mode only).
+	_counter_status = VBoxContainer.new()
+	_counter_status.name = "CounterStatus"
+	_counter_status.custom_minimum_size = Vector2(_unit * STATUS_COLUMN_WIDTH, 0.0)
+	_counter_status.alignment = BoxContainer.ALIGNMENT_CENTER
+	_counter_status.add_theme_constant_override("separation", int(_unit * 6.0))
+	body.add_child(_counter_status)
 	var progress_slot := Control.new()
 	progress_slot.custom_minimum_size = Vector2(0.0, _unit * 21.0)
-	rows.add_child(progress_slot)
+	_counter_status.add_child(progress_slot)
 	_progress_bar = TextureProgressBar.new()
 	_progress_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	_progress_bar.min_value = 0.0
@@ -271,12 +314,9 @@ func _build_counter_tray(canvas: Control) -> void:
 	_progress_bar.texture_progress = PROGRESS_FILL_TEXTURE
 	_progress_bar.nine_patch_stretch = true
 	progress_slot.add_child(_progress_bar)
-	var bar_helper_gap := Control.new()
-	bar_helper_gap.custom_minimum_size = Vector2(0.0, _unit * 9.0)
-	rows.add_child(bar_helper_gap)
 	var helper_slot := CenterContainer.new()
 	helper_slot.custom_minimum_size = Vector2(0.0, _unit * 30.0)
-	rows.add_child(helper_slot)
+	_counter_status.add_child(helper_slot)
 	_helper_row = HBoxContainer.new()
 	_helper_row.name = "CounterHelperRow"
 	_helper_row.add_theme_constant_override("separation", int(_unit * 4.0))
@@ -291,12 +331,25 @@ func _build_counter_tray(canvas: Control) -> void:
 	_helper_amount.add_theme_constant_override("outline_size", 1)
 	_helper_amount.add_theme_color_override("font_outline_color", HELPER_AMBER)
 	_helper_row.add_child(_helper_amount)
+
+	# Right: the counter "well" that holds the placed money.
+	var well := PanelContainer.new()
+	well.name = "CounterWell"
+	well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	well.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	well.add_theme_stylebox_override("panel", _well_box())
+	body.add_child(well)
 	_counter_flow = HFlowContainer.new()
 	_counter_flow.name = "CounterChipRow"
-	_counter_flow.add_theme_constant_override("h_separation", int(_unit * 9.0))
-	_counter_flow.add_theme_constant_override("v_separation", 0)
-	_counter_flow.custom_minimum_size = Vector2(0.0, _unit * 27.0)
-	rows.add_child(_counter_flow)
+	_counter_flow.add_theme_constant_override("h_separation", int(_unit * 10.0))
+	_counter_flow.add_theme_constant_override("v_separation", int(_unit * 6.0))
+	well.add_child(_counter_flow)
+	_counter_empty_label = _label(COUNTER_EMPTY_TEXT, int(22.0 * _unit), Color(INK, 0.4))
+	_counter_empty_label.name = "CounterEmptyHint"
+	_counter_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_counter_empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	well.add_child(_counter_empty_label)
 
 
 func _build_drawer_slots(canvas: Control) -> void:
@@ -379,6 +432,13 @@ func _drawer_slot(value: int, slot_width: float) -> Button:
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	
+	# FIX: Prevent Button node from reacting twice to mobile touches
+	button.gui_input.connect(func(event: InputEvent):
+		if event is InputEventScreenTouch:
+			button.accept_event()
+	)
+	
 	var feedback := ColorRect.new()
 	feedback.name = "TapFeedback"
 	feedback.color = Color(1.0, 0.87, 0.35, 0.0)
@@ -395,6 +455,8 @@ func _on_denomination_tapped(value: int, slot: Button) -> void:
 		feedback_tween.tween_property(feedback, "color:a", 0.18, 0.04)
 		feedback_tween.tween_property(feedback, "color:a", 0.0, 0.04)
 	_pile.append(value)
+	# Remember which chip changed so only that chip plays the "pop" animation.
+	_pop_value = value
 	_refresh_pile_total()
 
 
@@ -414,14 +476,24 @@ func _refresh_pile_total() -> void:
 	if not is_instance_valid(_counter_flow):
 		return
 	for child in _counter_flow.get_children():
+		# Detach first so the flow container does not lay out the dying chips
+		# alongside the new ones for a frame.
+		_counter_flow.remove_child(child)
 		child.queue_free()
 	var total := 0
 	for value in _pile:
 		total += value
+	# Same left-to-right order as the tray (P1 -> P50), so each chip sits in the
+	# same relative position as the slot it came from.
 	for value in SukliRules.DENOMINATIONS:
 		var count := _pile.count(value)
 		if count > 0:
-			_counter_flow.add_child(_counter_piece(value, count))
+			var piece := _counter_piece(value, count)
+			_counter_flow.add_child(piece)
+			if value == _pop_value:
+				_pop(piece.get_node("Content") as Control)
+	_pop_value = -1
+	_counter_empty_label.visible = _pile.is_empty()
 	if _guide_enabled:
 		_counter_total_label.text = "%s / %s" % [_money_text(total), _money_text(_change_due)]
 		_progress_bar.max_value = maxf(1.0, float(_change_due))
@@ -452,22 +524,65 @@ func _set_helper(prefix: String, amount: String, color: Color) -> void:
 	_helper_amount.add_theme_color_override("font_outline_color", color)
 
 
+func _is_bill(value: int) -> bool:
+	return value >= 20
+
+
+# One chip = one denomination currently on the counter. Tapping it removes one.
+# Coins are near-square, bills are wide, so the shape alone tells them apart.
+# The count only shows as a badge when there is more than one.
 func _counter_piece(value: int, count: int) -> Button:
+	var width_ratio := CHIP_BILL_WIDTH_RATIO if _is_bill(value) else CHIP_COIN_WIDTH_RATIO
+	var chip_size := Vector2(_chip_height * width_ratio, _chip_height)
 	var piece := _button("", int(16.0 * _unit), PAPER)
-	piece.custom_minimum_size = Vector2(_drawer_size.x * 0.052, _unit * 27.0)
-	piece.add_theme_stylebox_override("normal", _box(PAPER, INK, _unit * 4.0, _unit * 2.0, 4))
+	piece.name = "CounterPiece%d" % value
+	piece.custom_minimum_size = chip_size
+	piece.add_theme_stylebox_override("normal", _chip_box(PAPER))
+	piece.add_theme_stylebox_override("hover", _chip_box(PAPER.lightened(0.1)))
+	piece.add_theme_stylebox_override("pressed", _chip_box(PAPER_DARK))
+	
+	piece.gui_input.connect(func(event: InputEvent):
+		if event is InputEventScreenTouch:
+			piece.accept_event()
+	)
+	# Everything visual lives under "Content", because the container owns the
+	# chip's own scale. Animating Content avoids the container resetting it.
+	var content := Control.new()
+	content.name = "Content"
+	content.size = chip_size
+	content.pivot_offset = chip_size * 0.5
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	piece.add_child(content)
+	var pad := _unit * CHIP_ICON_PADDING
 	var icon := _money_texture_rect(_money_texture(value), "CounterMoney%d" % value)
-	icon.position = Vector2(_unit * 3.0, _unit * 1.5)
-	icon.size = Vector2(_unit * 24.0, _unit * 24.0)
-	piece.add_child(icon)
-	var badge := _label("x%d" % count, int(21.0 * _unit), INK)
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	badge.position = Vector2(piece.custom_minimum_size.x * 0.50, _unit * 1.5)
-	badge.size = Vector2(piece.custom_minimum_size.x * 0.46, _unit * 24.0)
-	piece.add_child(badge)
+	icon.position = Vector2(pad, pad)
+	icon.size = chip_size - Vector2(pad, pad) * 2.0
+	content.add_child(icon)
+	if count > 1:
+		var badge_size := CHIP_BADGE_SIZE * _unit
+		var badge := PanelContainer.new()
+		badge.name = "CountBadge"
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_theme_stylebox_override("panel", _badge_box())
+		badge.custom_minimum_size = badge_size
+		badge.size = badge_size
+		badge.position = Vector2(chip_size.x - badge_size.x + _unit * 6.0, -_unit * 6.0)
+		var badge_label := _label("x%d" % count, int(20.0 * _unit), PAPER)
+		badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		badge.add_child(badge_label)
+		content.add_child(badge)
 	piece.pressed.connect(_remove_one_of.bind(value))
 	return piece
+
+
+# Quick scale "pop" so the player sees which chip just changed.
+func _pop(node: Control) -> void:
+	if node == null:
+		return
+	var tween := node.create_tween()
+	tween.tween_property(node, "scale", Vector2(1.18, 1.18), 0.07).from(Vector2(0.75, 0.75)).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", Vector2.ONE, 0.09)
 
 
 func _on_give_pressed() -> void:
@@ -609,11 +724,19 @@ func _art_button(text: String, font_size: int, texture: Texture2D, margin_x: int
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	
+	# FIX: Keep action buttons from executing twice on mobile devices
+	button.gui_input.connect(func(event: InputEvent):
+		if event is InputEventScreenTouch:
+			button.accept_event()
+	)
+	
 	var art := _art_patch(texture, "%sArt" % text.capitalize(), margin_x, margin_y)
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, false)
 	art.show_behind_parent = true
 	button.add_child(art)
 	return button
+
 
 
 func _box(bg: Color, edge: Color, margin_x: float, margin_y: float, radius: int) -> StyleBoxFlat:
@@ -627,6 +750,40 @@ func _box(bg: Color, edge: Color, margin_x: float, margin_y: float, radius: int)
 	box.content_margin_right = margin_x
 	box.content_margin_top = margin_y
 	box.content_margin_bottom = margin_y
+	return box
+
+
+# Slightly darker, soft-bordered inset so the placed money reads as "on the counter".
+func _well_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(PAPER_DARK, 0.55)
+	box.border_color = Color(INK, 0.35)
+	box.set_border_width_all(int(_unit * 3.0))
+	box.set_corner_radius_all(6)
+	box.anti_aliasing = false
+	box.set_content_margin_all(_unit * 6.0)
+	return box
+
+
+# Thinner border than _box() (which uses BORDER_W = 6) so the money art gets the room.
+func _chip_box(bg: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = bg
+	box.border_color = INK
+	box.set_border_width_all(int(_unit * 4.0))
+	box.set_corner_radius_all(6)
+	box.anti_aliasing = false
+	return box
+
+
+func _badge_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = INK
+	box.border_color = PAPER
+	box.set_border_width_all(int(_unit * 2.0))
+	box.set_corner_radius_all(int(_unit * 14.0))
+	box.anti_aliasing = false
+	box.set_content_margin_all(0.0)
 	return box
 
 
