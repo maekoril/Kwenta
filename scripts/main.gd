@@ -16,7 +16,9 @@ const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_f
 const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
 const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
+const PAUSE_MENU = preload("res://scripts/pause_menu.gd")
 
+var pause_menu: PauseMenu
 var campaign: CampaignState
 var story: StoryProgression
 var shift: ShiftManager
@@ -98,6 +100,8 @@ func _ready() -> void:
 	_build_bubble()
 	_build_cash_tray()
 	_build_debug_tools()
+	pause_menu = PAUSE_MENU.new()
+	add_child(pause_menu)
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_rebuild_product_shelf()
@@ -686,6 +690,7 @@ func _update_cash(value: int) -> void:
 
 func _show_shift_summary() -> void:
 	shift_in_progress = false
+	pause_menu.set_available(false)
 	if debug_skip_button != null:
 		debug_skip_button.visible = false
 	showing_shift_results = true
@@ -865,6 +870,7 @@ func _restart_story() -> void:
 
 func _begin_shift() -> void:
 	shift_in_progress = true
+	pause_menu.set_available(true)
 	if debug_skip_button != null:
 		debug_skip_button.visible = true
 	shift_start_cash = campaign.cash
