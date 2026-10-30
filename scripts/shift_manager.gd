@@ -16,6 +16,8 @@ var active_customers: Array[CustomerState] = []
 var elapsed_seconds: float = 0.0
 var spawn_elapsed: float = 0.0
 var current_spawn_delay: float = 0.0
+var shift_duration_seconds: float = 0.0
+var shift_close_minutes: int = CampaignConfig.FULL_SHIFT_GAME_MINUTES
 var customer_sequence: int = 0
 var is_running: bool = false
 var did_emit_completion: bool = false
@@ -48,14 +50,16 @@ func start_shift() -> void:
 	best_change_streak = 0
 	did_emit_completion = false
 	is_running = true
+	shift_duration_seconds = maxf(0.01, campaign_state.get_shift_length_seconds())
+	shift_close_minutes = campaign_state.get_shift_close_minutes()
 	_spawn_customer()
 	_update_clock()
 
 func advance_time(delta_seconds: float) -> void:
 	if not is_running or delta_seconds <= 0.0:
 		return
-	elapsed_seconds = minf(campaign_state.config.shift_length_seconds, elapsed_seconds + delta_seconds)
-	if elapsed_seconds >= campaign_state.config.shift_length_seconds:
+	elapsed_seconds = minf(shift_duration_seconds, elapsed_seconds + delta_seconds)
+	if elapsed_seconds >= shift_duration_seconds:
 		_update_clock()
 		finish_shift()
 		return
@@ -199,7 +203,7 @@ func _spawn_customer() -> void:
 	if order.requested.is_empty():
 		push_warning("No stocked products are available; customer spawn skipped.")
 		return
-	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
+	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.get_customer_patience_seconds()
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer_sequence += 1
@@ -214,7 +218,7 @@ func _active_customer_limit() -> int:
 func _next_spawn_delay() -> float:
 	if spawn_delay_min_seconds > 0.0 and spawn_delay_max_seconds >= spawn_delay_min_seconds:
 		return rng.randf_range(spawn_delay_min_seconds, spawn_delay_max_seconds)
-	return campaign_state.config.customer_spawn_interval
+	return campaign_state.get_customer_spawn_interval()
 
 func _choose_customer_id() -> String:
 	var ids: Array[String] = []
@@ -239,7 +243,7 @@ func _choose_customer_id() -> String:
 	return ids[0]
 
 func _update_clock() -> void:
-	var game_minutes := int(floor(elapsed_seconds / campaign_state.config.shift_length_seconds * 600.0))
+	var game_minutes := int(floor(elapsed_seconds / shift_duration_seconds * float(shift_close_minutes)))
 	var hour := 8 + floori(float(game_minutes) / 60.0)
 	var minute := game_minutes % 60
 	var display_hour := hour if hour <= 12 else hour - 12

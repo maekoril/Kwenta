@@ -22,7 +22,7 @@ var observed_clock := ""
 var customer_change_count := 0
 
 func _initialize() -> void:
-	_test_sukli_guide_is_limited_to_the_first_two_days()
+	_test_sukli_is_introduced_on_day_two_and_helper_fades_after_day_two()
 	await _test_cash_tray_uses_reference_text_hierarchy()
 	await _test_cash_tray_matches_the_tall_reference_panel()
 	await _test_cash_tray_matches_the_wide_reference_panel()
@@ -46,8 +46,10 @@ func _initialize() -> void:
 		print("All core gameplay loop assertions passed.")
 		quit(0)
 
-func _test_sukli_guide_is_limited_to_the_first_two_days() -> void:
-	_assert(SukliRulesScript.sukli_guide_enabled_for_day(1), "the sukli guide is visible on day 1")
+func _test_sukli_is_introduced_on_day_two_and_helper_fades_after_day_two() -> void:
+	_assert(not SukliRulesScript.is_enabled(1), "Day 1 teaches serving before sukli")
+	_assert(SukliRulesScript.is_enabled(2), "Day 2 introduces sukli")
+	_assert(SukliRulesScript.sukli_guide_enabled_for_day(1), "the sukli guide remains available during the Day 1 tutorial")
 	_assert(SukliRulesScript.sukli_guide_enabled_for_day(2), "the sukli guide is visible on day 2")
 	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(3), "the sukli guide is hidden from day 3")
 	_assert(not SukliRulesScript.sukli_guide_enabled_for_day(7), "the sukli guide remains hidden after day 3")
@@ -71,6 +73,9 @@ func _test_cash_tray_uses_reference_text_hierarchy() -> void:
 	_assert(counter != null and counter.text == "₱0 / ₱27", "the counter readout uses the peso sign and target")
 	_assert(tray.find_child("BaryaTag", true, false) != null, "the coin compartments have a BARYA tag")
 	_assert(tray.find_child("PeraTag", true, false) != null, "the bill compartments have a PERA tag")
+	tray.open_for(customer, false)
+	await process_frame
+	_assert(sukli.visible, "the sukli amount remains visible after the Day 2 helper fades")
 	tray.queue_free()
 
 
@@ -175,10 +180,7 @@ func _test_cash_tray_uses_one_even_content_box() -> void:
 
 func _test_storefront_defines_core_shift_pacing() -> void:
 	var constants := _layout_constants()
-	_assert(int(constants.get("MAX_ACTIVE_WINDOW_CUSTOMERS", -1)) == 2, "the storefront permits at most two concurrent window customers")
-	_assert(is_equal_approx(float(constants.get("CUSTOMER_SPAWN_DELAY_MIN_SECONDS", -1.0)), 5.0), "customer spawn delay minimum is five seconds")
-	_assert(is_equal_approx(float(constants.get("CUSTOMER_SPAWN_DELAY_MAX_SECONDS", -1.0)), 12.0), "customer spawn delay maximum is twelve seconds")
-	_assert(is_equal_approx(float(constants.get("CUSTOMER_PATIENCE_SECONDS", -1.0)), 25.0), "core customers receive twenty-five seconds of patience")
+	_assert(int(constants.get("MAX_CUSTOMERS", -1)) == 5, "the storefront can present the five-customer Fiesta peak")
 
 func _test_shift_caps_window_customers_and_uses_core_patience() -> void:
 	var constants := _layout_constants()
@@ -205,7 +207,7 @@ func _test_shift_caps_window_customers_and_uses_core_patience() -> void:
 	clock_manager.clock_changed.connect(_on_clock_changed)
 	clock_manager.start_shift()
 	clock_manager.advance_time(1.0)
-	_assert(observed_clock == "6:00 PM", "the active shift clock reaches 6:00 PM at shift end (got %s)" % observed_clock)
+	_assert(observed_clock == "12:00 PM", "the Day 1 tutorial shift closes at noon (got %s)" % observed_clock)
 
 func _test_timeout_notifies_the_scene_before_replacement_spawn() -> void:
 	var manager := _make_test_shift()

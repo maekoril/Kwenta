@@ -2,6 +2,7 @@ class_name ShelfShopModal
 extends Control
 
 signal purchase_requested(group_id: String, price: int)
+signal closed
 
 const FRAME_TEXTURE := preload("res://assets/sprites/ui/shop/supplier_shelf_panel_v3.png")
 const BUY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
@@ -53,6 +54,7 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	closed.emit()
 
 func _build_shell() -> void:
 	var dimmer := ColorRect.new()

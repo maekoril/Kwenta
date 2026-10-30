@@ -9,6 +9,7 @@ const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
+const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
 const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
@@ -18,6 +19,15 @@ const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_f
 const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
 const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
+const DAY_FOCUS_HINTS := {
+	1: "Drag a product from the shelf to the customer who ordered it.",
+	2: "Shop before opening. Today, give the correct sukli after each sale.",
+	3: "Practice multi-item orders. More customers are starting to overlap.",
+	4: "Rain makes customers less patient. Serve the shortest bar first.",
+	5: "Keep your regulars happy during the Mini-Save rush.",
+	6: "Fiesta rush! Up to five customers can wait at once.",
+	7: "Final day: take your time. Customers will not lose trust today.",
+}
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -81,6 +91,19 @@ var environment_settings: Dictionary = {}
 var environment_textures: Dictionary = {}
 var day_six_brownout_triggered := false
 var debug_environment_time_override := -1
+var tutorial_hint: Label
+var tutorial_hint_tween: Tween
+var tutorial_delivery_seen := false
+var tutorial_overlay: InteractiveTutorialOverlay
+var tutorial_step := TutorialStep.NONE
+var tutorial_product_id := ""
+var tutorial_customer_id := ""
+var tutorial_change_due := 0
+var tutorial_payment_tender := 0
+var tutorial_payment_total := 0
+var day_two_sukli_tutorial_complete := false
+
+enum TutorialStep { NONE, DAY1_PRODUCT, DAY1_CUSTOMER, DAY2_SHOP, DAY2_MONEY, DAY2_GIVE }
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -99,6 +122,8 @@ func _ready() -> void:
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
+	_build_tutorial_hint()
+	_build_interactive_tutorial_overlay()
 	_build_summary_panel()
 	_build_bubble()
 	_build_cash_tray()
@@ -148,6 +173,64 @@ func _build_hud() -> void:
 		tag.position = Vector2(x, 0.0)
 		hud.add_child(tag)
 		x += float(spec[1]) + gap
+
+func _build_tutorial_hint() -> void:
+	tutorial_hint = _label("", 30, Color("fff1b8"))
+	tutorial_hint.name = "TutorialHint"
+	tutorial_hint.z_index = 46
+	tutorial_hint.position = Vector2(310.0, 105.0) + _ui_offset()
+	tutorial_hint.size = Vector2(1300.0, 74.0)
+	tutorial_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tutorial_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tutorial_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_hint.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	tutorial_hint.add_theme_constant_override("outline_size", 7)
+	tutorial_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_hint.visible = false
+	add_child(tutorial_hint)
+
+func _build_interactive_tutorial_overlay() -> void:
+	tutorial_overlay = INTERACTIVE_TUTORIAL_OVERLAY.new()
+	tutorial_overlay.name = "InteractiveTutorialOverlay"
+	tutorial_overlay.position = _ui_offset()
+	tutorial_overlay.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	add_child(tutorial_overlay)
+
+func _tutorial_rect_for(target: Control) -> Rect2:
+	if not is_instance_valid(target) or tutorial_overlay == null:
+		return Rect2()
+	var rect := target.get_global_rect()
+	rect.position -= tutorial_overlay.global_position
+	return rect
+
+func _show_tutorial_spotlight(step: int, message: String, target: Control, step_title: String = "GUIDE") -> void:
+	if tutorial_overlay == null or not is_instance_valid(target):
+		return
+	tutorial_step = step
+	tutorial_overlay.show_step(message, _tutorial_rect_for(target), step_title)
+
+func _clear_tutorial_spotlight() -> void:
+	tutorial_step = TutorialStep.NONE
+	tutorial_product_id = ""
+	tutorial_customer_id = ""
+	tutorial_change_due = 0
+	tutorial_payment_tender = 0
+	tutorial_payment_total = 0
+	if tutorial_overlay != null:
+		tutorial_overlay.clear_step()
+
+func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
+	if tutorial_hint == null or message.is_empty():
+		return
+	if tutorial_hint_tween != null and tutorial_hint_tween.is_valid():
+		tutorial_hint_tween.kill()
+	tutorial_hint.text = message
+	tutorial_hint.modulate.a = 1.0
+	tutorial_hint.visible = true
+	tutorial_hint_tween = create_tween()
+	tutorial_hint_tween.tween_interval(seconds)
+	tutorial_hint_tween.tween_property(tutorial_hint, "modulate:a", 0.0, 0.35)
+	tutorial_hint_tween.tween_callback(tutorial_hint.hide)
 
 func _build_shop_button() -> void:
 	shop_button = Button.new()
@@ -501,10 +584,11 @@ func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	shift = ShiftManager.new(campaign, products_by_id, rng)
-	shift.active_customer_limit_override = STOREFRONT_LAYOUT.MAX_ACTIVE_WINDOW_CUSTOMERS
-	shift.spawn_delay_min_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MIN_SECONDS
-	shift.spawn_delay_max_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MAX_SECONDS
-	shift.patience_seconds_override = STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
+	# Campaign data controls the customer ramp. The storefront supports up to five.
+	shift.active_customer_limit_override = 0
+	shift.spawn_delay_min_seconds = 0.0
+	shift.spawn_delay_max_seconds = 0.0
+	shift.patience_seconds_override = 0.0
 	shift.customers_changed.connect(_on_customers_changed)
 	shift.customer_timed_out.connect(_on_customer_timed_out)
 	shift.cash_changed.connect(_update_cash)
@@ -631,6 +715,11 @@ func _on_product_dropped(customer_id: String, product_id: String) -> void:
 
 func _on_product_drag_started(_product_id: String) -> void:
 	_play_audio_cues(["pickup"])
+	if campaign.day != 1 or tutorial_step != TutorialStep.DAY1_PRODUCT or _product_id != tutorial_product_id:
+		return
+	var actor: Control = customer_actors.get(tutorial_customer_id)
+	if is_instance_valid(actor):
+		_show_tutorial_spotlight(TutorialStep.DAY1_CUSTOMER, "Now drop it on the highlighted customer.", actor)
 
 func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
 	var actor := _customer_actor_at(viewport_position)
@@ -663,6 +752,10 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		actor.call("play_correct_drop")
 		if result == OrderState.DeliveryResult.COMPLETED and not _is_waiting_for_change(actor):
 			actor.call("play_happy")
+	if campaign.day == 1 and tutorial_step == TutorialStep.DAY1_CUSTOMER and customer_id == tutorial_customer_id and product_id == tutorial_product_id:
+		tutorial_delivery_seen = true
+		_clear_tutorial_spotlight()
+		_show_tutorial_hint("Good! Serve every icon in the bubble before patience runs out.")
 	return true
 
 func audio_cues_for_delivery(result: int, sale_completed: bool) -> Array[String]:
@@ -805,7 +898,10 @@ func _complete_story_beats() -> void:
 			showing_shift_results = false
 			summary_backdrop.visible = false
 			summary_panel.visible = false
-			_begin_shift()
+			if campaign.day == 2 and shop_available:
+				_begin_day_two_shop_tutorial()
+			else:
+				_begin_shift()
 		"day_choices":
 			showing_shift_results = false
 			pending_story_choices = story.get_day_choices(campaign.day)
@@ -893,6 +989,8 @@ func _restart_story() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	story_complete = false
+	day_two_sukli_tutorial_complete = false
+	_clear_tutorial_spotlight()
 	campaign_started = false
 	shop_available = false
 	_refresh_shop_button()
@@ -912,8 +1010,38 @@ func _begin_shift() -> void:
 		debug_skip_button.visible = true
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
-	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
+	tutorial_delivery_seen = false
+	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else 0.0
 	shift.start_shift()
+	if campaign.day == 1:
+		_begin_day_one_drag_tutorial()
+	elif campaign.day >= 3:
+		_show_tutorial_hint(str(DAY_FOCUS_HINTS.get(campaign.day, "")))
+
+func _begin_day_one_drag_tutorial() -> void:
+	var active := shift.get_active_customers()
+	if active.is_empty():
+		return
+	var customer: CustomerState = active[0]
+	for product_id in customer.order.requested:
+		var product: Control = product_items_by_id.get(str(product_id))
+		if is_instance_valid(product):
+			tutorial_product_id = str(product_id)
+			tutorial_customer_id = customer.instance_id
+			_show_tutorial_spotlight(TutorialStep.DAY1_PRODUCT, "Drag the highlighted product to the customer.", product)
+			return
+
+func _begin_day_two_shop_tutorial() -> void:
+	if not is_instance_valid(shop_button):
+		_begin_shift()
+		return
+	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Tap the shop. You can browse upgrades before opening.", shop_button)
+
+func _on_shelf_shop_closed() -> void:
+	if tutorial_step != TutorialStep.DAY2_SHOP:
+		return
+	_clear_tutorial_spotlight()
+	_begin_shift()
 
 func _label(text_value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
@@ -952,6 +1080,8 @@ func _build_cash_tray() -> void:
 	cash_tray.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	add_child(cash_tray)
 	cash_tray.change_given.connect(_on_change_given)
+	cash_tray.denomination_selected.connect(_on_tutorial_denomination_selected)
+	cash_tray.change_amount_changed.connect(_on_tutorial_change_amount_changed)
 
 func _on_payment_tapped(customer_id: String) -> void:
 	if shift == null:
@@ -959,7 +1089,49 @@ func _on_payment_tapped(customer_id: String) -> void:
 	for customer in shift.get_active_customers():
 		if customer.instance_id == customer_id and customer.is_paying():
 			cash_tray.open_for(customer, SukliRules.sukli_guide_enabled_for_day(campaign.day))
+			if campaign.day == 2 and not day_two_sukli_tutorial_complete:
+				_begin_day_two_sukli_tutorial(customer)
 			return
+
+func _begin_day_two_sukli_tutorial(customer: CustomerState) -> void:
+	if customer == null or customer.payment == null:
+		return
+	tutorial_change_due = customer.payment.change_due()
+	tutorial_payment_tender = customer.payment.tendered
+	tutorial_payment_total = customer.payment.total
+	_refresh_day_two_sukli_spotlight(cash_tray.get_selected_total())
+
+func _on_tutorial_denomination_selected(_value: int, total: int) -> void:
+	_on_tutorial_change_amount_changed(total)
+
+func _on_tutorial_change_amount_changed(total: int) -> void:
+	if campaign.day != 2 or day_two_sukli_tutorial_complete or tutorial_change_due <= 0:
+		return
+	_refresh_day_two_sukli_spotlight(total)
+
+func _refresh_day_two_sukli_spotlight(total: int) -> void:
+	var remaining := tutorial_change_due - total
+	var equation := "₱%d − ₱%d = ₱%d" % [tutorial_payment_tender, tutorial_payment_total, tutorial_change_due]
+	if remaining == 0:
+		var give_button := cash_tray.find_child("GiveChangeButton", true, false) as Control
+		if is_instance_valid(give_button):
+			_show_tutorial_spotlight(TutorialStep.DAY2_GIVE, "%s\nExact change! Tap IBIGAY." % equation, give_button, "SUKLI · READY")
+		return
+	if remaining < 0:
+		var clear_button := cash_tray.find_child("ClearChangeButton", true, false) as Control
+		if is_instance_valid(clear_button):
+			_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou gave too much. Tap LINISIN and try again." % equation, clear_button, "SUKLI · TRY AGAIN")
+		return
+	var next_value := _largest_change_denomination_at_most(remaining)
+	var coin := cash_tray.find_child("Denomination%d" % next_value, true, false) as Control
+	if is_instance_valid(coin):
+		_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou still need ₱%d. Tap ₱%d next." % [equation, remaining, next_value], coin, "SUKLI · STEP")
+
+func _largest_change_denomination_at_most(value: int) -> int:
+	for denomination in [50, 20, 10, 5, 1]:
+		if denomination <= value:
+			return denomination
+	return 1
 
 func _on_change_given(customer_id: String, amount: int) -> void:
 	if shift == null:
@@ -968,6 +1140,12 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 	var outcome: Dictionary = shift.give_change(customer_id, amount)
 	var result: int = int(outcome.get("result", PaymentState.Result.NO_PAYMENT))
 	var diff: int = int(outcome.get("diff", 0))
+	if campaign.day == 2 and tutorial_change_due > 0:
+		if result == PaymentState.Result.EXACT:
+			day_two_sukli_tutorial_complete = true
+			_clear_tutorial_spotlight()
+		else:
+			_refresh_day_two_sukli_spotlight(cash_tray.get_selected_total())
 	var at := Vector2(840.0, 200.0)
 	if is_instance_valid(actor):
 		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
@@ -987,7 +1165,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		PaymentState.Result.OVER:
 			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
-			_float_text(at, "SOBRA  -₱%d" % diff if SukliRules.sukli_guide_enabled_for_day(campaign.day) else "SOBRA!", Color("f6d95e"))
+			_float_text(at, "SOBRA  -₱%d" % diff, Color("f6d95e"))
 			if is_instance_valid(actor):
 				actor.call("play_wrong_drop")
 		_:
@@ -1026,6 +1204,7 @@ func _build_store_layer_renderer() -> void:
 	shelf_shop = ShelfShopModal.new()
 	add_child(shelf_shop)
 	shelf_shop.purchase_requested.connect(_on_shelf_shop_purchase_requested)
+	shelf_shop.closed.connect(_on_shelf_shop_closed)
 
 func _open_shelf_shop() -> void:
 	if shelf_shop == null or not _is_shop_available():
@@ -1033,6 +1212,8 @@ func _open_shelf_shop() -> void:
 	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
 	move_child(shelf_shop, get_child_count() - 1)
 	shelf_shop.open()
+	if tutorial_step == TutorialStep.DAY2_SHOP and tutorial_overlay != null:
+		tutorial_overlay.visible = false
 
 func _is_shop_available() -> bool:
 	return campaign != null and campaign.day > 1 and shop_available and not shift_in_progress

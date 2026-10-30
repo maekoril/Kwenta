@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_closing_emits_once()
 	_test_two_customers_keep_separate_orders_and_capacity()
 	_test_campaign_unlocks_and_pacing()
+	_test_day_by_day_learning_curve()
 	_test_shelf_purchase_costs_cash_once()
 	_test_optional_unlock_costs_cash_once()
 	_test_seven_day_story_remembers_choices_and_callbacks()
@@ -140,8 +141,8 @@ func _test_closing_emits_once() -> void:
 func _test_campaign_unlocks_and_pacing() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
 	_assert(not campaign.get_available_product_ids().is_empty(), "Day 1 starts with configured products")
-	_assert(campaign.get_active_customer_limit() == 2, "Day 1 allows two active customers")
-	_assert(campaign.get_max_order_units() == 3, "Day 1 orders cap at three units")
+	_assert(campaign.get_active_customer_limit() == 1, "Day 1 starts with one low-pressure customer")
+	_assert(campaign.get_max_order_units() == 2, "Day 1 introduces multiple-item orders without overload")
 	campaign.advance_day()
 	campaign.advance_day()
 	campaign.advance_day()
@@ -161,6 +162,20 @@ func _test_campaign_unlocks_and_pacing() -> void:
 	_assert(campaign.count_trusted_regulars() == 0, "trust below configured threshold is not counted as a regular")
 	campaign.save_customer_trust("regular", 80.0)
 	_assert(campaign.count_trusted_regulars() == 1, "trust at configured threshold counts as a regular")
+
+func _test_day_by_day_learning_curve() -> void:
+	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
+	var expected_close_minutes: Array[int] = [240, 540, 600, 600, 720, 720, 720]
+	var expected_durations: Array[float] = [160.0, 360.0, 400.0, 400.0, 480.0, 480.0, 480.0]
+	var expected_caps: Array[int] = [1, 2, 2, 3, 4, 5, 4]
+	for index in expected_close_minutes.size():
+		campaign.day = index + 1
+		_assert(campaign.get_shift_close_minutes() == expected_close_minutes[index], "Day %d closes at the planned in-game time" % campaign.day)
+		_assert(is_equal_approx(campaign.get_shift_length_seconds(), expected_durations[index]), "Day %d has the planned real-time duration" % campaign.day)
+		_assert(campaign.get_active_customer_limit() == expected_caps[index], "Day %d uses the planned simultaneous-customer cap" % campaign.day)
+	_assert(campaign.get_customer_patience_seconds() >= 999999.0, "Day 7 remains a low-punishment finale")
+	_assert(CampaignFixture.get_customer_patience_seconds_for_day(4) < CampaignFixture.get_customer_patience_seconds_for_day(3), "rain day requires faster decisions than Day 3")
+	_assert(CampaignFixture.get_customer_spawn_interval_for_day(6) < CampaignFixture.get_customer_spawn_interval_for_day(5), "Fiesta Day 6 has the fastest customer arrivals")
 
 func _test_optional_unlock_costs_cash_once() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)

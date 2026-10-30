@@ -5,6 +5,8 @@ extends Control
 
 signal change_given(customer_instance_id: String, amount: int)
 signal closed
+signal denomination_selected(value: int, total: int)
+signal change_amount_changed(total: int)
 
 const PAPER := Color("#f6e7c8")
 const PAPER_DARK := Color("#e8d4a8")
@@ -113,10 +115,12 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_bayad_label.text = _money_text(customer.payment.tendered)
 	_total_label.text = _money_text(customer.payment.total)
 	_due_label.text = _money_text(_change_due)
-	_due_label.visible = _guide_enabled
-	_list_change_row.visible = _guide_enabled
-	_list_rule.visible = _guide_enabled
-	_note_paper.size.y = _top_row_height + NOTE_GUIDED_EXTRA_HEIGHT if _guide_enabled else _drawer_size.y * NOTE_UNGUIDED_HEIGHT_RATIO
+	# The due amount remains visible after the tutorial. Later days test making
+	# change, not memorizing numbers from a hidden receipt.
+	_due_label.visible = true
+	_list_change_row.visible = true
+	_list_rule.visible = true
+	_note_paper.size.y = _top_row_height + NOTE_GUIDED_EXTRA_HEIGHT
 	for index in _list_spacers.size():
 		_list_spacers[index].visible = _guide_enabled or index < 2
 	_progress_bar.visible = _guide_enabled
@@ -357,11 +361,13 @@ func _build_actions(canvas: Control) -> void:
 	actions.add_theme_constant_override("separation", int(_unit * 4.0))
 	canvas.add_child(actions)
 	_give_button = _art_button("IBIGAY", int(34.0 * _unit), IBIGAY_BUTTON_TEXTURE, 9, 9)
+	_give_button.name = "GiveChangeButton"
 	_give_button.custom_minimum_size = Vector2(0.0, _unit * 69.0)
 	_give_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_give_button.pressed.connect(_on_give_pressed)
 	actions.add_child(_give_button)
 	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 8, 8)
+	clear_button.name = "ClearChangeButton"
 	clear_button.custom_minimum_size = Vector2(0.0, _unit * 66.0)
 	clear_button.pressed.connect(_clear_pile)
 	actions.add_child(clear_button)
@@ -375,6 +381,7 @@ func _build_actions(canvas: Control) -> void:
 
 func _drawer_slot(value: int, slot_width: float) -> Button:
 	var button := _button("", int(16.0 * _unit), Color.TRANSPARENT)
+	button.name = "Denomination%d" % value
 	button.custom_minimum_size = Vector2(slot_width, _drawer_size.y * 0.32)
 	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
@@ -396,6 +403,7 @@ func _on_denomination_tapped(value: int, slot: Button) -> void:
 		feedback_tween.tween_property(feedback, "color:a", 0.0, 0.04)
 	_pile.append(value)
 	_refresh_pile_total()
+	denomination_selected.emit(value, get_selected_total())
 
 
 func _remove_one_of(value: int) -> void:
@@ -440,6 +448,13 @@ func _refresh_pile_total() -> void:
 	_counter_total_label.pivot_offset = _counter_total_label.size * 0.5
 	_counter_total_label.scale = Vector2(1.08, 1.08)
 	create_tween().tween_property(_counter_total_label, "scale", Vector2.ONE, 0.12)
+	change_amount_changed.emit(total)
+
+func get_selected_total() -> int:
+	var total := 0
+	for value in _pile:
+		total += value
+	return total
 
 
 func _set_helper(prefix: String, amount: String, color: Color) -> void:
