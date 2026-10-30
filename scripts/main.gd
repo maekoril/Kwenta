@@ -14,6 +14,8 @@ const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
 const DAY_BRIEFING = preload("res://scripts/day_briefing.gd")
 const NOTEBOOK_SCROLL = preload("res://scripts/notebook_scroll.gd")
 const NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const PAUSE_MENU = preload("res://scripts/pause_menu.gd")
+const SHIFT_STORY_EVENTS = preload("res://scripts/shift_story_events.gd")
 const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
@@ -34,6 +36,10 @@ const DAY_FOCUS_HINTS := {
 }
 
 var campaign: CampaignState
+var pause_menu: PauseMenu
+var story_events: ShiftStoryEvents
+var choices_before_shift := false
+var _blocked_input_nodes: Array[Dictionary] = []
 var story: StoryProgression
 var shift: ShiftManager
 var products_by_id: Dictionary = {}
@@ -144,8 +150,11 @@ func _ready() -> void:
 	_build_cash_tray()
 	_build_shop_button()
 	_build_debug_tools()
+	pause_menu = PAUSE_MENU.new()
+	add_child(pause_menu)
 	_update_cash(campaign.cash)
 	_create_shift_manager()
+	_build_story_events()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
 	_present_prologue()
@@ -920,6 +929,10 @@ func _update_cash(value: int) -> void:
 
 func _show_shift_summary() -> void:
 	shift_in_progress = false
+	if story_events != null:
+		story_events.end_shift()
+	if pause_menu != null:
+		pause_menu.set_available(false)
 	if debug_skip_button != null:
 		debug_skip_button.visible = false
 	showing_shift_results = false
@@ -991,6 +1004,11 @@ func _show_current_story_beat() -> void:
 	var speaker: String = str(beat.get("speaker", "Narrator"))
 	var portrait_id: String = str(beat.get("portrait", ""))
 	var text: String = str(beat.get("text", ""))
+	# Story beats may grant a tip or consequence from the teammate's narrative.
+	var bonus := int(beat.get("cash", 0))
+	if bonus != 0:
+		campaign.cash += bonus
+		_update_cash(campaign.cash)
 
 	summary_backdrop.visible = false
 	summary_panel.visible = false
@@ -1005,6 +1023,13 @@ func _complete_story_beats() -> void:
 			bubble.close()
 			campaign_started = true
 			showing_shift_results = false
+			var intro_choices := story.get_day_intro_choices(campaign.day)
+			if not intro_choices.is_empty():
+				choices_before_shift = true
+				pending_story_choices = intro_choices
+				pending_choice_index = 0
+				_show_next_story_choice()
+				return
 			_show_pre_shift_briefing()
 		"day_choices":
 			showing_shift_results = false
@@ -1019,6 +1044,10 @@ func _complete_story_beats() -> void:
 
 func _show_next_story_choice() -> void:
 	if pending_choice_index >= pending_story_choices.size():
+		if choices_before_shift:
+			choices_before_shift = false
+			_show_pre_shift_briefing()
+			return
 		var callbacks := story.get_day_callback_beats(campaign.day)
 		_show_story_beats(callbacks, "DAY %d · %s" % [campaign.day, story.get_day_title(campaign.day)], "finish_day")
 		return
@@ -1046,6 +1075,10 @@ func _select_story_choice(choice_data: Dictionary, option_id: String) -> void:
 	var choice_id: String = str(choice_data.get("id", ""))
 	if not story.record_choice(choice_id, option_id):
 		return
+	var cash_delta := story.get_choice_cash_delta(choice_data, option_id)
+	if cash_delta != 0:
+		campaign.cash += cash_delta
+		_update_cash(campaign.cash)
 	story_choice_column.visible = false
 	_clear_story_choice_buttons()
 	var response := story.get_choice_response(choice_data, option_id)
@@ -1114,6 +1147,7 @@ func _restart_story() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	story_complete = false
+	choices_before_shift = false
 	day_two_sukli_tutorial_complete = false
 	daily_goal = null
 	daily_goal_day = 0
@@ -1127,6 +1161,7 @@ func _restart_story() -> void:
 	_refresh_shop_button()
 	displayed_cash = -1
 	_create_shift_manager()
+	_build_story_events()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
 	day_label.text = "DAY 1"
@@ -1156,6 +1191,8 @@ func _begin_shift() -> void:
 	shop_available = false
 	_refresh_shop_button()
 	shift_in_progress = true
+	if pause_menu != null:
+		pause_menu.set_available(true)
 	if debug_skip_button != null:
 		debug_skip_button.visible = true
 	shift_start_cash = campaign.cash
@@ -1163,7 +1200,13 @@ func _begin_shift() -> void:
 	_ensure_daily_goal()
 	_refresh_daily_goal_hud()
 	tutorial_delivery_seen = false
-	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else 0.0
+	# Keep the campaign's day-by-day patience curve, then layer story-choice
+	# consequences on top of it.
+	var modifiers := story.get_day_modifiers(campaign.day)
+	var patience := campaign.get_customer_patience_seconds() * float(modifiers.get("patience_mult", 1.0))
+	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else patience
+	if story_events != null:
+		story_events.begin_shift(campaign.day)
 	shift.start_shift()
 	if campaign.day == 1:
 		_begin_day_one_drag_tutorial()
@@ -1202,6 +1245,60 @@ func _label(text_value: String, font_size: int, color: Color) -> Label:
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+func _build_story_events() -> void:
+	if story_events == null:
+		story_events = SHIFT_STORY_EVENTS.new()
+		add_child(story_events)
+		story_events.remark_requested.connect(_show_customer_remark)
+		story_events.popup_state_changed.connect(_set_shop_input_blocked)
+	story_events.bind(story, shift, bubble, PORTRAIT_ATLAS)
+	move_child(bubble, get_child_count() - 1)
+
+func _set_shop_input_blocked(blocked: bool) -> void:
+	if blocked:
+		if not _blocked_input_nodes.is_empty():
+			return
+		get_viewport().gui_cancel_drag()
+		for layer in [customer_layer, product_layer, cash_tray, store_layer_renderer]:
+			if layer != null:
+				_block_input_in(layer, true)
+		return
+	for entry in _blocked_input_nodes:
+		var node_ref = entry["node"]
+		if not is_instance_valid(node_ref):
+			continue
+		var node: Node = node_ref
+		node.set_process_input(bool(entry["input"]))
+		node.set_process_unhandled_input(bool(entry["unhandled"]))
+		node.set_process_unhandled_key_input(bool(entry["key"]))
+		if entry.has("mouse"):
+			(node as Control).mouse_behavior_recursive = int(entry["mouse"]) as Control.MouseBehaviorRecursive
+	_blocked_input_nodes.clear()
+
+func _block_input_in(node: Node, is_root: bool) -> void:
+	var entry := {
+		"node": node,
+		"input": node.is_processing_input(),
+		"unhandled": node.is_processing_unhandled_input(),
+		"key": node.is_processing_unhandled_key_input(),
+	}
+	if is_root and node is Control:
+		entry["mouse"] = int((node as Control).mouse_behavior_recursive)
+		(node as Control).mouse_behavior_recursive = Control.MOUSE_BEHAVIOR_DISABLED
+	_blocked_input_nodes.append(entry)
+	node.set_process_input(false)
+	node.set_process_unhandled_input(false)
+	node.set_process_unhandled_key_input(false)
+	for child in node.get_children():
+		_block_input_in(child, false)
+
+func _show_customer_remark(customer_instance_id: String, text: String) -> void:
+	var actor: Control = customer_actors.get(customer_instance_id)
+	var at := Vector2(840.0, 200.0)
+	if is_instance_valid(actor):
+		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 20.0)
+	_float_text(at, text, Color("f6d95e"))
 
 func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()

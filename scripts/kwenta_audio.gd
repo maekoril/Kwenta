@@ -164,11 +164,13 @@ func _ensure_players() -> void:
 		_ambience_player = AudioStreamPlayer.new()
 		_ambience_player.name = "AmbiencePlayer"
 		_ambience_player.volume_db = -20.0
+		_ambience_player.process_mode = Node.PROCESS_MODE_ALWAYS # <-- IDAGDAG ITO
 		add_child(_ambience_player)
 	if _music_player == null:
 		_music_player = AudioStreamPlayer.new()
 		_music_player.name = "MusicPlayer"
 		_music_player.volume_db = -16.0
+		_music_player.process_mode = Node.PROCESS_MODE_ALWAYS # <-- IDAGDAG ITO
 		add_child(_music_player)
 	if _dialogue_player == null:
 		_dialogue_player = AudioStreamPlayer.new()

@@ -38,6 +38,10 @@ const CUSTOMER_REGIONS := {
 	"paolo": Rect2(2048.0, 1536.0, 512.0, 512.0),
 	"paolo_happy": Rect2(2560.0, 1536.0, 512.0, 512.0),
 	"paolo_sad": Rect2(3072.0, 1536.0, 512.0, 512.0),
+	# Paolo's classmates (Day 6) reuse existing faces until they get their own art.
+	"classmate_1": Rect2(2048.0, 1536.0, 512.0, 512.0),
+	"classmate_2": Rect2(512.0, 1536.0, 512.0, 512.0),
+	"classmate_3": Rect2(2560.0, 1536.0, 512.0, 512.0),
 	"kuya_dodong": Rect2(0.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_thoughtful": Rect2(512.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_soaked": Rect2(1024.0, 2048.0, 512.0, 512.0),
