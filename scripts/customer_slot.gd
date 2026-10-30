@@ -309,7 +309,8 @@ func _display_name(customer_id: String) -> String:
 		"aleng_mila": "Mila", "kuya_ben": "Ben", "ate_liza": "Liza",
 		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina",
 		"aling_nena": "Aling Nena", "mang_berting": "Mang Berting",
-		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun"
+		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun",
+		"classmate_1": "Kaklase", "classmate_2": "Kaklase", "classmate_3": "Kaklase"
 	}
 	return str(names.get(customer_id, customer_id.capitalize()))
 
