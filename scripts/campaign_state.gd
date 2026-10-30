@@ -32,6 +32,18 @@ func get_active_customer_limit() -> int:
 		return 2
 	return int(config.customer_caps[mini(day - 1, config.customer_caps.size() - 1)])
 
+func get_shift_close_minutes() -> int:
+	return config.get_shift_close_minutes(day)
+
+func get_shift_length_seconds() -> float:
+	return config.get_shift_length_seconds_for_day(day)
+
+func get_customer_spawn_interval() -> float:
+	return config.get_customer_spawn_interval_for_day(day)
+
+func get_customer_patience_seconds() -> float:
+	return config.get_customer_patience_seconds_for_day(day)
+
 func get_max_order_units() -> int:
 	if config.max_order_sizes.is_empty():
 		return 3

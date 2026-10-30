@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="StoreUpgradeData" load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/store_upgrade_data.gd" id="1"]
-[resource]
-script = ExtResource("1")
-id = "drink_cooler"
-display_name = "Drink Cooler"
-purchase_cost = 180
-offer_after_day = 3
-product_price_bonuses = {"soft_drink": 5, "bottled_water": 3}

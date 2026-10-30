@@ -9,6 +9,13 @@ const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
+const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
+const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
+const DAY_BRIEFING = preload("res://scripts/day_briefing.gd")
+const NOTEBOOK_SCROLL = preload("res://scripts/notebook_scroll.gd")
+const NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
 const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
 const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_rain.png"
@@ -16,6 +23,15 @@ const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_f
 const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
 const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
+const DAY_FOCUS_HINTS := {
+	1: "Drag a product from the shelf to the customer who ordered it.",
+	2: "Shop before opening. Today, give the correct sukli after each sale.",
+	3: "Practice multi-item orders. More customers are starting to overlap.",
+	4: "Rain makes customers less patient. Serve the shortest bar first.",
+	5: "Keep your regulars happy during the Mini-Save rush.",
+	6: "Fiesta rush! Up to five customers can wait at once.",
+	7: "Final day: take your time. Customers will not lose trust today.",
+}
 
 var campaign: CampaignState
 var story: StoryProgression
@@ -24,10 +40,16 @@ var products_by_id: Dictionary = {}
 var clock_label: Label
 var cash_label: Label
 var day_label: Label
+var goal_label: Label
+var goal_panel: PanelContainer
+var goal_progress: ProgressBar
+var goal_progress_fill: StyleBoxFlat
 var product_layer: Control
 var product_items_by_id: Dictionary = {}
 var customer_layer: Control
 var store_layer_renderer: StoreLayerRenderer
+var shelf_shop: ShelfShopModal
+var shop_button: Button
 var customer_actors: Dictionary = {}
 var summary_panel: PanelContainer
 var summary_backdrop: ColorRect
@@ -51,9 +73,14 @@ var story_after_action: String = ""
 var pending_story_choices: Array[Dictionary] = []
 const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for shelf purchases after skipping
 var shift_in_progress: bool = false
+var shop_available: bool = false
 var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
+var shift_summary_beat_index := -1
+var pending_shift_summary_text := ""
+var pending_shift_summary_title := ""
+var showing_post_shift_summary := false
 var story_complete: bool = false
 var cash_tray: CashTray
 var audio: KwentaAudio
@@ -76,6 +103,22 @@ var environment_settings: Dictionary = {}
 var environment_textures: Dictionary = {}
 var day_six_brownout_triggered := false
 var debug_environment_time_override := -1
+var tutorial_hint: Label
+var tutorial_hint_tween: Tween
+var tutorial_delivery_seen := false
+var tutorial_overlay: InteractiveTutorialOverlay
+var tutorial_step := TutorialStep.NONE
+var tutorial_product_id := ""
+var tutorial_customer_id := ""
+var tutorial_change_due := 0
+var tutorial_payment_tender := 0
+var tutorial_payment_total := 0
+var day_two_sukli_tutorial_complete := false
+var daily_goal
+var daily_goal_day := 0
+var showing_pre_shift_briefing := false
+
+enum TutorialStep { NONE, DAY1_PRODUCT, DAY1_CUSTOMER, DAY2_SHOP, DAY2_MONEY, DAY2_GIVE }
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -94,9 +137,12 @@ func _ready() -> void:
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
+	_build_tutorial_hint()
+	_build_interactive_tutorial_overlay()
 	_build_summary_panel()
 	_build_bubble()
 	_build_cash_tray()
+	_build_shop_button()
 	_build_debug_tools()
 	_update_cash(campaign.cash)
 	_create_shift_manager()
@@ -105,7 +151,7 @@ func _ready() -> void:
 	_present_prologue()
 
 func _process(delta: float) -> void:
-	if shift != null:
+	if shift != null and shift_in_progress:
 		shift.advance_time(delta)
 	ui_refresh_elapsed += delta
 	if ui_refresh_elapsed >= 0.12:
@@ -142,6 +188,149 @@ func _build_hud() -> void:
 		tag.position = Vector2(x, 0.0)
 		hud.add_child(tag)
 		x += float(spec[1]) + gap
+	goal_panel = PanelContainer.new()
+	goal_panel.name = "DailyGoalHud"
+	goal_panel.position = Vector2(24.0, 8.0)
+	goal_panel.size = Vector2(500.0, 78.0)
+	goal_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var goal_panel_style := StyleBoxFlat.new()
+	goal_panel_style.bg_color = Color("3a2116", 0.92)
+	goal_panel_style.border_color = Color("dca842")
+	goal_panel_style.set_border_width_all(3)
+	goal_panel_style.set_corner_radius_all(8)
+	goal_panel_style.content_margin_left = 14.0
+	goal_panel_style.content_margin_right = 14.0
+	goal_panel_style.content_margin_top = 8.0
+	goal_panel_style.content_margin_bottom = 9.0
+	goal_panel.add_theme_stylebox_override("panel", goal_panel_style)
+	hud.add_child(goal_panel)
+	var goal_rows := VBoxContainer.new()
+	goal_rows.add_theme_constant_override("separation", 5)
+	goal_panel.add_child(goal_rows)
+	goal_label = _label("", 19, Color("fff1b8"))
+	goal_label.name = "DailyGoalTitle"
+	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	goal_label.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	goal_label.add_theme_constant_override("outline_size", 3)
+	goal_rows.add_child(goal_label)
+	goal_progress = ProgressBar.new()
+	goal_progress.name = "DailyGoalProgress"
+	goal_progress.custom_minimum_size = Vector2(0.0, 20.0)
+	goal_progress.show_percentage = false
+	goal_progress.min_value = 0.0
+	var goal_track := StyleBoxFlat.new()
+	goal_track.bg_color = Color("1e120d")
+	goal_track.set_corner_radius_all(5)
+	goal_track.border_color = Color("9b6230")
+	goal_track.set_border_width_all(2)
+	goal_progress_fill = StyleBoxFlat.new()
+	goal_progress_fill.bg_color = Color("e0a33a")
+	goal_progress_fill.set_corner_radius_all(4)
+	goal_progress.add_theme_stylebox_override("background", goal_track)
+	goal_progress.add_theme_stylebox_override("fill", goal_progress_fill)
+	goal_rows.add_child(goal_progress)
+
+func _refresh_daily_goal_hud() -> void:
+	if goal_label == null or daily_goal == null:
+		return
+	goal_label.text = "%s  ·  %s" % [daily_goal.title.to_upper(), daily_goal.progress_text()]
+	goal_progress.max_value = maxf(1.0, float(daily_goal.target))
+	if daily_goal.is_no_timeout_goal():
+		goal_progress.value = 0.0 if daily_goal.timed_out else float(daily_goal.target)
+		goal_progress_fill.bg_color = Color("d94536") if daily_goal.timed_out else Color("e0a33a")
+	else:
+		goal_progress.value = float(daily_goal.current)
+		goal_progress_fill.bg_color = Color("4caa56") if daily_goal.is_complete() else Color("e0a33a")
+	goal_progress.queue_redraw()
+
+func _build_tutorial_hint() -> void:
+	tutorial_hint = _label("", 30, Color("fff1b8"))
+	tutorial_hint.name = "TutorialHint"
+	tutorial_hint.z_index = 46
+	tutorial_hint.position = Vector2(310.0, 105.0) + _ui_offset()
+	tutorial_hint.size = Vector2(1300.0, 74.0)
+	tutorial_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tutorial_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tutorial_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_hint.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	tutorial_hint.add_theme_constant_override("outline_size", 7)
+	tutorial_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_hint.visible = false
+	add_child(tutorial_hint)
+
+func _build_interactive_tutorial_overlay() -> void:
+	tutorial_overlay = INTERACTIVE_TUTORIAL_OVERLAY.new()
+	tutorial_overlay.name = "InteractiveTutorialOverlay"
+	tutorial_overlay.position = _ui_offset()
+	tutorial_overlay.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	add_child(tutorial_overlay)
+
+func _tutorial_rect_for(target: Control) -> Rect2:
+	if not is_instance_valid(target) or tutorial_overlay == null:
+		return Rect2()
+	var rect := target.get_global_rect()
+	rect.position -= tutorial_overlay.global_position
+	return rect
+
+func _show_tutorial_spotlight(step: int, message: String, target: Control, step_title: String = "GUIDE") -> void:
+	if tutorial_overlay == null or not is_instance_valid(target):
+		return
+	tutorial_step = step
+	tutorial_overlay.show_step(message, _tutorial_rect_for(target), step_title)
+
+func _clear_tutorial_spotlight() -> void:
+	tutorial_step = TutorialStep.NONE
+	tutorial_product_id = ""
+	tutorial_customer_id = ""
+	tutorial_change_due = 0
+	tutorial_payment_tender = 0
+	tutorial_payment_total = 0
+	if tutorial_overlay != null:
+		tutorial_overlay.clear_step()
+
+func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
+	if tutorial_hint == null or message.is_empty():
+		return
+	if tutorial_hint_tween != null and tutorial_hint_tween.is_valid():
+		tutorial_hint_tween.kill()
+	tutorial_hint.text = message
+	tutorial_hint.modulate.a = 1.0
+	tutorial_hint.visible = true
+	tutorial_hint_tween = create_tween()
+	tutorial_hint_tween.tween_interval(seconds)
+	tutorial_hint_tween.tween_property(tutorial_hint, "modulate:a", 0.0, 0.35)
+	tutorial_hint_tween.tween_callback(tutorial_hint.hide)
+
+func _build_shop_button() -> void:
+	shop_button = Button.new()
+	shop_button.name = "ShopIconButton"
+	shop_button.position = Vector2(1836, 4) + _ui_offset()
+	shop_button.size = Vector2(72, 72)
+	shop_button.z_index = 55
+	shop_button.z_as_relative = false
+	shop_button.add_theme_stylebox_override("normal", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("hover", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("pressed", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	shop_button.focus_mode = Control.FOCUS_NONE
+	shop_button.tooltip_text = "Open shop before the shift"
+	shop_button.visible = false
+	var shop_icon := TextureRect.new()
+	shop_icon.name = "ShopIcon"
+	shop_icon.texture = SHOP_ICON_TEXTURE
+	shop_icon.position = Vector2(16, 16)
+	shop_icon.size = Vector2(40, 40)
+	shop_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shop_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shop_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_button.add_child(shop_icon)
+	shop_icon.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	shop_icon.offset_left = 16.0
+	shop_icon.offset_top = 16.0
+	shop_icon.offset_right = 56.0
+	shop_icon.offset_bottom = 56.0
+	shop_button.pressed.connect(_open_shelf_shop)
+	add_child(shop_button)
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
@@ -389,13 +578,21 @@ func _build_summary_panel() -> void:
 	summary_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	summary_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	story_row.add_child(summary_portrait)
+	var body_scroll = NOTEBOOK_SCROLL.new()
+	body_scroll.name = "NotebookBodyScroll"
+	body_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body_scroll.custom_minimum_size = Vector2(0.0, 360.0)
+	body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	body_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	story_row.add_child(body_scroll)
 	var dialogue_column := VBoxContainer.new()
 	dialogue_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	dialogue_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	dialogue_column.add_theme_constant_override("separation", 12)
-	story_row.add_child(dialogue_column)
+	body_scroll.add_child(dialogue_column)
 	summary_text = NotebookSummary.new()
-	summary_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	summary_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dialogue_column.add_child(summary_text)
 	story_choice_column = VBoxContainer.new()
 	story_choice_column.add_theme_constant_override("separation", 9)
@@ -406,9 +603,23 @@ func _build_summary_panel() -> void:
 	summary_button = Button.new()
 	summary_button.text = "NEXT SHIFT"
 	summary_button.custom_minimum_size.y = 112
-	KwentaStyle.style_button(summary_button, KwentaStyle.GOLD, KwentaStyle.SIZE_BUTTON)
+	summary_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	apply_notebook_action_button_style(summary_button)
 	summary_button.pressed.connect(_on_summary_button_pressed)
 	column.add_child(summary_button)
+
+func apply_notebook_action_button_style(button: Button) -> void:
+	KwentaStyle.style_button(button, KwentaStyle.GOLD, KwentaStyle.SIZE_BUTTON)
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var action_button_style := StyleBoxTexture.new()
+	action_button_style.texture = NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE
+	action_button_style.content_margin_left = 26.0
+	action_button_style.content_margin_right = 26.0
+	action_button_style.content_margin_top = 16.0
+	action_button_style.content_margin_bottom = 16.0
+	button.add_theme_stylebox_override("normal", action_button_style)
+	button.add_theme_stylebox_override("hover", action_button_style)
+	button.add_theme_stylebox_override("pressed", action_button_style)
 
 func _on_summary_panel_visibility_changed() -> void:
 	if not summary_panel.visible:
@@ -464,12 +675,14 @@ func _create_shift_manager() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	shift = ShiftManager.new(campaign, products_by_id, rng)
-	shift.active_customer_limit_override = STOREFRONT_LAYOUT.MAX_ACTIVE_WINDOW_CUSTOMERS
-	shift.spawn_delay_min_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MIN_SECONDS
-	shift.spawn_delay_max_seconds = STOREFRONT_LAYOUT.CUSTOMER_SPAWN_DELAY_MAX_SECONDS
-	shift.patience_seconds_override = STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
+	# Campaign data controls the customer ramp. The storefront supports up to five.
+	shift.active_customer_limit_override = 0
+	shift.spawn_delay_min_seconds = 0.0
+	shift.spawn_delay_max_seconds = 0.0
+	shift.patience_seconds_override = 0.0
 	shift.customers_changed.connect(_on_customers_changed)
 	shift.customer_timed_out.connect(_on_customer_timed_out)
+	shift.customer_served.connect(_on_customer_served)
 	shift.cash_changed.connect(_update_cash)
 	shift.clock_changed.connect(_update_clock)
 	shift.game_minutes_changed.connect(_on_game_minutes_changed)
@@ -538,10 +751,22 @@ func _on_customers_changed() -> void:
 	_sync_cash_tray()
 
 func _on_customer_timed_out(customer_instance_id: String) -> void:
+	if daily_goal != null:
+		daily_goal.record_timeout()
+		_refresh_daily_goal_hud()
 	_play_audio_cues(["timeout"])
 	var actor: Control = customer_actors.get(customer_instance_id)
 	if is_instance_valid(actor):
 		actor.call("play_annoyed")
+
+func _on_customer_served(_customer_id: String, order_units: int) -> void:
+	if daily_goal == null:
+		return
+	var was_complete: bool = daily_goal.is_complete()
+	daily_goal.record_customer_served(order_units)
+	_refresh_daily_goal_hud()
+	if not was_complete and daily_goal.is_complete():
+		_float_text(Vector2(760.0, 270.0), "GOAL COMPLETE!", Color("d9efaa"))
 func _rebuild_customer_slots() -> void:
 	if customer_layer == null or shift == null:
 		return
@@ -594,6 +819,11 @@ func _on_product_dropped(customer_id: String, product_id: String) -> void:
 
 func _on_product_drag_started(_product_id: String) -> void:
 	_play_audio_cues(["pickup"])
+	if campaign.day != 1 or tutorial_step != TutorialStep.DAY1_PRODUCT or _product_id != tutorial_product_id:
+		return
+	var actor: Control = customer_actors.get(tutorial_customer_id)
+	if is_instance_valid(actor):
+		_show_tutorial_spotlight(TutorialStep.DAY1_CUSTOMER, "Now drop it on the highlighted customer.", actor)
 
 func _on_product_drag_released(product_id: String, viewport_position: Vector2, source: Control) -> void:
 	var actor := _customer_actor_at(viewport_position)
@@ -626,6 +856,10 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		actor.call("play_correct_drop")
 		if result == OrderState.DeliveryResult.COMPLETED and not _is_waiting_for_change(actor):
 			actor.call("play_happy")
+	if campaign.day == 1 and tutorial_step == TutorialStep.DAY1_CUSTOMER and customer_id == tutorial_customer_id and product_id == tutorial_product_id:
+		tutorial_delivery_seen = true
+		_clear_tutorial_spotlight()
+		_show_tutorial_hint("Good! Serve every icon in the bubble before patience runs out.")
 	return true
 
 func audio_cues_for_delivery(result: int, sale_completed: bool) -> Array[String]:
@@ -688,21 +922,38 @@ func _show_shift_summary() -> void:
 	shift_in_progress = false
 	if debug_skip_button != null:
 		debug_skip_button.visible = false
-	showing_shift_results = true
-	var summary_text_value := "Benta ngayong araw: ₱%d\nKabuuang pera: ₱%d" % [shift.shift_earnings, campaign.cash]
+	showing_shift_results = false
+	if daily_goal != null:
+		daily_goal.finalize(campaign.count_trusted_regulars())
+		_refresh_daily_goal_hud()
+	var summary_text_value := "TODAY'S SALES\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d\nCustomers served: %d\nCustomers left: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
+	if daily_goal != null:
+		var goal_status := "COMPLETED · %s" % daily_goal.reward if daily_goal.is_complete() else "Not completed — no penalty"
+		summary_text_value += "\n\nDAILY GOAL\n%s: %s" % [daily_goal.title, goal_status]
 	if shift.change_total > 0:
-		summary_text_value += "\n\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
-	var beats: Array[Dictionary] = [{
-		"speaker": "Kuwaderno",
-		"portrait": "",
-		"text": summary_text_value,
-	}]
-	beats.append_array(story.get_day_outro_beats(campaign.day))
-	_show_story_beats(beats, "DAY %d COMPLETE · %s" % [campaign.day, story.get_day_title(campaign.day)], "day_choices")
+		summary_text_value += "\n\nSUKLI\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
+	pending_shift_summary_text = summary_text_value
+	pending_shift_summary_title = "DAY %d COMPLETE · %s" % [campaign.day, story.get_day_title(campaign.day)]
+	_show_story_beats(story.get_day_outro_beats(campaign.day), pending_shift_summary_title, "day_choices")
 
 func _on_summary_button_pressed() -> void:
 	if story_complete:
 		_restart_story()
+		return
+	if showing_pre_shift_briefing:
+		showing_pre_shift_briefing = false
+		summary_backdrop.visible = false
+		summary_panel.visible = false
+		if campaign.day == 2 and shop_available:
+			_begin_day_two_shop_tutorial()
+		else:
+			_begin_shift()
+		return
+	if showing_post_shift_summary:
+		showing_post_shift_summary = false
+		summary_backdrop.visible = false
+		summary_panel.visible = false
+		_advance_story_day()
 		return
 	if not story_choice_column.visible:
 		story_beat_index += 1
@@ -741,18 +992,6 @@ func _show_current_story_beat() -> void:
 	var portrait_id: String = str(beat.get("portrait", ""))
 	var text: String = str(beat.get("text", ""))
 
-	# The first beat after a shift is the earnings notebook.
-	# That stays on the panel for now; everything else is a bubble.
-	if showing_shift_results and story_beat_index == 0:
-		bubble.close()
-		summary_backdrop.visible = true
-		summary_panel.visible = true
-		summary_speaker.text = speaker
-		summary_text.text = text
-		summary_button.text = "CONTINUE"
-		summary_portrait.visible = false
-		return
-
 	summary_backdrop.visible = false
 	summary_panel.visible = false
 	var portrait_tex: Texture2D = null
@@ -766,9 +1005,7 @@ func _complete_story_beats() -> void:
 			bubble.close()
 			campaign_started = true
 			showing_shift_results = false
-			summary_backdrop.visible = false
-			summary_panel.visible = false
-			_begin_shift()
+			_show_pre_shift_briefing()
 		"day_choices":
 			showing_shift_results = false
 			pending_story_choices = story.get_day_choices(campaign.day)
@@ -826,6 +1063,27 @@ func _clear_story_choice_buttons() -> void:
 		child.queue_free()
 
 func _finish_story_day() -> void:
+	if not pending_shift_summary_text.is_empty():
+		_show_pending_shift_summary()
+		return
+	_advance_story_day()
+
+func _show_pending_shift_summary() -> void:
+	bubble.close()
+	showing_post_shift_summary = true
+	summary_title.text = pending_shift_summary_title
+	summary_speaker.text = "KUWADERNO"
+	summary_text.text = pending_shift_summary_text
+	summary_button.text = "CONTINUE"
+	summary_button.visible = true
+	summary_button.disabled = false
+	summary_portrait.visible = false
+	summary_backdrop.visible = true
+	summary_panel.visible = true
+	pending_shift_summary_text = ""
+	pending_shift_summary_title = ""
+
+func _advance_story_day() -> void:
 	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
 		story_complete = true
 		bubble.close()
@@ -839,6 +1097,8 @@ func _finish_story_day() -> void:
 		summary_button.text = "REPLAY STORY"
 		return
 	campaign.advance_day()
+	shop_available = campaign.day > 1
+	_refresh_shop_button()
 	day_label.text = "DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
@@ -854,7 +1114,17 @@ func _restart_story() -> void:
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	story_complete = false
+	day_two_sukli_tutorial_complete = false
+	daily_goal = null
+	daily_goal_day = 0
+	showing_pre_shift_briefing = false
+	showing_post_shift_summary = false
+	pending_shift_summary_text = ""
+	pending_shift_summary_title = ""
+	_clear_tutorial_spotlight()
 	campaign_started = false
+	shop_available = false
+	_refresh_shop_button()
 	displayed_cash = -1
 	_create_shift_manager()
 	_rebuild_product_shelf()
@@ -863,14 +1133,67 @@ func _restart_story() -> void:
 	_update_cash(campaign.cash)
 	_present_prologue()
 
+func _ensure_daily_goal() -> void:
+	if daily_goal == null or daily_goal_day != campaign.day:
+		daily_goal = DAILY_GOAL.new(campaign.day)
+		daily_goal_day = campaign.day
+
+func _show_pre_shift_briefing() -> void:
+	_ensure_daily_goal()
+	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog)
+	showing_pre_shift_briefing = true
+	summary_title.text = briefing.notebook_title()
+	summary_speaker.text = briefing.eyebrow
+	summary_text.text = briefing.panel_text()
+	summary_button.text = "OPEN STORE"
+	summary_button.visible = true
+	summary_button.disabled = false
+	summary_portrait.visible = false
+	summary_backdrop.visible = true
+	summary_panel.visible = true
+
 func _begin_shift() -> void:
+	shop_available = false
+	_refresh_shop_button()
 	shift_in_progress = true
 	if debug_skip_button != null:
 		debug_skip_button.visible = true
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
-	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else STOREFRONT_LAYOUT.CUSTOMER_PATIENCE_SECONDS
+	_ensure_daily_goal()
+	_refresh_daily_goal_hud()
+	tutorial_delivery_seen = false
+	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else 0.0
 	shift.start_shift()
+	if campaign.day == 1:
+		_begin_day_one_drag_tutorial()
+	elif campaign.day >= 3:
+		_show_tutorial_hint(str(DAY_FOCUS_HINTS.get(campaign.day, "")))
+
+func _begin_day_one_drag_tutorial() -> void:
+	var active := shift.get_active_customers()
+	if active.is_empty():
+		return
+	var customer: CustomerState = active[0]
+	for product_id in customer.order.requested:
+		var product: Control = product_items_by_id.get(str(product_id))
+		if is_instance_valid(product):
+			tutorial_product_id = str(product_id)
+			tutorial_customer_id = customer.instance_id
+			_show_tutorial_spotlight(TutorialStep.DAY1_PRODUCT, "Drag the highlighted product to the customer.", product)
+			return
+
+func _begin_day_two_shop_tutorial() -> void:
+	if not is_instance_valid(shop_button):
+		_begin_shift()
+		return
+	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Tap the shop. You can browse upgrades before opening.", shop_button)
+
+func _on_shelf_shop_closed() -> void:
+	if tutorial_step != TutorialStep.DAY2_SHOP:
+		return
+	_clear_tutorial_spotlight()
+	_begin_shift()
 
 func _label(text_value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
@@ -892,6 +1215,16 @@ func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 	box.content_margin_bottom = 12.0
 	return box
 
+func _button_texture_box(texture: Texture2D) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = texture
+	style.set_texture_margin_all(12)
+	style.content_margin_left = 4
+	style.content_margin_top = 4
+	style.content_margin_right = 4
+	style.content_margin_bottom = 4
+	return style
+
 func _build_cash_tray() -> void:
 	cash_tray = CashTray.new()
 	cash_tray.z_index = 36          # above the HUD (30), below story panels (40+) and the bubble (50)
@@ -899,6 +1232,8 @@ func _build_cash_tray() -> void:
 	cash_tray.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	add_child(cash_tray)
 	cash_tray.change_given.connect(_on_change_given)
+	cash_tray.denomination_selected.connect(_on_tutorial_denomination_selected)
+	cash_tray.change_amount_changed.connect(_on_tutorial_change_amount_changed)
 
 func _on_payment_tapped(customer_id: String) -> void:
 	if shift == null:
@@ -906,7 +1241,49 @@ func _on_payment_tapped(customer_id: String) -> void:
 	for customer in shift.get_active_customers():
 		if customer.instance_id == customer_id and customer.is_paying():
 			cash_tray.open_for(customer, SukliRules.sukli_guide_enabled_for_day(campaign.day))
+			if campaign.day == 2 and not day_two_sukli_tutorial_complete:
+				_begin_day_two_sukli_tutorial(customer)
 			return
+
+func _begin_day_two_sukli_tutorial(customer: CustomerState) -> void:
+	if customer == null or customer.payment == null:
+		return
+	tutorial_change_due = customer.payment.change_due()
+	tutorial_payment_tender = customer.payment.tendered
+	tutorial_payment_total = customer.payment.total
+	_refresh_day_two_sukli_spotlight(cash_tray.get_selected_total())
+
+func _on_tutorial_denomination_selected(_value: int, total: int) -> void:
+	_on_tutorial_change_amount_changed(total)
+
+func _on_tutorial_change_amount_changed(total: int) -> void:
+	if campaign.day != 2 or day_two_sukli_tutorial_complete or tutorial_change_due <= 0:
+		return
+	_refresh_day_two_sukli_spotlight(total)
+
+func _refresh_day_two_sukli_spotlight(total: int) -> void:
+	var remaining := tutorial_change_due - total
+	var equation := "₱%d − ₱%d = ₱%d" % [tutorial_payment_tender, tutorial_payment_total, tutorial_change_due]
+	if remaining == 0:
+		var give_button := cash_tray.find_child("GiveChangeButton", true, false) as Control
+		if is_instance_valid(give_button):
+			_show_tutorial_spotlight(TutorialStep.DAY2_GIVE, "%s\nExact change! Tap IBIGAY." % equation, give_button, "SUKLI · READY")
+		return
+	if remaining < 0:
+		var clear_button := cash_tray.find_child("ClearChangeButton", true, false) as Control
+		if is_instance_valid(clear_button):
+			_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou gave too much. Tap LINISIN and try again." % equation, clear_button, "SUKLI · TRY AGAIN")
+		return
+	var next_value := _largest_change_denomination_at_most(remaining)
+	var coin := cash_tray.find_child("Denomination%d" % next_value, true, false) as Control
+	if is_instance_valid(coin):
+		_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou still need ₱%d. Tap ₱%d next." % [equation, remaining, next_value], coin, "SUKLI · STEP")
+
+func _largest_change_denomination_at_most(value: int) -> int:
+	for denomination in [50, 20, 10, 5, 1]:
+		if denomination <= value:
+			return denomination
+	return 1
 
 func _on_change_given(customer_id: String, amount: int) -> void:
 	if shift == null:
@@ -915,6 +1292,18 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 	var outcome: Dictionary = shift.give_change(customer_id, amount)
 	var result: int = int(outcome.get("result", PaymentState.Result.NO_PAYMENT))
 	var diff: int = int(outcome.get("diff", 0))
+	if campaign.day == 2 and tutorial_change_due > 0:
+		if result == PaymentState.Result.EXACT:
+			day_two_sukli_tutorial_complete = true
+			_clear_tutorial_spotlight()
+		else:
+			_refresh_day_two_sukli_spotlight(cash_tray.get_selected_total())
+	if result == PaymentState.Result.EXACT and daily_goal != null:
+		var was_goal_complete: bool = daily_goal.is_complete()
+		daily_goal.record_exact_change()
+		_refresh_daily_goal_hud()
+		if not was_goal_complete and daily_goal.is_complete():
+			_float_text(Vector2(760.0, 270.0), "GOAL COMPLETE!", Color("d9efaa"))
 	var at := Vector2(840.0, 200.0)
 	if is_instance_valid(actor):
 		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)
@@ -934,7 +1323,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		PaymentState.Result.OVER:
 			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
-			_float_text(at, "SOBRA  -₱%d" % diff if SukliRules.sukli_guide_enabled_for_day(campaign.day) else "SOBRA!", Color("f6d95e"))
+			_float_text(at, "SOBRA  -₱%d" % diff, Color("f6d95e"))
 			if is_instance_valid(actor):
 				actor.call("play_wrong_drop")
 		_:
@@ -969,9 +1358,34 @@ func _build_store_layer_renderer() -> void:
 	store_layer_renderer = STORE_LAYER_RENDERER.new()
 	store_layer_renderer.z_index = 0
 	add_child(store_layer_renderer)
-	store_layer_renderer.purchase_requested.connect(_on_store_purchase_requested)
-	store_layer_renderer.purchase_denied.connect(_on_store_purchase_denied)
 	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+	shelf_shop = ShelfShopModal.new()
+	add_child(shelf_shop)
+	shelf_shop.purchase_requested.connect(_on_shelf_shop_purchase_requested)
+	shelf_shop.closed.connect(_on_shelf_shop_closed)
+
+func _open_shelf_shop() -> void:
+	if shelf_shop == null or not _is_shop_available():
+		return
+	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
+	move_child(shelf_shop, get_child_count() - 1)
+	shelf_shop.open()
+	if tutorial_step == TutorialStep.DAY2_SHOP and tutorial_overlay != null:
+		tutorial_overlay.visible = false
+
+func _is_shop_available() -> bool:
+	return campaign != null and campaign.day > 1 and shop_available and not shift_in_progress
+
+func _refresh_shop_button() -> void:
+	if shop_button != null:
+		shop_button.visible = _is_shop_available()
+
+func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
+	if not campaign.purchase_store_group(group_id, price): return
+	_update_cash(campaign.cash)
+	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+	_rebuild_product_shelf()
+	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
 
 func _on_store_purchase_requested(group_id: String) -> void:
 	var config := StoreConfig.load_config("res://data/store_config.json")
