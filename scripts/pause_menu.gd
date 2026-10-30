@@ -10,6 +10,9 @@ signal main_menu_requested
 
 var _available := false
 var _button: Button
+var _pause_visual: TextureRect
+const PAUSE_NORMAL: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_normal.png")
+const PAUSE_HOVER: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_hover.png")
 var _overlay: Control
 
 func _ready() -> void:
@@ -76,30 +79,38 @@ func _build_button() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	# Icon-only: just two bars, no background. The button itself draws nothing (flat);
-	# the bars are drawn in _draw_pause_icon.
 	_button = Button.new()
 	_button.flat = true
 	_button.focus_mode = Control.FOCUS_NONE
 	_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_button.position = Vector2(24, 24)             # top-left, away from the HUD tags
-	_button.size = Vector2(56, 56)                 # click area (bigger than the bars, easy to hit)
-	_button.draw.connect(_draw_pause_icon)
-	_button.mouse_entered.connect(_button.queue_redraw)
-	_button.mouse_exited.connect(_button.queue_redraw)
+	_button.position = Vector2(1820, 10)
+	_button.size = Vector2(89, 74)
+	_button.text = ""
+	# Prevent the default Godot theme from drawing white rectangles.
+	for state in ["normal", "hover", "pressed", "disabled", "focus", "hover_pressed"]:
+		_button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	_button.mouse_entered.connect(_update_pause_visual)
+	_button.mouse_exited.connect(_update_pause_visual)
+	_button.button_down.connect(_update_pause_visual)
+	_button.button_up.connect(_update_pause_visual)
 	_button.pressed.connect(pause)
 	root.add_child(_button)
 
-func _draw_pause_icon() -> void:
-	var color: Color = KwentaStyle.GOLD if _button.is_hovered() else KwentaStyle.PAPER
-	var bar := Vector2(12, 38)
-	var gap := 12.0
-	var origin := (_button.size - Vector2(bar.x * 2.0 + gap, bar.y)) * 0.5
+	_pause_visual = TextureRect.new()
+	_pause_visual.name = "PauseIllustration"
+	_pause_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause_visual.texture = PAUSE_NORMAL
+	_pause_visual.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_pause_visual.stretch_mode = TextureRect.STRETCH_SCALE
+	_pause_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_button.add_child(_pause_visual)
 
-	for i in 2:
-		var rect := Rect2(origin + Vector2(i * (bar.x + gap), 0.0), bar)
-		_button.draw_rect(rect.grow(4.0), KwentaStyle.INK)   # dark outline so it reads on the wood
-		_button.draw_rect(rect, color)
+func place_button(pos: Vector2) -> void:
+	_button.position = pos
+
+func _update_pause_visual() -> void:
+	if _pause_visual != null:
+		_pause_visual.texture = PAUSE_HOVER if _button.is_hovered() else PAUSE_NORMAL
 
 func _build_overlay() -> void:
 	_overlay = Control.new()
@@ -167,7 +178,3 @@ func _build_overlay() -> void:
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0.0, 12.0)
 	column.add_child(bottom_spacer)
-
-	var hint := KwentaStyle.make_label("Esc or P to resume", KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(hint)

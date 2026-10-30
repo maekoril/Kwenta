@@ -10,9 +10,9 @@ const BODY_H := 84.0
 const STRING_COLOR := Color("#6b4a2a")
 const SEGMENTS := 10
 const SEG_GAP := 3.0
-const TRACK := Color("#4a3622")
-const SEG_EMPTY := Color("#6b5238")
-const GREEN := Color("#4caa56")
+const TRACK := Color("#422917")
+const SEG_EMPTY := Color("#755537")
+const GREEN := Color("#55bc53")
 const YELLOW := Color("#e3bd39")
 const RED := Color("#d94536")
 
@@ -26,57 +26,82 @@ var _pulse_tween: Tween
 var _warn_tween: Tween
 var _sway_degrees: float = 0.0
 var _sway_seconds: float = 3.0
+var _hanging: bool = true
 
-func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds: float) -> TrustTag:
-	size = Vector2(width, STRING_LEN + BODY_H)
+# hanging = true  -> the old paper tag on a string (sways).
+# hanging = false -> a flat paper panel for the grouped HUD bar (no string, no hole, no sway).
+func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds: float, hanging: bool = true) -> TrustTag:
+	_hanging = hanging
+	var top := STRING_LEN if hanging else 0.0
+	var body_h := BODY_H if hanging else 100.0
+	size = Vector2(width, top + body_h)
 	custom_minimum_size = size
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pivot_offset = Vector2(width * 0.5, 0.0)
+	pivot_offset = Vector2(width * 0.5, 0.0) if hanging else size * 0.5
 	_sway_degrees = sway_degrees
 	_sway_seconds = sway_seconds
 	_target = clampf(initial_value, 0.0, 100.0)
 	_display = _target
 
 	var body := PanelContainer.new()
-	body.position = Vector2(0.0, STRING_LEN)
-	body.size = Vector2(width, BODY_H)
+	body.position = Vector2(0.0, top)
+	body.size = Vector2(width, body_h)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# extra top margin so the text never runs into the punched hole
-	var sb := KwentaStyle.box(KwentaStyle.PAPER, KwentaStyle.INK, 16.0, 6.0, 18, 4, 6)
-	sb.content_margin_top = 25.0
-	sb.content_margin_bottom = 10.0
+	var sb: StyleBox
+	if hanging:
+		sb = KwentaStyle.box(KwentaStyle.PAPER, KwentaStyle.INK, 16.0, 6.0, 18, 4, 6)
+		# extra top margin so the text never runs into the punched hole
+		sb.content_margin_top = 25.0
+		sb.content_margin_bottom = 10.0
+	else:
+		sb = KwentaStyle.hud_frame("res://assets/sprites/ui/hud/suki_panel.png", 22.0, 16.0)   # cream HUD board
 	body.add_theme_stylebox_override("panel", sb)
 	add_child(body)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(vbox)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	if hanging:
+		body.add_child(vbox)
+	else:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 9)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		body.add_child(row)
+		row.add_child(HudIcon.new().setup(HudIcon.Kind.HEART, 47.0, KwentaStyle.INK, Color("#e8483c")))
+		row.add_child(vbox)
 
 	var top_row := HBoxContainer.new()
 	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(top_row)
 
-	_title = KwentaStyle.make_label("SUKI METER", 18, KwentaStyle.INK_MUTED)
+	var title_color: Color = KwentaStyle.INK_MUTED if hanging else KwentaStyle.INK
+	var value_color: Color = KwentaStyle.INK
+	_title = KwentaStyle.make_label("SUKI METER", 18 if hanging else 23, title_color)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(_title)
 
-	_value_label = KwentaStyle.make_label(str(roundi(_display)), 22, KwentaStyle.INK)
+	_value_label = KwentaStyle.make_label(str(roundi(_display)), 22 if hanging else 27, value_color)
 	_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	top_row.add_child(_value_label)
 
 	_bar = Control.new()
-	_bar.custom_minimum_size = Vector2(width - 40.0, 20.0)
+	_bar.custom_minimum_size = Vector2(width - 40.0 if hanging else width - 118.0, 28.0)
+	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.draw.connect(_draw_bar)
 	vbox.add_child(_bar)
 
-	# Punched hole with reinforcement ring, same as HudTag.
-	var hole := Control.new()
-	hole.size = size
-	hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hole.draw.connect(_draw_hole.bind(hole))
-	add_child(hole)
+	if hanging:
+		# Punched hole with reinforcement ring, same as HudTag.
+		var hole := Control.new()
+		hole.size = size
+		hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hole.draw.connect(_draw_hole.bind(hole))
+		add_child(hole)
 	queue_redraw()
 	_refresh_warning()
 	return self
@@ -110,7 +135,8 @@ func _set_display(v: float) -> void:
 	_display = v
 	if _value_label != null:
 		_value_label.text = str(roundi(v))
-		_value_label.add_theme_color_override("font_color", _color_for(v).darkened(0.35))
+		if _hanging:
+			_value_label.add_theme_color_override("font_color", _color_for(v).darkened(0.35))
 	if _bar != null:
 		_bar.queue_redraw()
 
@@ -173,6 +199,8 @@ func _draw_bar() -> void:
 			_bar.draw_rect(Rect2(x, y, seg_w * fraction, 3.0), fill_color.lightened(0.35))
 
 func _draw() -> void:
+	if not _hanging:
+		return
 	var cx := size.x * 0.5
 	draw_line(Vector2(cx, 0.0), Vector2(cx, STRING_LEN + 14.0), STRING_COLOR, 3.0)
 

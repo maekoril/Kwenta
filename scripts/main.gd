@@ -12,9 +12,12 @@ const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
 const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
 const DAY_BRIEFING = preload("res://scripts/day_briefing.gd")
+const BRIEFING_CARD = preload("res://scripts/briefing_card.gd")
 const NOTEBOOK_SCROLL = preload("res://scripts/notebook_scroll.gd")
 const NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const PAUSE_MENU = preload("res://scripts/pause_menu.gd")
+const OPTION5_SUKI = preload("res://scripts/option5_suki.gd")
+const HUD_ICON = preload("res://scripts/hud_icon.gd")
 const SHIFT_STORY_EVENTS = preload("res://scripts/shift_story_events.gd")
 const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
@@ -39,6 +42,7 @@ const DAY_FOCUS_HINTS := {
 
 var campaign: CampaignState
 var pause_menu: PauseMenu
+var briefing_card: BriefingCard
 var story_events: ShiftStoryEvents
 var choices_before_shift := false
 var _blocked_input_nodes: Array[Dictionary] = []
@@ -49,6 +53,7 @@ var clock_label: Label
 var cash_label: Label
 var day_label: Label
 var goal_label: Label
+var goal_count_label: Label
 var goal_panel: PanelContainer
 var goal_progress: ProgressBar
 var goal_progress_fill: StyleBoxFlat
@@ -149,22 +154,29 @@ func _ready() -> void:
 	_build_customer_area()
 	_build_product_layer()
 	_build_hud()
+	_ensure_daily_goal()
+	_refresh_daily_goal_hud()  # A useful goal preview even during the intro.
 	_build_tutorial_hint()
 	_build_interactive_tutorial_overlay()
 	_build_summary_panel()
+	_build_briefing_card()
 	_build_game_over_screen()
 	_build_bubble()
 	_build_cash_tray()
 	_build_shop_button()
-	_build_debug_tools()
+	# Skip Day is intentionally hidden; keep the debug helper for developers only.
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
+	pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
+	# Compact button dimensions for the Option 5 bar.
+	pause_menu.get_child(0).get_child(0).size = Vector2(89.0, 74.0)
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_build_story_events()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
 	_present_prologue()
+	pause_menu.set_available(true)  # Keep the framed Pause control visible during the intro.
 
 func _process(delta: float) -> void:
 	if shift != null and shift_in_progress:
@@ -181,97 +193,174 @@ func _process(delta: float) -> void:
 				child.refresh_patience()
 
 func _build_hud() -> void:
+	# Option 5: a small, intentional top strip, not the oversized Option 2 board.
+	# Exact coordinates are authored against the original 1920 x 1080 game canvas.
 	var hud := Control.new()
+	hud.name = "GameplayHUDOption5"
 	hud.z_index = 30
 	hud.position = _ui_offset()
 	hud.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
-	day_label = _label("DAY 1", 32, KwentaStyle.INK)
-	clock_label = _label("8:00 AM", 32, KwentaStyle.INK)
-	cash_label = _label("₱150", 34, Color("2f6b2f"))
+	const Y := 11.0
+	const H := 74.0
 
-	var tags := [
-		[day_label, 230.0, KwentaStyle.PAPER, 1.4, 2.8],
-		[clock_label, 230.0, KwentaStyle.PAPER, 1.1, 3.3],
-		[cash_label, 230.0, Color("e4efc6"), 1.6, 2.5],
-	]
-	var gap := 36.0
-	var total := -gap
-	for spec in tags:
-		total += float(spec[1]) + gap
-	var x := (STOREFRONT_LAYOUT.VIEWPORT_SIZE.x - total) * 0.5
-	for spec in tags:
-		var tag := HudTag.new().setup(spec[0], float(spec[1]), spec[2], float(spec[3]), float(spec[4]))
-		tag.position = Vector2(x, 0.0)
-		hud.add_child(tag)
-		x += float(spec[1]) + gap
-		
-	# Suki Meter: hangs from the roof like the other tags (see trust_tag.gd)
-	trust_tag = TrustTag.new().setup(campaign.barangay_trust, 260.0, 1.2, 3.0)
-	trust_tag.position = Vector2(1648.0, 0.0)
-	hud.add_child(trust_tag)
+	# Left objective chip: icon + LIVE progress + count (no oversized heading).
 	goal_panel = PanelContainer.new()
 	goal_panel.name = "DailyGoalHud"
-	goal_panel.position = Vector2(24.0, 8.0)
-	goal_panel.size = Vector2(500.0, 78.0)
-	goal_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var goal_panel_style := StyleBoxFlat.new()
-	goal_panel_style.bg_color = Color("3a2116", 0.92)
-	goal_panel_style.border_color = Color("dca842")
-	goal_panel_style.set_border_width_all(3)
-	goal_panel_style.set_corner_radius_all(8)
-	goal_panel_style.content_margin_left = 14.0
-	goal_panel_style.content_margin_right = 14.0
-	goal_panel_style.content_margin_top = 8.0
-	goal_panel_style.content_margin_bottom = 9.0
-	goal_panel.add_theme_stylebox_override("panel", goal_panel_style)
+	goal_panel.position = Vector2(33.0, Y)
+	goal_panel.size = Vector2(399.0, H)
+	goal_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	goal_panel.tooltip_text = "Today's objective"
+	goal_panel.add_theme_stylebox_override("panel", _option5_frame("dark_capsule.png", 22.0, 12.0))
 	hud.add_child(goal_panel)
-	var goal_rows := VBoxContainer.new()
-	goal_rows.add_theme_constant_override("separation", 5)
-	goal_panel.add_child(goal_rows)
-	goal_label = _label("", 19, Color("fff1b8"))
+	var goal_row := HBoxContainer.new()
+	goal_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	goal_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	goal_row.add_theme_constant_override("separation", 9)
+	goal_panel.add_child(goal_row)
+	goal_row.add_child(_option5_icon("customers.png", 46.0))
+
+	# Keep the real goal title object so the existing update logic still works;
+	# expose its full text in the capsule tooltip instead of crowding the HUD.
+	goal_label = _label("", 20, Color("fff0d0"))
 	goal_label.name = "DailyGoalTitle"
-	goal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	goal_label.add_theme_color_override("font_outline_color", Color("2b1a10"))
-	goal_label.add_theme_constant_override("outline_size", 3)
-	goal_rows.add_child(goal_label)
+	goal_label.visible = false
+	goal_row.add_child(goal_label)
+
 	goal_progress = ProgressBar.new()
 	goal_progress.name = "DailyGoalProgress"
-	goal_progress.custom_minimum_size = Vector2(0.0, 20.0)
+	goal_progress.custom_minimum_size = Vector2(174.0, 22.0)
+	goal_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	goal_progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	goal_progress.show_percentage = false
 	goal_progress.min_value = 0.0
 	var goal_track := StyleBoxFlat.new()
-	goal_track.bg_color = Color("1e120d")
-	goal_track.set_corner_radius_all(5)
-	goal_track.border_color = Color("9b6230")
+	goal_track.bg_color = Color("1b0f0b")
+	goal_track.border_color = Color("b4783d")
 	goal_track.set_border_width_all(2)
+	goal_track.set_corner_radius_all(10)
 	goal_progress_fill = StyleBoxFlat.new()
-	goal_progress_fill.bg_color = Color("e0a33a")
-	goal_progress_fill.set_corner_radius_all(4)
+	goal_progress_fill.bg_color = Color("f3c64b")
+	goal_progress_fill.set_corner_radius_all(9)
 	goal_progress.add_theme_stylebox_override("background", goal_track)
 	goal_progress.add_theme_stylebox_override("fill", goal_progress_fill)
-	goal_rows.add_child(goal_progress)
+	goal_row.add_child(goal_progress)
+
+	goal_count_label = _label("", 26, Color("fff0d0"))
+	goal_count_label.name = "DailyGoalCount"
+	goal_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	goal_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	goal_count_label.custom_minimum_size = Vector2(64.0, 0.0)
+	goal_row.add_child(goal_count_label)
+
+	# Three distinct cream chips — day, time, cash — matching the user's Option 5.
+	day_label = _option5_stat(hud, "DayChip", Vector2(672, Y), Vector2(149, H), "calendar.png", "D1", 27, KwentaStyle.INK, 35.0)
+	clock_label = _option5_stat(hud, "TimeChip", Vector2(835, Y), Vector2(169, H), "clock.png", "8:00", 27, KwentaStyle.INK, 34.0)
+	cash_label = _option5_stat(hud, "CashChip", Vector2(1018, Y), Vector2(178, H), "peso.png", "150", 27, KwentaStyle.MONEY, 35.0)
+
+	# Live suki animation remains controlled by the existing trust update calls.
+	trust_tag = OPTION5_SUKI.new().setup(campaign.barangay_trust, 372.0, 0.0, 3.0, false)
+	trust_tag.position = Vector2(1401.0, Y)
+	hud.add_child(trust_tag)
+
+func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
+	var frame := StyleBoxTexture.new()
+	frame.texture = load("res://assets/sprites/ui/hud_v5/" + sprite_name) as Texture2D
+	frame.texture_margin_left = 30.0
+	frame.texture_margin_right = 30.0
+	frame.texture_margin_top = 22.0
+	frame.texture_margin_bottom = 22.0
+	frame.content_margin_left = content_x
+	frame.content_margin_right = content_x
+	frame.content_margin_top = content_y
+	frame.content_margin_bottom = content_y
+	return frame
+
+func _option5_icon(sprite_name: String, icon_size: float) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.name = "Icon_" + sprite_name.get_basename()
+	icon.texture = load("res://assets/sprites/ui/hud_v5/" + sprite_name) as Texture2D
+	icon.custom_minimum_size = Vector2(icon_size, icon_size)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon
+
+
+func _option5_stat(parent: Control, node_name: String, pos: Vector2, dims: Vector2, sprite: String, starting_text: String, font_size: int, text_color: Color, icon_size: float) -> Label:
+	var panel := PanelContainer.new()
+	panel.name = node_name
+	panel.position = pos
+	panel.size = dims
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override(
+		"panel",
+		_option5_frame("cream_capsule.png", 20.0, 12.0)
+	)
+	parent.add_child(panel)
+
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+
+	var icon := _option5_icon(sprite, icon_size)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+
+	var label := _label(starting_text, font_size, text_color)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.clip_text = false
+	row.add_child(label)
+
+	return label
+
+
+func _hud_divider() -> ColorRect:
+	var divider := ColorRect.new()
+	divider.color = Color("bb8f65")
+	divider.custom_minimum_size = Vector2(3.0, 48.0)
+	divider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return divider
 
 func _refresh_daily_goal_hud() -> void:
-	if goal_label == null or daily_goal == null:
+	if goal_label == null or goal_count_label == null or daily_goal == null:
 		return
-	goal_label.text = "%s  ·  %s" % [daily_goal.title.to_upper(), daily_goal.progress_text()]
+	goal_label.text = daily_goal.title.to_upper()
+	goal_panel.tooltip_text = daily_goal.title + ' - ' + daily_goal.progress_text()
+	goal_count_label.text = daily_goal.progress_text()
 	goal_progress.max_value = maxf(1.0, float(daily_goal.target))
 	if daily_goal.is_no_timeout_goal():
 		goal_progress.value = 0.0 if daily_goal.timed_out else float(daily_goal.target)
-		goal_progress_fill.bg_color = Color("d94536") if daily_goal.timed_out else Color("e0a33a")
+		goal_progress_fill.bg_color = Color("d94536") if daily_goal.timed_out else Color("f5b83d")
 	else:
 		goal_progress.value = float(daily_goal.current)
-		goal_progress_fill.bg_color = Color("4caa56") if daily_goal.is_complete() else Color("e0a33a")
+		goal_progress_fill.bg_color = Color("4caa56") if daily_goal.is_complete() else Color("f5b83d")
 	goal_progress.queue_redraw()
 
 func _build_tutorial_hint() -> void:
-	tutorial_hint = _label("", 30, Color("fff1b8"))
+	tutorial_hint = _label("", 28, Color("fff1b8"))
 	tutorial_hint.name = "TutorialHint"
 	tutorial_hint.z_index = 46
-	tutorial_hint.position = Vector2(310.0, 105.0) + _ui_offset()
-	tutorial_hint.size = Vector2(1300.0, 74.0)
+	tutorial_hint.position = Vector2(360.0, 140.0) + _ui_offset()
+	tutorial_hint.size = Vector2(1170.0, 80.0)
+	var hint_box := StyleBoxFlat.new()          # dark-wood pill so the tip reads on any background
+	hint_box.bg_color = Color("3a2116", 0.94)
+	hint_box.border_color = Color("dca842")
+	hint_box.set_border_width_all(3)
+	hint_box.set_corner_radius_all(10)
+	hint_box.content_margin_left = 22.0
+	hint_box.content_margin_right = 22.0
+	hint_box.content_margin_top = 6.0
+	hint_box.content_margin_bottom = 6.0
+	tutorial_hint.add_theme_stylebox_override("normal", hint_box)
 	tutorial_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	tutorial_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	tutorial_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -327,7 +416,7 @@ func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
 func _build_shop_button() -> void:
 	shop_button = Button.new()
 	shop_button.name = "ShopIconButton"
-	shop_button.position = Vector2(1836, 4) + _ui_offset()
+	shop_button.position = Vector2(1820, 132) + _ui_offset()   # below the taller top HUD, no pause overlap
 	shop_button.size = Vector2(72, 72)
 	shop_button.z_index = 55
 	shop_button.z_as_relative = false
@@ -361,7 +450,7 @@ func _build_debug_tools() -> void:
 	debug_skip_button = Button.new()
 	debug_skip_button.text = "SKIP DAY  >>"
 	debug_skip_button.z_index = 35
-	debug_skip_button.position = Vector2(1648, 116) + _ui_offset()
+	debug_skip_button.position = Vector2(1552, 116) + _ui_offset()
 	debug_skip_button.size = Vector2(260, 56)
 	debug_skip_button.focus_mode = Control.FOCUS_NONE
 	debug_skip_button.add_theme_font_size_override("font_size", 24)
@@ -891,7 +980,8 @@ func _play_audio_cues(cue_names: Array[String]) -> void:
 		audio.play_cue(cue_name)
 
 func _update_clock(value: String) -> void:
-	clock_label.text = value
+	# Short clock reading, like the requested Option 5.
+	clock_label.text = value.trim_suffix(' AM').trim_suffix(' PM')
 
 func _on_game_minutes_changed(game_minutes: int) -> void:
 	if debug_environment_time_override >= 0:
@@ -905,7 +995,7 @@ func _format_game_clock(game_minutes: int) -> String:
 	return "%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"]
 
 func _update_cash(value: int) -> void:
-	cash_label.text = "₱%d" % value
+	cash_label.text = "%d" % value
 	if displayed_cash >= 0 and value > displayed_cash:
 		cash_label.pivot_offset = cash_label.size * 0.5
 		var pop_tween := create_tween()
@@ -1126,11 +1216,15 @@ func _advance_story_day() -> void:
 	campaign.advance_day()
 	shop_available = campaign.day > 1
 	_refresh_shop_button()
-	day_label.text = "DAY %d" % campaign.day
+	day_label.text = "D%d" % campaign.day
+	_ensure_daily_goal()
+	_refresh_daily_goal_hud()
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
 	_present_day_intro()
+	if pause_menu != null:
+		pause_menu.set_available(true)
 
 func _restart_story() -> void:
 	for actor in customer_actors.values():
@@ -1146,6 +1240,8 @@ func _restart_story() -> void:
 	daily_goal = null
 	daily_goal_day = 0
 	showing_pre_shift_briefing = false
+	if briefing_card != null:
+		briefing_card.hide_briefing()
 	showing_post_shift_summary = false
 	pending_shift_summary_text = ""
 	pending_shift_summary_title = ""
@@ -1154,32 +1250,40 @@ func _restart_story() -> void:
 	shop_available = false
 	_refresh_shop_button()
 	displayed_cash = -1
+	_ensure_daily_goal()
+	_refresh_daily_goal_hud()
 	_create_shift_manager()
 	_build_story_events()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
-	day_label.text = "DAY 1"
+	day_label.text = "D1"
 	_update_cash(campaign.cash)
 	_present_prologue()
+	if pause_menu != null:
+		pause_menu.set_available(true)
 
 func _ensure_daily_goal() -> void:
 	if daily_goal == null or daily_goal_day != campaign.day:
 		daily_goal = DAILY_GOAL.new(campaign.day)
 		daily_goal_day = campaign.day
 
+func _build_briefing_card() -> void:
+	briefing_card = BRIEFING_CARD.new()
+	briefing_card.position = _ui_offset()
+	briefing_card.start_pressed.connect(_on_briefing_start_pressed)
+	add_child(briefing_card)
+
+func _on_briefing_start_pressed() -> void:
+	briefing_card.hide_briefing()
+	_on_summary_button_pressed()
+
 func _show_pre_shift_briefing() -> void:
 	_ensure_daily_goal()
 	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog)
 	showing_pre_shift_briefing = true
-	summary_title.text = briefing.notebook_title()
-	summary_speaker.text = briefing.eyebrow
-	summary_text.text = briefing.panel_text()
-	summary_button.text = "OPEN STORE"
-	summary_button.visible = true
-	summary_button.disabled = false
-	summary_portrait.visible = false
+	summary_panel.visible = false
 	summary_backdrop.visible = true
-	summary_panel.visible = true
+	briefing_card.show_briefing(briefing, STOREFRONT_LAYOUT.VIEWPORT_SIZE)
 
 func _begin_shift() -> void:
 	shop_available = false
@@ -1537,8 +1641,12 @@ func _on_game_over() -> void:
 		return      # already showing (two customers can trigger it in the same frame)
 	shift_in_progress = false
 	shift.is_running = false
+	if pause_menu != null:
+		pause_menu.set_available(false)
 	bubble.close()
 	cash_tray.close()
+	if briefing_card != null:
+		briefing_card.hide_briefing()
 	summary_backdrop.visible = false
 	summary_panel.visible = false
 	if debug_skip_button != null:

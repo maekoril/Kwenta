@@ -77,3 +77,33 @@ static func style_button(button: Button, bg: Color, font_size: int) -> void:
 	button.add_theme_stylebox_override("pressed", box(bg.darkened(0.12), INK, 16.0, 8.0, 12, 5, 6))
 	button.add_theme_stylebox_override("disabled", box(PAPER_DARK, Color(INK, 0.4), 16.0, 8.0, 12, 5, 6))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+# Dark-wood HUD panel (objective + Suki Meter + pause button), matches the cream day/time panel.
+static func wood_box(margin_x: float = 14.0, margin_y: float = 8.0) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#3a2116", 0.96)
+	sb.border_color = Color("#a8743a")
+	sb.set_border_width_all(4)
+	sb.set_corner_radius_all(12)
+	sb.anti_aliasing = false
+	sb.content_margin_left = margin_x
+	sb.content_margin_right = margin_x
+	sb.content_margin_top = margin_y
+	sb.content_margin_bottom = margin_y
+	sb.shadow_color = Color(0, 0, 0, 0.4)
+	sb.shadow_size = 0
+	sb.shadow_offset = Vector2(0, 5)
+	return sb
+
+
+# Decorative PNG HUD frames. Their content stays live: only the backgrounds are textures.
+# The files are drawn at their final 1920x1080-space dimensions, so the texture is
+# deliberately stretched as a single image rather than tiled like a nine-patch.
+static func hud_frame(path: String, margin_x: float, margin_y: float) -> StyleBoxTexture:
+	var frame := StyleBoxTexture.new()
+	frame.texture = load(path)
+	frame.content_margin_left = margin_x
+	frame.content_margin_right = margin_x
+	frame.content_margin_top = margin_y
+	frame.content_margin_bottom = margin_y
+	return frame

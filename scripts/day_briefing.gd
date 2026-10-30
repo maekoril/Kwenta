@@ -11,6 +11,7 @@ var focus: String
 var shift_detail: String
 var product_section_title: String = ""
 var unlocked_product_names: Array[String] = []
+var unlocked_products: Array[ProductData] = []
 
 func _init(day: int, goal, products: Array = []) -> void:
 	heading = "DAY %d · %s" % [day, _day_name(day)]
@@ -24,6 +25,7 @@ func _init(day: int, goal, products: Array = []) -> void:
 	for product_value in products:
 		if product_value is ProductData and product_value.unlock_day == day and not product_value.display_name.is_empty():
 			unlocked_product_names.append(product_value.display_name)
+			unlocked_products.append(product_value)
 	if not unlocked_product_names.is_empty():
 		product_section_title = "STARTING SHELF" if day == 1 else "NEW ON THE SHELF"
 
