@@ -123,7 +123,9 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_note_paper.size.y = _top_row_height + NOTE_GUIDED_EXTRA_HEIGHT
 	for index in _list_spacers.size():
 		_list_spacers[index].visible = _guide_enabled or index < 2
-	_progress_bar.visible = _guide_enabled
+	_progress_bar.visible = true
+	# Keep the visual total-versus-target progress on every day. Only the
+	# explanatory helper text is tutorial-only after Day 2.
 	_helper_row.visible = _guide_enabled
 	_refresh_pile_total()
 	visible = true
@@ -430,18 +432,16 @@ func _refresh_pile_total() -> void:
 		var count := _pile.count(value)
 		if count > 0:
 			_counter_flow.add_child(_counter_piece(value, count))
+	_progress_bar.max_value = maxf(1.0, float(_change_due))
+	_progress_bar.value = minf(float(total), float(_change_due))
+	_progress_bar.tint_progress = Color.WHITE if total < _change_due else GREEN if total == _change_due else RED
 	if _guide_enabled:
 		_counter_total_label.text = "%s / %s" % [_money_text(total), _money_text(_change_due)]
-		_progress_bar.max_value = maxf(1.0, float(_change_due))
-		_progress_bar.value = minf(float(total), float(_change_due))
 		if total < _change_due:
-			_progress_bar.tint_progress = Color.WHITE
 			_set_helper("Kulang pa", _money_text(_change_due - total), HELPER_AMBER)
 		elif total == _change_due:
-			_progress_bar.tint_progress = GREEN
 			_set_helper("Eksakto!", "", GREEN)
 		else:
-			_progress_bar.tint_progress = RED
 			_set_helper("Sobra ng", _money_text(total - _change_due), HELPER_RED)
 	else:
 		_counter_total_label.text = _money_text(total)

@@ -1,0 +1,60 @@
+class_name DayBriefing
+extends RefCounted
+
+var heading: String
+var change_lines: Array[String] = []
+var goal_title: String
+var goal_reward: String
+var eyebrow: String
+var title: String
+var focus: String
+var shift_detail: String
+var product_section_title: String = ""
+var unlocked_product_names: Array[String] = []
+
+func _init(day: int, goal, products: Array = []) -> void:
+	heading = "DAY %d · %s" % [day, _day_name(day)]
+	change_lines = _change_lines(day)
+	goal_title = str(goal.title)
+	goal_reward = str(goal.reward)
+	eyebrow = "WELCOME TO KWENTA" if day == 1 else "TODAY'S NEW CHALLENGE"
+	title = "YOUR FIRST SHIFT" if day == 1 else "DAY %d · %s" % [day, _day_name(day)]
+	focus = change_lines[0]
+	shift_detail = change_lines[1] if change_lines.size() > 1 else ""
+	for product_value in products:
+		if product_value is ProductData and product_value.unlock_day == day and not product_value.display_name.is_empty():
+			unlocked_product_names.append(product_value.display_name)
+	if not unlocked_product_names.is_empty():
+		product_section_title = "STARTING SHELF" if day == 1 else "NEW ON THE SHELF"
+
+func panel_text() -> String:
+	var sections: Array[String] = ["TODAY'S FOCUS\n%s" % focus]
+	if not product_section_title.is_empty():
+		sections.append("%s\n%s" % [product_section_title, " · ".join(unlocked_product_names)])
+	if not shift_detail.is_empty():
+		sections.append("SHIFT DETAILS\n%s" % shift_detail)
+	sections.append("OPTIONAL DAILY GOAL\n%s\nReward — %s" % [goal_title, goal_reward])
+	return "\n\n".join(sections)
+
+func notebook_title() -> String:
+	return "YOUR FIRST SHIFT · DAY 1" if title == "YOUR FIRST SHIFT" else heading
+
+func _day_name(day: int) -> String:
+	match day:
+		1: return "UNANG ARAW"
+		2: return "SUKLI"
+		3: return "DAGDAG-ORDER"
+		4: return "ULAN"
+		5: return "SUKI"
+		6: return "PIYESTA"
+		_: return "HULING ARAW"
+
+func _change_lines(day: int) -> Array[String]:
+	match day:
+		1: return ["Drag products to serve each order.", "Shift ends at 12:00 PM"]
+		2: return ["Give the correct sukli after each sale.", "Shift ends at 5:00 PM"]
+		3: return ["Multi-item orders begin to overlap.", "Shift ends at 6:00 PM"]
+		4: return ["Rain makes customers less patient", "Shift ends at 6:00 PM"]
+		5: return ["Regulars matter during the rush.", "Shift ends at 8:00 PM"]
+		6: return ["Fiesta rush: more customers at once.", "A brownout arrives mid-shift"]
+		_: return ["Final day: customers will not lose trust.", "Shift ends at 8:00 PM"]

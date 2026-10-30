@@ -8,6 +8,7 @@ signal game_minutes_changed(value: int)
 signal feedback_changed(message: String)
 signal shift_completed
 signal customer_timed_out(customer_instance_id: String)
+signal customer_served(customer_id: String, order_units: int)
 
 var campaign_state: CampaignState
 var products_by_id: Dictionary
@@ -22,6 +23,8 @@ var customer_sequence: int = 0
 var is_running: bool = false
 var did_emit_completion: bool = false
 var shift_earnings: int = 0
+var customers_served: int = 0
+var customers_timed_out: int = 0
 var active_customer_limit_override: int = 0
 var spawn_delay_min_seconds: float = 0.0
 var spawn_delay_max_seconds: float = 0.0
@@ -44,6 +47,8 @@ func start_shift() -> void:
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
 	shift_earnings = 0
+	customers_served = 0
+	customers_timed_out = 0
 	change_total = 0
 	change_correct = 0
 	change_streak = 0
@@ -67,6 +72,7 @@ func advance_time(delta_seconds: float) -> void:
 	for customer in active_customers:
 		if customer.advance_time(delta_seconds):
 			customer_left = true
+			customers_timed_out += 1
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 			if customer.phase == CustomerState.Phase.PAYING:
 				change_streak = 0
@@ -174,10 +180,15 @@ func finish_shift() -> void:
 	shift_completed.emit()
 
 func _finish_sale(customer: CustomerState, net_cash: int) -> void:
+	var order_units := 0
+	for quantity in customer.order.delivered.values():
+		order_units += int(quantity)
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
+	customers_served += 1
 	campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 	customer.finish_as_paid()
+	customer_served.emit(customer.customer_id, order_units)
 	active_customers.erase(customer)
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()

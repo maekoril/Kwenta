@@ -14,6 +14,10 @@ const CounterArtScript = preload("res://scripts/counter_art.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
 const OrderBubbleIconScript = preload("res://scripts/order_bubble_icon.gd")
 const MainScript = preload("res://scripts/main.gd")
+const DailyGoalScript = preload("res://scripts/daily_goal.gd")
+const DayBriefingScript = preload("res://scripts/day_briefing.gd")
+const NotebookScrollScript = preload("res://scripts/notebook_scroll.gd")
+const NotebookSummaryScript = preload("res://scripts/notebook_summary.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
 const CustomerPortraitAtlas = preload("res://assets/sprites/customer_portraits_v2.png")
 
@@ -33,6 +37,13 @@ func _initialize() -> void:
 	_test_two_customers_keep_separate_orders_and_capacity()
 	_test_campaign_unlocks_and_pacing()
 	_test_day_by_day_learning_curve()
+	_test_daily_goals_are_optional_and_day_specific()
+	_test_day_briefing_explains_the_new_idea_and_goal()
+	_test_day_briefing_prioritizes_focus_and_configuration_unlocks()
+	_test_notebook_scroll_supports_touch_drag()
+	_test_notebook_section_headers_use_compact_action_tags()
+	_test_notebook_action_button_uses_ibigay_texture()
+	_test_shift_counts_served_and_timed_out_customers_for_summary()
 	_test_shelf_purchase_costs_cash_once()
 	_test_optional_unlock_costs_cash_once()
 	_test_seven_day_story_remembers_choices_and_callbacks()
@@ -176,6 +187,86 @@ func _test_day_by_day_learning_curve() -> void:
 	_assert(campaign.get_customer_patience_seconds() >= 999999.0, "Day 7 remains a low-punishment finale")
 	_assert(CampaignFixture.get_customer_patience_seconds_for_day(4) < CampaignFixture.get_customer_patience_seconds_for_day(3), "rain day requires faster decisions than Day 3")
 	_assert(CampaignFixture.get_customer_spawn_interval_for_day(6) < CampaignFixture.get_customer_spawn_interval_for_day(5), "Fiesta Day 6 has the fastest customer arrivals")
+
+func _test_daily_goals_are_optional_and_day_specific() -> void:
+	var day_one := DailyGoalScript.new(1)
+	_assert(day_one.title == "Serve 3 customers" and not day_one.is_complete(), "Day 1 has an optional serving goal")
+	day_one.record_customer_served(1)
+	day_one.record_customer_served(2)
+	day_one.record_customer_served(1)
+	_assert(day_one.is_complete(), "customer-serving goal completes without changing campaign state")
+	var rain_day := DailyGoalScript.new(4)
+	rain_day.record_timeout()
+	rain_day.finalize(0)
+	_assert(not rain_day.is_complete(), "rain-day no-timeout goal fails without a gameplay penalty")
+	var finale := DailyGoalScript.new(7)
+	finale.finalize(3)
+	_assert(finale.is_complete(), "Day 7 regular goal completes from trusted regulars")
+
+func _test_day_briefing_explains_the_new_idea_and_goal() -> void:
+	var rain_briefing = DayBriefingScript.new(4, DailyGoalScript.new(4))
+	_assert(rain_briefing.heading == "DAY 4 · ULAN", "briefing names the current story day")
+	_assert(rain_briefing.change_lines.has("Rain makes customers less patient"), "rain briefing names the day's new pressure")
+	_assert(rain_briefing.change_lines.has("Shift ends at 6:00 PM"), "briefing names the day's closing time")
+	_assert(rain_briefing.goal_title == "Let no customer leave", "briefing carries the optional daily goal")
+	_assert(rain_briefing.goal_reward == "Rainy-day thank-you note", "briefing carries the daily-goal reward")
+
+func _test_day_briefing_prioritizes_focus_and_configuration_unlocks() -> void:
+	var starter_product: ProductData = ProductDataScript.new()
+	starter_product.display_name = "Noodz"
+	starter_product.unlock_day = 1
+	var day_two_product: ProductData = ProductDataScript.new()
+	day_two_product.display_name = "Fizzy Pop"
+	day_two_product.unlock_day = 2
+	var day_one_briefing = DayBriefingScript.new(1, DailyGoalScript.new(1), [starter_product, day_two_product])
+	_assert(day_one_briefing.eyebrow == "WELCOME TO KWENTA", "Day 1 uses a welcome label instead of what changed")
+	_assert(day_one_briefing.title == "YOUR FIRST SHIFT", "Day 1 prioritizes the first-shift title")
+	_assert(day_one_briefing.focus == "Drag products to serve each order.", "briefing puts the day's core mechanic first")
+	_assert(day_one_briefing.product_section_title == "STARTING SHELF", "Day 1 identifies its starting products")
+	_assert(day_one_briefing.unlocked_product_names == ["Noodz"], "briefing reads Day 1 products from configuration")
+	var day_two_briefing = DayBriefingScript.new(2, DailyGoalScript.new(2), [starter_product, day_two_product])
+	_assert(day_two_briefing.product_section_title == "NEW ON THE SHELF", "later days label their new product unlocks")
+	_assert(day_two_briefing.unlocked_product_names == ["Fizzy Pop"], "briefing reads later unlocks from configuration")
+	_assert(day_two_briefing.panel_text().contains("NEW ON THE SHELF"), "briefing renders the product-unlock section")
+
+func _test_notebook_scroll_supports_touch_drag() -> void:
+	var scroll = NotebookScrollScript.new()
+	_assert(scroll.supports_touch_drag(), "notebook body explicitly supports finger-drag scrolling")
+	scroll.free()
+
+func _test_notebook_section_headers_use_compact_action_tags() -> void:
+	var summary = NotebookSummaryScript.new()
+	summary.text = "TODAY'S SALES\nBenta ngayong araw: ₱76"
+	var tag: Control = summary.get_child(0)
+	_assert(tag.name == "ActionSectionTag", "section headers use a named action-color tag")
+	_assert(tag.size_flags_horizontal == Control.SIZE_SHRINK_BEGIN, "action tags shrink to their label instead of spanning the panel")
+	var tag_style: StyleBoxTexture = tag.get_theme_stylebox("panel")
+	_assert(tag_style is StyleBoxTexture and tag_style.texture.resource_path.ends_with("wooden_tag.png"), "action tags use the wooden tag texture")
+	summary.free()
+
+func _test_notebook_action_button_uses_ibigay_texture() -> void:
+	var main = MainScript.new()
+	var button := Button.new()
+	main.apply_notebook_action_button_style(button)
+	var button_style: StyleBoxTexture = button.get_theme_stylebox("normal")
+	_assert(button_style is StyleBoxTexture and button_style.texture.resource_path.ends_with("ibigay_button.png"), "notebook action button uses the ibigay texture")
+	button.free()
+	main.free()
+
+func _test_shift_counts_served_and_timed_out_customers_for_summary() -> void:
+	var served_manager := _make_test_shift(2, 10.0)
+	served_manager.start_shift()
+	var served_customer: CustomerState = served_manager.get_active_customers()[0]
+	served_manager.deliver_product(served_customer.instance_id, "chips")
+	served_manager.deliver_product(served_customer.instance_id, "chips")
+	_assert(served_manager.customers_served == 1, "summary counts each completed sale once")
+	_assert(served_manager.customers_timed_out == 0, "summary keeps timeouts separate from completed sales")
+	var timeout_manager := _make_test_shift(1, 0.1)
+	timeout_manager.patience_seconds_override = 0.1
+	timeout_manager.start_shift()
+	timeout_manager.shift_duration_seconds = 10.0
+	timeout_manager.advance_time(0.11)
+	_assert(timeout_manager.customers_timed_out == 1, "summary counts a customer who leaves")
 
 func _test_optional_unlock_costs_cash_once() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)

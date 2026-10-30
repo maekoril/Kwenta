@@ -1,6 +1,8 @@
 class_name NotebookSummary
 extends VBoxContainer
 
+const ACTION_TAG_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
+
 # Turns the page's body text into a visual hierarchy, without main.gd building anything new.
 # It reads the same string main.gd already sets, for example:
 #
@@ -43,10 +45,16 @@ func _rebuild() -> void:
 				rows.append(PackedStringArray([line.substr(0, cut), line.substr(cut + 2)]))
 			else:
 				plain_lines.append(line)
+		var section_heading := ""
+		if plain_lines.size() >= 1 and _is_section_heading(plain_lines[0]):
+			section_heading = plain_lines.pop_front()
 		if group_index > 0 and (not rows.is_empty() or not plain_lines.is_empty()):
 			add_child(_rule())
+		if not section_heading.is_empty():
+			add_child(_section_heading(section_heading))
 		if not plain_lines.is_empty():
-			add_child(_paragraph("\n".join(plain_lines)))
+			var content := "\n".join(plain_lines)
+			add_child(_focus_paragraph(content) if section_heading == "TODAY'S FOCUS" else _paragraph(content))
 		for row in rows:
 			if not hero_done:
 				add_child(_hero(row[0], row[1]))
@@ -62,6 +70,33 @@ func _paragraph(content: String) -> Label:
 	label.add_theme_constant_override("line_spacing", 6)
 	return label
 
+func _section_heading(content: String) -> Control:
+	var tag := PanelContainer.new()
+	tag.name = "ActionSectionTag"
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tag.custom_minimum_size.y = 42.0
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var action_tag_style := StyleBoxTexture.new()
+	action_tag_style.texture = ACTION_TAG_BACKGROUND_TEXTURE
+	action_tag_style.content_margin_left = 18.0
+	action_tag_style.content_margin_right = 18.0
+	action_tag_style.content_margin_top = 7.0
+	action_tag_style.content_margin_bottom = 7.0
+	tag.add_theme_stylebox_override("panel", action_tag_style)
+	var label := KwentaStyle.make_label(content, KwentaStyle.SIZE_CAPTION, Color.WHITE)
+	tag.add_child(label)
+	return tag
+
+func _focus_paragraph(content: String) -> Label:
+	var label := KwentaStyle.make_label(content, KwentaStyle.SIZE_ROW_VALUE, Color("24140d"))
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_constant_override("line_spacing", 6)
+	return label
+
+func _is_section_heading(content: String) -> bool:
+	return content == content.to_upper() and content.length() > 1 and not content.contains(":")
+
 # The one number that matters: small caption, then a big value.
 func _hero(caption: String, value: String) -> VBoxContainer:
 	var box := VBoxContainer.new()
@@ -75,7 +110,7 @@ func _hero(caption: String, value: String) -> VBoxContainer:
 func _row(caption: String, value: String, label_size: int, value_size: int) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var label := KwentaStyle.make_label(caption, label_size, KwentaStyle.INK_MUTED)
+	var label := KwentaStyle.make_label(caption, label_size, KwentaStyle.INK)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 	var value_label := KwentaStyle.make_label(value, value_size, _value_color(value))
