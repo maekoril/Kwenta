@@ -30,63 +30,278 @@
 		{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Toy pambilan, dalawang noodz nga."}
 	  ],
 	  "outro": [
+		{"speaker": "Narrator", "portrait": "", "text": "Tanghali na. Hindi namalayan ni Tonyo ang oras sa kanyang pagtitinda."},
+		{"speaker": "Narrator", "portrait": "", "text": "Sa gitna ng katanghalian, dumating ang mga kalaro niyang sina Jun-jun, Mikay at Bogs. Mukhang aayain nila siyang maglaro."},
 		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Tonyo! Tara na, laro na tayo! Tumbang preso!"},
 		{"speaker": "Mikay", "portrait": "mikay_smug", "text": "Dalian mo, baka matalo ka na naman!"},
-		{"speaker": "Narrator", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs mula sa kalsada."},
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Tara na!"}
+		{"speaker": "Narrator", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs mula sa kalsada."}
 	  ],
 	  "choices": [
 		{"id": "day1_play", "prompt":"Ano ang gagawin ni Tonyo?", "options": [
-		  {"id": "stay", "label": "Mamaya na!", "response": "Mamaya na! May tindahan pa ako.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
-		  {"id": "play", "label": "Saglit lang!", "response": "Saglit lang! Babalik agad ako.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
+		  {"id": "stay", "label": "Mamaya na!", "response": "Mamaya na ako! Inihabilin sa akin ni Inay ang tindahan, kaya babantayan ko muna ito.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
+		  {"id": "play", "label": "Saglit lang!", "response": "Saglit lang, tindahan! Lalaro muna kami ng mga kaibigan ko. Okay naman na siguro ang benta ko ngayong araw... hehe.", "response_speaker": "Tonyo", "response_portrait": "tonyo"}
 		]}
 	  ],
 	  "callbacks": [
-		{"speaker": "Tonyo", "portrait": "tonyo_smiling_tired", "text": "Isang araw pa lang... ang hirap na."},
-		{"speaker": "Narrator", "portrait": "", "text": "Sa kuwaderno, isinulat ni Tonyo ang kinita niya sa unang araw."}
+		{"speaker": "Narrator", "portrait": "", "text": "Isinara muna ni Tonyo ang tindahan at sumama sa kanyang mga kaibigan.", "when_choice": "day1_play", "when_value": "play", "close_store": true},
+		{"speaker": "Narrator", "portrait": "", "text": "Kinahapunan...", "when_choice": "day1_play", "when_value": "play", "environment": "afternoon"},
+		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Ang saya! Bukas ulit, Tonyo!", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Mikay", "portrait": "mikay_smug", "text": "Bukas ulit! Pero magpraktis ka muna, ha? Baka matalo ka na naman!", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Narrator", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs bilang paalam.", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Salamat! Uuwi na ako. Bukas ulit!", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Narrator", "portrait": "", "text": "Nakauwi na si Tonyo. Napatingin siya sa saradong tindahan bago pumasok.", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Tonyo", "portrait": "tonyo_smiling_tired", "text": "Hays, unang araw pa lang, ang hirap na. Di bale, nakapaglaro naman ako... hehe.", "when_choice": "day1_play", "when_value": "play"},
+		{"speaker": "Narrator", "portrait": "", "text": "Hindi sumama si Tonyo sa laro. Pinili niyang bantayan ang tindahan at sundin ang bilin ni Inay hanggang hapon.", "when_choice": "day1_play", "when_value": "stay", "environment": "afternoon"},
+		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Ano ba 'yan, ang tumal naman ng benta! Dapat sumama na lang ako sa paglalaro... hays.", "when_choice": "day1_play", "when_value": "stay"},
+		{"speaker": "Narrator", "portrait": "", "text": "Walang bumibili buong hapon. Sa tindi ng init, halos walang gustong lumabas ng bahay.", "when_choice": "day1_play", "when_value": "stay"},
+		{"speaker": "Narrator", "portrait": "", "text": "Habang isinasara niya ang tindahan, napabuntong-hininga siya.", "when_choice": "day1_play", "when_value": "stay", "close_store": true},
+		{"speaker": "Tonyo", "portrait": "tonyo_smiling_tired", "text": "Hays, unang araw pa lang ng pagtitinda, ang hirap na. Okay lang 'to... one day down, six more to go!", "when_choice": "day1_play", "when_value": "stay"},
+		{"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Sana ayos lang si Lola sa kabilang barangay.", "when_choice": "day1_play", "when_value": "stay"}
 	  ]
 	},
 	{
 	  "day": 2,
-	  "title": "Maling Sukli",
+	  "title": "Barya at Bilin",
 	  "shift_events": [
-		{"type": "customer", "at_minute": 0, "customer": "aling_nena", "order": {"canned_sardines": 1, "rice": 1, "soy_sauce": 1}}
+		{
+		  "type": "customer",
+		  "at_minute": 0,
+		  "customer": "aling_nena",
+		  "order": {
+			"chips": 1
+		  },
+		  "tendered": 20,
+		  "arrival_beats": [
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena_happy",
+			  "text": "Aba, may sipag pala 'tong bata. Buong araw kang nasa tindahan kahapon.",
+			  "when_choice": "day1_play",
+			  "when_value": "stay"
+			},
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena",
+			  "text": "Nakita kitang tumatakbo kahapon, ah! Ang bilis mo kapag laro. Tingnan natin kung mabilis ka rin mag-abot ng paninda!",
+			  "when_choice": "day1_play",
+			  "when_value": "play"
+			},
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena",
+			  "text": "Tonyo, isang Patos nga. Magkano na 'yan?"
+			},
+			{
+			  "speaker": "Tonyo",
+			  "portrait": "tonyo",
+			  "text": "₱18 po, Aling Nena."
+			},
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena",
+			  "text": "Sige, iho. Paabot nga muna."
+			}
+		  ]
+		},
+		{
+		  "type": "scene",
+		  "at_minute": 120,
+		  "seen_flag": "day2_berting_money",
+		  "beats": [
+			{
+			  "speaker": "Mang Berting",
+			  "portrait": "mang_berting",
+			  "text": "Tonyo! Idadaan ko lang itong listahan. Naku, nakasalang pa pala ang sinaing ko!"
+			},
+			{
+			  "speaker": "Tonyo",
+			  "portrait": "tonyo",
+			  "text": "Nong, teka po! May nalaglag yata kayo—"
+			},
+			{
+			  "speaker": "Narrator",
+			  "portrait": "",
+			  "text": "Pero nakatakbo na si Mang Berting. May naiwan siyang ₱50 sa counter."
+			},
+			{
+			  "speaker": "Tonyo",
+			  "portrait": "tonyo_flustered",
+			  "text": "Ayun, nauna pa siyang tumakbo kaysa sa akin! Itatabi ko muna ’to."
+			}
+		  ]
+		}
 	  ],
 	  "haggle": [
-		{"customer": "aling_nena", "ask": 2, "speaker": "Aling Nena", "portrait": "aling_nena_haggling", "text": "Tonyo, bawasan mo naman ng ₱{ask}. Suki naman ako, 'di ba?", "accept": "Sige po, bawas ₱{ask}", "refuse": "Hindi po talaga", "accepted": [{"speaker": "Aling Nena", "portrait": "aling_nena_happy", "text": "Aba, salamat, iho!"}], "refused": [{"speaker": "Aling Nena", "portrait": "aling_nena_impatient", "text": "Hay, kay Cora kaya, mas mura pa 'to!"}]},
-		{"customer": "aling_nena", "ask": 1, "text": "Tonyo, ₱{ask} lang ang hingi ko. Kahit konti, suki naman ako.", "when_choice": "day1_play", "when_value": "stay"},
-		{"customer": "aling_nena", "ask": 4, "text": "Tonyo, bawasan mo ng ₱{ask}! Mabilis kang tumakbo kahapon, dapat mabilis ka rin sa bawas!", "when_choice": "day1_play", "when_value": "play"}
+		{
+		  "customer": "aling_nena",
+		  "ask": 2,
+		  "choice_id": "day2_haggle",
+		  "accept_choice_id": "kind",
+		  "refuse_choice_id": "full",
+		  "speaker": "Aling Nena",
+		  "portrait": "aling_nena_haggling",
+		  "text": "Tonyo, bawasan mo naman ng ₱{ask} ang Patos. Suki naman ako, 'di ba?",
+		  "accept": "Sige po, bawas ₱{ask}",
+		  "refuse": "Hindi po talaga",
+		  "accepted": [
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena_happy",
+			  "text": "Aba, salamat, iho!"
+			}
+		  ],
+		  "refused": [
+			{
+			  "speaker": "Aling Nena",
+			  "portrait": "aling_nena_impatient",
+			  "text": "Hay, kay Cora kaya, mas mura pa 'to!"
+			}
+		  ],
+		  "payment_beats": [
+			{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Heto, bente ang bayad ko."},
+			{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Ah... uh, Aling Nena, sobra po 'yung binigay ninyo."},
+			{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Eh di suklian mo ako, iho! Alam mo naman ang sukli, 'di ba?"},
+			{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Opo... sandali lang po. Bilangin ko muna!"}
+		  ]
+		},
+		{
+		  "customer": "aling_nena",
+		  "ask": 1,
+		  "text": "Tonyo, ₱{ask} lang ang hingi ko. Kahit konti, suki naman ako.",
+		  "when_choice": "day1_play",
+		  "when_value": "stay"
+		},
+		{
+		  "customer": "aling_nena",
+		  "ask": 4,
+		  "text": "Tonyo, bawasan mo ng ₱{ask}! Mabilis kang tumakbo kahapon, dapat mabilis ka rin sa bawas!",
+		  "when_choice": "day1_play",
+		  "when_value": "play"
+		}
 	  ],
 	  "intro": [
-		{"speaker": "Narrator", "portrait": "", "text": "Mas maraming customer ngayon. Nagdikit si Tonyo ng maliliit na arrow sa estante para maalala niyang mag-double-check."},
-		{"speaker": "Aling Nena", "portrait": "aling_nena_happy", "text": "Aba, may sipag pala 'tong bata. Buong araw kang nasa tindahan kahapon.", "when_choice": "day1_play", "when_value": "stay"},
-		{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Nasaan ka kahapon? Ang bilis mo pala tumakbo.", "when_choice": "day1_play", "when_value": "play"},
-		{"speaker": "Aling Nena", "portrait": "aling_nena_haggling", "text": "Tonyo, ₱26 na lang 'yung Giga Sardines. Suki naman ako, 'di ba?"},
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Eh... ₱28 po talaga 'yan."},
-		{"speaker": "Aling Nena", "portrait": "aling_nena_haggling", "text": "Hay, kay Cora kaya 'to ₱26 lang!"}
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "Kinabukasan, papasok pa lang si Tonyo sa tindahan. Kakagising lang niya at halos nakapikit pa sa antok."
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+		  "text": "Kung tutuusin, ang dali lang pala magtinda. Mani-mani lang sa akin 'to, hehe!"
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+		  "text": "Kukunin ko lang ang gusto nila, iaabot sa kanila, tapos tatanggapin ko ang bayad. Ganun lang!"
+		},
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "Hindi niya napansin ang isang kahon sa daanan. Natapilok siya rito bago siya tuluyang makapasok."
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo_flustered",
+		  "text": "Aray! Ano ba ’yan? Ba’t may kahon dito?!"
+		},
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "May sulat-kamay na papel sa ibabaw ng kahon. Kinuha iyon ni Tonyo at binasa."
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+	      "text": "Hala, kahapon pa pala ’tong kahon dito! Hindi ko man lang napansin. Sige, aayusin ko na ’to gaya ng bilin ni Inay.",
+		  "supplier_note": true
+		},
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "Inilabas ni Tonyo ang Patos, Zesty at Kapeko at inayos ang mga ito sa estante."
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+		  "text": "May listahan din pala ng iba pang paninda. Kung may ipon ako, puwede akong pumili mamaya."
+		}
 	  ],
 	  "outro": [
-		{"speaker": "Aling Nena", "portrait": "aling_nena_impatient", "text": "Hoy, kulang ang sukli ko!"},
-		{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Ay! Sorry po!"},
-		{"speaker": "Aling Nena", "portrait": "aling_nena", "text": "Mahirap talaga magbilang kapag nagmamadali. Dahan-dahan lang, iho."},
-		{"speaker": "Narrator", "portrait": "", "text": "Pagsara ng tindahan, may sobrang ₱50 sa kaha. Naiwan iyon ni Mang Berting nang nagmamadali siya."}
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "Pagsara ng tindahan, binilang ni Tonyo ang pera at naalala ang mga sukling ibinigay niya."
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+		  "text": "Buti tama ang mga sukling natapos ko. Binilang ko pa nang dalawang beses para sigurado!",
+		  "when_choice": "day2_sukli_result",
+		  "when_value": "perfect"
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo_flustered",
+		  "text": "May mga sukli akong kailangang ayusin kanina. Sa susunod, magbibilang muna ako nang mabuti.",
+		  "when_choice": "day2_sukli_result",
+		  "when_value": "mistakes"
+		},
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo_bored",
+		  "text": "Hindi ako nakatapos ng pagbibigay ng sukli ngayon. Susubukan ko ulit bukas.",
+		  "when_choice": "day2_sukli_result",
+		  "when_value": "none"
+		},
+		{
+		  "speaker": "Narrator",
+		  "portrait": "",
+		  "text": "Napatingin siya sa ₱50 na naiwan ni Mang Berting sa counter.",
+		  "when_choice": "day2_berting_money",
+		  "when_value": "seen"
+		}
 	  ],
 	  "choices": [
-		{"id": "day2_haggle", "prompt": "Magkano ang sisingilin kay Aling Nena?", "options": [
-		  {"id": "full", "label": "₱28", "response": "₱28 po talaga, Aling Nena.", "response_speaker": "Tonyo", "response_portrait": "tonyo"},
-		  {"id": "middle", "label": "₱27", "response": "Sige po, ₱27 na lang.", "response_speaker": "Tonyo", "response_portrait": "tonyo", "cash_delta": -2},
-		  {"id": "kind", "label": "₱26", "response": "Sige po. Suki naman po kayo.", "response_speaker": "Tonyo", "response_portrait": "tonyo", "cash_delta": -4}
-		]},
-		{"id": "day2_overpayment", "prompt": "Ano ang gagawin sa sobrang ₱50?", "options": [
-		  {"id": "return", "label": "Itabi para isauli", "response": [
-			  {"speaker": "Narrator", "portrait": "", "text": "Nilagay ni Tonyo ang pera sa sobre na may pangalang Mang Berting."},
-			  {"speaker": "Tonyo", "portrait": "tonyo_bored", "text": "Hay... ₱50 din sana 'yon."}
-			]},
-		  {"id": "keep", "label": "Itago", "response": "Hindi naman niya malalaman...", "response_speaker": "Tonyo", "response_portrait": "tonyo", "cash_delta": 50}
-		]}
+		{
+		  "id": "day2_overpayment",
+		  "prompt": "Ano ang gagawin sa ₱50 na naiwan ni Mang Berting?",
+		  "options": [
+			{
+			  "id": "return",
+			  "label": "Itabi para isauli",
+			  "response": [
+				{
+				  "speaker": "Narrator",
+				  "portrait": "",
+				  "text": "Nilagay ni Tonyo ang pera sa sobre na may pangalang Mang Berting."
+				},
+				{
+				  "speaker": "Tonyo",
+				  "portrait": "tonyo_bored",
+				  "text": "Hay... ₱50 din sana 'yon."
+				}
+			  ]
+			},
+			{
+			  "id": "keep",
+			  "label": "Itago",
+			  "response": "Hindi naman niya malalaman...",
+			  "response_speaker": "Tonyo",
+			  "response_portrait": "tonyo",
+			  "cash_delta": 50
+			}
+		  ],
+		  "when_choice": "day2_berting_money",
+		  "when_value": "seen"
+		}
 	  ],
 	  "callbacks": [
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mali ako ng sukli kay Aling Nena. Dapat mas maingat para hindi na ito maulit."}
+		{
+		  "speaker": "Tonyo",
+		  "portrait": "tonyo",
+		  "text": "Ang dami palang kailangang tandaan sa tindahan. Isang araw na naman ang natapos."
+		}
 	  ]
 	},
 	{
@@ -101,7 +316,7 @@
 		{"type": "interruption", "at_minute": 380, "speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Libre ka namin ng ice candy kay Kuya Dodong pagkatapos! Tara na!", "when_choice": "day1_play", "when_value": "stay"}
 	  ],
 	  "intro": [
-		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mang Berting, sobra po 'yung bayad niyo kahapon.", "when_choice": "day2_overpayment", "when_value": "return"},
+		{"speaker": "Tonyo", "portrait": "tonyo", "text": "Mang Berting, naiwan niyo po itong ₱50 kahapon.", "when_choice": "day2_overpayment", "when_value": "return"},
 		{"speaker": "Mang Berting", "portrait": "mang_berting_happy", "text": "Aba! Hindi ko nga napansin. Mabait ka palang bata. Sige, ito, tip mo.", "when_choice": "day2_overpayment", "when_value": "return", "cash": 10},
 		{"speaker": "Narrator", "portrait": "", "text": "Binilang ni Mang Berting ang barya niya nang dalawang beses, sabay kunot-noo.", "when_choice": "day2_overpayment", "when_value": "keep"},
 		{"speaker": "Mang Berting", "portrait": "mang_berting_impatient", "text": "Tonyo, parang may kulang sa kwenta ko.", "when_choice": "day2_overpayment", "when_value": "keep"},

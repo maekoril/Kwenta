@@ -31,6 +31,9 @@ var purchased_groups: Array = []
 var config: Dictionary = {}
 var _cash_label: Label
 var _fixture_grid: Control
+var _confirmation: PanelContainer
+var _confirmation_label: Label
+var _confirmation_tween: Tween
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -54,7 +57,24 @@ func open() -> void:
 
 func close() -> void:
 	visible = false
+	if _confirmation_tween != null and _confirmation_tween.is_valid():
+		_confirmation_tween.kill()
+	if _confirmation != null:
+		_confirmation.visible = false
 	closed.emit()
+
+func show_purchase_confirmation(product_names: Array[String]) -> void:
+	if _confirmation == null:
+		return
+	if _confirmation_tween != null and _confirmation_tween.is_valid():
+		_confirmation_tween.kill()
+	_confirmation_label.text = "Now available: %s" % ", ".join(product_names)
+	_confirmation.modulate.a = 1.0
+	_confirmation.visible = true
+	_confirmation_tween = create_tween()
+	_confirmation_tween.tween_interval(3.0)
+	_confirmation_tween.tween_property(_confirmation, "modulate:a", 0.0, 0.3)
+	_confirmation_tween.tween_callback(_confirmation.hide)
 
 func _build_shell() -> void:
 	var dimmer := ColorRect.new()
@@ -74,6 +94,19 @@ func _build_shell() -> void:
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(frame)
+
+	# Cover the baked-in fixture copy with an explanation of what the order does.
+	var supplier_note := PanelContainer.new()
+	supplier_note.name = "SupplierExplanation"
+	supplier_note.position = Vector2(419, 153)
+	supplier_note.size = Vector2(674, 37)
+	supplier_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	supplier_note.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8dfb0"), Color("f8dfb0"), 2.0, 1.0, 0, 0, 0))
+	panel.add_child(supplier_note)
+	var explanation := KwentaStyle.make_label("Order once: products stay stocked and customers can request them.", 19, KwentaStyle.INK)
+	explanation.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	explanation.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	supplier_note.add_child(explanation)
 
 	_cash_label = KwentaStyle.make_label("", 27, Color("24572d"))
 	_cash_label.name = "CashLabel"
@@ -100,6 +133,20 @@ func _build_shell() -> void:
 	_fixture_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fixture_grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(_fixture_grid)
+
+	_confirmation = PanelContainer.new()
+	_confirmation.name = "PurchaseConfirmation"
+	_confirmation.position = Vector2(350, 196)
+	_confirmation.size = Vector2(810, 58)
+	_confirmation.z_index = 2
+	_confirmation.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_confirmation.add_theme_stylebox_override("panel", KwentaStyle.box(KwentaStyle.PAPER, KwentaStyle.INK, 16.0, 8.0, 8, 3, 4))
+	_confirmation.visible = false
+	panel.add_child(_confirmation)
+	_confirmation_label = KwentaStyle.make_label("", 23, KwentaStyle.INK)
+	_confirmation_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_confirmation_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_confirmation.add_child(_confirmation_label)
 
 func _render_fixture_cards() -> void:
 	if _fixture_grid == null:

@@ -70,7 +70,14 @@ static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) ->
 		return null
 	var portrait := AtlasTexture.new()
 	portrait.atlas = portrait_atlas
-	portrait.region = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
+	var region: Rect2 = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
+	# Some cells contain a one- or two-pixel strip from the row above. The
+	# following row is transparent; leave it as a filtering buffer as well.
+	var has_top_strip := (region.position.y == 512.0 or (region.position.y == 1536.0 and region.position.x >= 512.0) or (region.position.y == 2048.0 and region.position.x <= 1024.0))
+	if has_top_strip:
+		region.position.y += 3.0
+		region.size.y -= 3.0
+	portrait.region = region
 	return portrait
 
 # Sprite switching for impatient customers. A character has an impatient sprite when

@@ -13,17 +13,23 @@ var product_section_title: String = ""
 var unlocked_product_names: Array[String] = []
 var unlocked_products: Array[ProductData] = []
 
-func _init(day: int, goal, products: Array = []) -> void:
-	heading = "DAY %d · %s" % [day, _day_name(day)]
+func _init(day: int, goal, products: Array = [], store_config: Dictionary = {}) -> void:
+	heading = "DAY %d" % day
 	change_lines = _change_lines(day)
 	goal_title = str(goal.title)
 	goal_reward = str(goal.reward)
 	eyebrow = "WELCOME TO KWENTA" if day == 1 else "TODAY'S NEW CHALLENGE"
-	title = "YOUR FIRST SHIFT" if day == 1 else "DAY %d · %s" % [day, _day_name(day)]
+	title = heading
 	focus = change_lines[0]
 	shift_detail = change_lines[1] if change_lines.size() > 1 else ""
+	var story_unlock_ids: Array[String] = []
+	if not store_config.is_empty():
+		for entry_value in store_config.get("products", {}).values():
+			var entry: Dictionary = entry_value
+			if entry.get("unlock_type") == "story" and int(entry.get("unlock_day", 1)) == day:
+				story_unlock_ids.append(str(entry.get("game_product_id", "")))
 	for product_value in products:
-		if product_value is ProductData and product_value.unlock_day == day and not product_value.display_name.is_empty():
+		if product_value is ProductData and (story_unlock_ids.has(product_value.id) if not store_config.is_empty() else product_value.unlock_day == day) and not product_value.display_name.is_empty():
 			unlocked_product_names.append(product_value.display_name)
 			unlocked_products.append(product_value)
 	if not unlocked_product_names.is_empty():

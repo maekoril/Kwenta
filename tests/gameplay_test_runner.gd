@@ -205,7 +205,7 @@ func _test_daily_goals_are_optional_and_day_specific() -> void:
 
 func _test_day_briefing_explains_the_new_idea_and_goal() -> void:
 	var rain_briefing = DayBriefingScript.new(4, DailyGoalScript.new(4))
-	_assert(rain_briefing.heading == "DAY 4 · ULAN", "briefing names the current story day")
+	_assert(rain_briefing.heading == "DAY 4", "briefing names the current story day")
 	_assert(rain_briefing.change_lines.has("Rain makes customers less patient"), "rain briefing names the day's new pressure")
 	_assert(rain_briefing.change_lines.has("Shift ends at 6:00 PM"), "briefing names the day's closing time")
 	_assert(rain_briefing.goal_title == "Let no customer leave", "briefing carries the optional daily goal")
@@ -220,7 +220,7 @@ func _test_day_briefing_prioritizes_focus_and_configuration_unlocks() -> void:
 	day_two_product.unlock_day = 2
 	var day_one_briefing = DayBriefingScript.new(1, DailyGoalScript.new(1), [starter_product, day_two_product])
 	_assert(day_one_briefing.eyebrow == "WELCOME TO KWENTA", "Day 1 uses a welcome label instead of what changed")
-	_assert(day_one_briefing.title == "YOUR FIRST SHIFT", "Day 1 prioritizes the first-shift title")
+	_assert(day_one_briefing.title == "DAY 1", "Day 1 uses the day number as its title")
 	_assert(day_one_briefing.focus == "Drag products to serve each order.", "briefing puts the day's core mechanic first")
 	_assert(day_one_briefing.product_section_title == "STARTING SHELF", "Day 1 identifies its starting products")
 	_assert(day_one_briefing.unlocked_product_names == ["Noodz"], "briefing reads Day 1 products from configuration")
@@ -228,6 +228,14 @@ func _test_day_briefing_prioritizes_focus_and_configuration_unlocks() -> void:
 	_assert(day_two_briefing.product_section_title == "NEW ON THE SHELF", "later days label their new product unlocks")
 	_assert(day_two_briefing.unlocked_product_names == ["Fizzy Pop"], "briefing reads later unlocks from configuration")
 	_assert(day_two_briefing.panel_text().contains("NEW ON THE SHELF"), "briefing renders the product-unlock section")
+	var store_config := StoreConfig.load_config("res://data/store_config.json")
+	var actual_day_one = DayBriefingScript.new(1, DailyGoalScript.new(1), CampaignFixture.product_catalog, store_config)
+	var expected_starters := ["Noodz", "Feeta", "Thang", "Cola-Coca", "Egg Large"]
+	_assert(actual_day_one.unlocked_product_names.size() == expected_starters.size(), "Day 1 briefing has exactly the five stocked starters")
+	for product_name in expected_starters:
+		_assert(actual_day_one.unlocked_product_names.has(product_name), "Day 1 briefing includes %s" % product_name)
+	var actual_day_two = DayBriefingScript.new(2, DailyGoalScript.new(2), CampaignFixture.product_catalog, store_config)
+	_assert(actual_day_two.unlocked_product_names.size() == 3, "Day 2 briefing matches the three story unlocks in the store")
 
 func _test_notebook_scroll_supports_touch_drag() -> void:
 	var scroll = NotebookScrollScript.new()

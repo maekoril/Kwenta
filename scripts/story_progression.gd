@@ -44,7 +44,7 @@ func get_day_intro_choices(day: int) -> Array[Dictionary]:
 
 func _day_choice_list(day: int, key: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for choice_value in _get_day(day).get(key, []):
+	for choice_value in _filtered_beats(_get_day(day).get(key, [])):
 		if choice_value is Dictionary:
 			result.append(choice_value.duplicate(true))
 	return result
@@ -62,6 +62,19 @@ func record_choice(choice_id: String, option_id: String) -> bool:
 					return true
 	return false
 
+func record_haggle_choice(choice_id: String, accepted: bool) -> bool:
+	for day in range(1, get_campaign_day_count() + 1):
+		for entry in get_day_haggles(day):
+			if str(entry.get("choice_id", "")) != choice_id:
+				continue
+			var key := "accept_choice_id" if accepted else "refuse_choice_id"
+			var value := str(entry.get(key, ""))
+			if value.is_empty():
+				return false
+			choices[choice_id] = value
+			return true
+	return false
+
 # ---- In-shift story data (played by shift_story_events.gd) ----
 # Every entry can be gated with when_choice / when_value(s), like any beat. Later entries
 # for the same customer override earlier ones.
@@ -71,6 +84,9 @@ func record_choice(choice_id: String, option_id: String) -> bool:
 #   "mixups":       helper mix-ups ("count", "every", lines...)
 func get_day_shift_events(day: int) -> Array[Dictionary]:
 	return _filtered_beats(_get_day(day).get("shift_events", []))
+
+func filter_story_beats(beats: Variant) -> Array[Dictionary]:
+	return _filtered_beats(beats)
 
 func get_day_haggles(day: int) -> Array[Dictionary]:
 	return _filtered_beats(_get_day(day).get("haggle", []))

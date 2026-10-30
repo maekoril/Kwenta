@@ -35,6 +35,8 @@ var _goal_reward: Label
 var _button: Button
 var _pulse: Tween
 var _intro: Tween
+var _briefing_sections: Array[Control] = []
+var _summary_sections: VBoxContainer
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -74,6 +76,7 @@ func _build() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	column.add_child(row)
+	_briefing_sections.append(row)
 	var focus := _info_card("TODAY'S FOCUS")
 	_focus_body = focus.get_meta("body")
 	row.add_child(focus)
@@ -95,6 +98,7 @@ func _build() -> void:
 	_chips.custom_minimum_size = Vector2(SHELF_WIDTH, 0.0)
 	shelf_column.add_child(_chips)
 	column.add_child(_shelf_card)
+	_briefing_sections.append(_shelf_card)
 
 	# --- row 3: goal ticket ---
 	var goal := PanelContainer.new()
@@ -121,6 +125,12 @@ func _build() -> void:
 	reward_box.add_child(_goal_reward)
 	goal_row.add_child(reward_box)
 	column.add_child(goal)
+	_briefing_sections.append(goal)
+
+	_summary_sections = VBoxContainer.new()
+	_summary_sections.add_theme_constant_override("separation", 14)
+	_summary_sections.visible = false
+	column.add_child(_summary_sections)
 
 	# --- footer: pushes the button to the bottom, centered, fixed size ---
 	var spacer := Control.new()
@@ -140,6 +150,10 @@ func _build() -> void:
 	footer.add_child(_button)
 
 func show_briefing(briefing: DayBriefing, viewport_size: Vector2) -> void:
+	for section in _briefing_sections:
+		section.visible = true
+	_summary_sections.visible = false
+	_button.text = "OPEN STORE  >>"
 	_eyebrow.text = briefing.eyebrow
 	_title.text = briefing.title
 	_subtitle.text = briefing.heading if briefing.title != briefing.heading else ""
@@ -155,11 +169,58 @@ func show_briefing(briefing: DayBriefing, viewport_size: Vector2) -> void:
 	_card.modulate.a = 0.0
 	_settle.call_deferred(viewport_size)
 
+func show_summary(title: String, summary: String, viewport_size: Vector2) -> void:
+	for section in _briefing_sections:
+		section.visible = false
+	for child in _summary_sections.get_children():
+		_summary_sections.remove_child(child)
+		child.queue_free()
+	_eyebrow.text = "KUWADERNO"
+	_title.text = title.get_slice(" \u00b7 ", 0)
+	_subtitle.text = title.get_slice(" \u00b7 ", 1) if title.contains(" \u00b7 ") else ""
+	_subtitle.visible = not _subtitle.text.is_empty()
+	_button.text = "CONTINUE  >>"
+	var results_row := HBoxContainer.new()
+	results_row.add_theme_constant_override("separation", 20)
+	_summary_sections.add_child(results_row)
+	var goal_panel: PanelContainer
+	for section_text in summary.split("\n\n", false):
+		var lines := section_text.split("\n", false, 1)
+		var panel := _card_box()
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 8)
+		panel.add_child(box)
+		box.add_child(KwentaStyle.make_label(lines[0], KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED))
+		if lines.size() > 1:
+			var body := KwentaStyle.make_label(lines[1], KwentaStyle.SIZE_ROW_VALUE, KwentaStyle.INK)
+			body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			box.add_child(body)
+		if lines[0] == "DAILY GOAL":
+			goal_panel = panel
+		else:
+			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			results_row.add_child(panel)
+	if goal_panel != null:
+		_summary_sections.add_child(goal_panel)
+	_summary_sections.visible = true
+	size = viewport_size
+	visible = true
+	_card.modulate.a = 0.0
+	_settle.call_deferred(viewport_size)
+
 func _settle(viewport_size: Vector2) -> void:
+	# Let containers recalculate their minimum sizes after switching card contents.
+	await get_tree().process_frame
+	if not visible:
+		return
 	_card.reset_size()
 	_card.size = CARD_SIZE
+	await get_tree().process_frame
+	if not visible:
+		return
+	var fit := minf(1.0, minf((viewport_size.x - 80.0) / _card.size.x, (viewport_size.y - 80.0) / _card.size.y))
 	_card.position = ((viewport_size - _card.size) * 0.5).round()
-	_play_intro()
+	_play_intro(fit)
 
 func hide_briefing() -> void:
 	visible = false
@@ -234,16 +295,16 @@ func _rule(height: float, color: Color) -> ColorRect:
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return rule
 
-func _play_intro() -> void:
+func _play_intro(fit: float = 1.0) -> void:
 	if _intro != null and _intro.is_valid():
 		_intro.kill()
 	if _pulse != null and _pulse.is_valid():
 		_pulse.kill()
 	_card.pivot_offset = _card.size * 0.5
-	_card.scale = Vector2(0.94, 0.94)
+	_card.scale = Vector2.ONE * fit * 0.94
 	_card.modulate.a = 0.0
 	_intro = create_tween().set_parallel(true)
-	_intro.tween_property(_card, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_intro.tween_property(_card, "scale", Vector2.ONE * fit, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_intro.tween_property(_card, "modulate:a", 1.0, 0.16)
 	# Gentle "press me" pulse once the card has landed.
 	_button.scale = Vector2.ONE

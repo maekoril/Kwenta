@@ -12,6 +12,7 @@ var patience_remaining: float
 var trust: float
 var active: bool = true
 var timed_out: bool = false
+var patience_expired: bool = false
 var trust_loss_on_timeout: float = 25.0
 var phase: int = Phase.ORDERING
 var payment: PaymentState = null
@@ -19,6 +20,7 @@ var payment: PaymentState = null
 # Story hooks (see shift_manager.gd and shift_story_events.gd)
 var price_discount: int = 0     # pesos knocked off the bill (a haggle, or a refunded wrong item)
 var exact_pay: bool = false     # pays the exact amount, no change needed
+var tendered_override: int = 0  # optional scripted bill, used only when it covers the order
 var parked: bool = false        # order is done, but the sale waits on a story popup (haggle / mix-up)
 var mixup_done: bool = false    # a helper mix-up already happened for this customer
 
@@ -42,6 +44,7 @@ func advance_time(delta_seconds: float) -> bool:
 
 	if patience_remaining > 0.0:
 		return false
+	patience_expired = true
 
 	# --- BAGONG LOGIC: Continuous Trust Drain sa Suklian ---
 	if phase == Phase.PAYING:

@@ -33,6 +33,9 @@ var order_grid: GridContainer
 var bubble_tail: Polygon2D
 var patience_bar: ProgressBar
 var patience_fill: StyleBoxFlat
+var portrait_container: Control
+var _drag_hover_tween: Tween
+var _drag_hover_active := false
 var portrait: TextureRect
 var portrait_shadow: TextureRect
 var name_tag: PanelContainer
@@ -84,6 +87,11 @@ func _ready() -> void:
 	patience_fill.set_corner_radius_all(3)
 	patience_bar.add_theme_stylebox_override("fill", patience_fill)
 	bubble_content.add_child(patience_bar)
+	portrait_container = Control.new()
+	portrait_container.name = "PortraitDragFeedback"
+	portrait_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_container.pivot_offset = PORTRAIT_POSITION + Vector2(PORTRAIT_SIZE.x * 0.5, PORTRAIT_SIZE.y)
+	add_child(portrait_container)
 	portrait_shadow = TextureRect.new()
 	portrait_shadow.name = "PortraitShadow"
 	portrait_shadow.position = PORTRAIT_POSITION + Vector2(5.0, 7.0)
@@ -94,7 +102,7 @@ func _ready() -> void:
 	portrait_shadow.modulate = Color(0.02, 0.02, 0.02, 0.52)
 	portrait_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait_shadow.z_index = -1
-	add_child(portrait_shadow)
+	portrait_container.add_child(portrait_shadow)
 	portrait = TextureRect.new()
 	portrait.name = "Portrait"
 	portrait.position = PORTRAIT_POSITION
@@ -103,7 +111,7 @@ func _ready() -> void:
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(portrait)
+	portrait_container.add_child(portrait)
 	name_tag = PanelContainer.new()
 	name_tag.name = "NameTag"
 	# Keep identity information on the visible upper body; the concrete sill
@@ -268,6 +276,15 @@ func _minimum_readable_bubble_width() -> float:
 		return minimum_width
 	var name_width := font.get_string_size(_display_name(customer.customer_id), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_TAG_MIN_FONT_SIZE).x
 	return maxf(minimum_width, name_width + ORDER_BUBBLE_PADDING * 2.0)
+func set_drag_hovered(hovered: bool) -> void:
+	if _drag_hover_active == hovered or not is_instance_valid(portrait_container):
+		return
+	_drag_hover_active = hovered
+	if _drag_hover_tween != null and _drag_hover_tween.is_valid():
+		_drag_hover_tween.kill()
+	_drag_hover_tween = create_tween()
+	_drag_hover_tween.tween_property(portrait_container, "scale", Vector2.ONE * (1.08 if hovered else 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
 func contains_drop_point(viewport_position: Vector2) -> bool:
 	return Rect2(global_position + portrait.position, portrait.size).has_point(viewport_position)
 
@@ -386,7 +403,7 @@ func _make_box(fill_color: Color, border_color: Color, border_width: int, paddin
 
 func _build_payment_bubble() -> void:
 	_set_bubble_paying(true)
-	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING, ORDER_BUBBLE_PADDING) * 2.0
+	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING * 2.0, ORDER_BUBBLE_PADDING * 2.0 + PATIENCE_BAR_HEIGHT + ORDER_BUBBLE_ROW_GAP)
 	order_grid.columns = 1
 	order_grid.custom_minimum_size = holder_size
 	
@@ -423,32 +440,10 @@ func _set_bubble_paying(paying: bool) -> void:
 	if paying == _bubble_paying:
 		return
 	_bubble_paying = paying
-	if paying:
-		name_tag.visible = false
-		patience_bar.visible = false
-		# Pinalitan na natin to ng eksaktong BROWN color gaya ng sa orders
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
-		
-		# Kung gusto mong steady brown lang at AYAW mo na rin mag-pulse o kumislap, 
-		# burahin mo o lagyan ng '#' sa unahan ang line na ito:
-		# _start_pay_pulse()
-	else:
-		name_tag.visible = true
-		patience_bar.visible = true
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
-		_stop_pay_pulse()
-	if paying == _bubble_paying:
-		return
-	_bubble_paying = paying
-	if paying:
-		name_tag.visible = false
-		patience_bar.visible = true # <-- BINAGO MULA FALSE PA-TRUE
-		# Pinalitan na natin to ng eksaktong BROWN color gaya ng sa orders
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
-	else:
-		name_tag.visible = true
-		patience_bar.visible = true
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+	name_tag.visible = not paying
+	patience_bar.visible = true
+	order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+	if not paying:
 		_stop_pay_pulse()
 
 func _start_pay_pulse() -> void:

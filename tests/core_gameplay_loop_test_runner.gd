@@ -281,10 +281,10 @@ func _test_customer_payment_bubble_preserves_sukli_prompt() -> void:
 	var content := bubble.get_node("BubbleContent") as VBoxContainer
 	var name_tag := content.get_node("NameTag") as PanelContainer
 	var patience_bar := content.get_node("PatienceBar") as ProgressBar
-	var grid := content.get_node("OrderGrid") as GridContainer
+	var grid := actor.get("order_grid") as GridContainer
 	_assert(actor.has_signal("payment_tapped"), "a paying customer can open the Sukli tray")
 	_assert(bubble.size == Vector2(168.0, 120.0), "a paying customer uses the fixed Sukli prompt size")
-	_assert(not name_tag.visible and not patience_bar.visible, "the order footer hides while the Sukli prompt is displayed")
+	_assert(not name_tag.visible and patience_bar.visible, "the payment prompt keeps customer patience visible")
 	_assert(grid.get_child_count() == 1, "the Sukli prompt replaces the order icon grid during payment")
 	actor.queue_free()
 

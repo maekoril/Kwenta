@@ -6,17 +6,20 @@ signal cash_changed(value: int)
 signal clock_changed(value: String)
 signal game_minutes_changed(value: int)
 signal feedback_changed(message: String)
+signal closing_started
 signal shift_completed
 signal customer_timed_out(customer_instance_id: String)
 signal barangay_trust_changed(new_value: float) # BAGO
 signal game_over_triggered() # BAGO
 signal customer_served(customer_id: String, order_units: int)
+signal story_customer_arrived(customer_instance_id: String, beats: Array)
 signal haggle_requested(customer_instance_id: String, ask: int)
 signal mixup_requested(customer_instance_id: String, product_id: String)
 signal payment_started(customer_instance_id: String)
 
 const HAGGLE_REFUSE_TRUST_LOSS := 5.0
 const MIXUP_MISSED_TRUST_LOSS := 15.0
+const SUKI_RECOVERY_PER_TIMELY_SALE := 2.0
 
 var campaign_state: CampaignState
 var products_by_id: Dictionary
@@ -30,6 +33,7 @@ var shift_close_minutes: int = CampaignConfig.FULL_SHIFT_GAME_MINUTES
 var customer_sequence: int = 0
 var is_running: bool = false
 var did_emit_completion: bool = false
+var is_closing: bool = false
 var shift_earnings: int = 0
 var customers_served: int = 0
 var customers_timed_out: int = 0
@@ -98,6 +102,8 @@ func start_shift() -> void:
 	total_satisfaction_score = 0.0 # BAGO
 	total_tips_earned = 0          # BAGO
 	did_emit_completion = false
+	is_closing = false
+	_overdue_drain_accumulator = 0.0
 	is_running = true
 	# CampaignConfig carries a deliberate close time for each day (noon, 5 PM,
 	# 6 PM, then 8 PM). Story events can still freeze time, but never replace it.
@@ -130,14 +136,23 @@ func _drain_trust_for_overdue_change(delta_seconds: float) -> void:
 func advance_time(delta_seconds: float) -> void:
 	if not is_running or frozen or delta_seconds <= 0.0:
 		return
-	elapsed_seconds = minf(shift_duration_seconds, elapsed_seconds + delta_seconds)
-	if elapsed_seconds >= shift_duration_seconds:
-		_update_clock()
-		finish_shift()
-		return
+	if not is_closing:
+		elapsed_seconds = minf(shift_duration_seconds, elapsed_seconds + delta_seconds)
+		if elapsed_seconds >= shift_duration_seconds:
+			is_closing = true
+			_update_clock()
+			closing_started.emit()
+			if active_customers.is_empty():
+				finish_shift()
+				return
+			# A closing tutorial may pause the shift from the closing_started signal.
+			if frozen:
+				return
 	var customer_left := false
 
 	_drain_trust_for_overdue_change(delta_seconds)
+	if not is_running:
+		return
 
 	var drain := 1.0
 	if drain_boost_seconds > 0.0:
@@ -155,6 +170,8 @@ func advance_time(delta_seconds: float) -> void:
 			
 			if campaign_state.barangay_trust <= 0.0:
 				game_over_triggered.emit()
+				if not is_running:
+					return
 			# ------------------------------------------------------------------
 			if customer.phase == CustomerState.Phase.PAYING:
 				change_streak = 0
@@ -168,10 +185,10 @@ func advance_time(delta_seconds: float) -> void:
 			remaining_customers.append(customer)
 	active_customers = remaining_customers
 	var spawned_customer := false
-	if not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
+	if not is_closing and not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
 		_spawn_customer()   # a scripted story customer doesn't wait for the spawn timer
 		spawned_customer = true
-	elif active_customers.size() < _active_customer_limit():
+	elif not is_closing and active_customers.size() < _active_customer_limit():
 		spawn_elapsed += delta_seconds
 		if spawn_elapsed >= current_spawn_delay:
 			spawn_elapsed = 0.0
@@ -180,6 +197,9 @@ func advance_time(delta_seconds: float) -> void:
 			spawned_customer = true
 	if customer_left and not spawned_customer:
 		customers_changed.emit()
+	if is_closing and active_customers.is_empty():
+		finish_shift()
+		return
 	_update_clock()
 
 func deliver_product(customer_id: String, product_id: String) -> int:
@@ -299,7 +319,10 @@ func _finish_order(customer: CustomerState) -> void:
 	var order_total := maxi(0, customer.order.total_price(prices) - customer.price_discount)
 	var tendered := order_total
 	if SukliRules.is_enabled(campaign_state.day) and not customer.exact_pay:
-		tendered = SukliRules.tender_for(order_total, campaign_state.day, rng)
+		if customer.tendered_override > order_total:
+			tendered = customer.tendered_override
+		else:
+			tendered = SukliRules.tender_for(order_total, campaign_state.day, rng)
 	if tendered > order_total:
 		# Order done, but they paid with a bigger bill: wait for the player to give change.
 		var payment_patience := _payment_patience_seconds()
@@ -354,7 +377,7 @@ func apply_patience_boost(mult: float, seconds: float) -> void:
 	drain_boost_seconds = maxf(drain_boost_seconds, seconds)
 
 # Queues a scripted customer. Items the store isn't stocking are dropped from the order.
-func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay: bool = false) -> bool:
+func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay: bool = false, arrival_beats: Array = [], tendered: int = 0) -> bool:
 	var available := campaign_state.get_available_product_ids()
 	var order := {}
 	for product_id in requested:
@@ -368,7 +391,7 @@ func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay:
 		order = OrderFactory.make_order(campaign_state.get_order_data_for_day(campaign_state.day), available, rng).requested
 		if order.is_empty():
 			return false
-	story_queue.append({"id": customer_id, "order": order, "exact_pay": exact_pay})
+	story_queue.append({"id": customer_id, "order": order, "exact_pay": exact_pay, "arrival_beats": arrival_beats, "tendered": tendered})
 	return true
 
 func get_active_customers() -> Array[CustomerState]:
@@ -390,6 +413,9 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
 	customers_served += 1
+	if not customer.patience_expired and campaign_state.barangay_trust < 100.0:
+		campaign_state.barangay_trust = minf(100.0, campaign_state.barangay_trust + SUKI_RECOVERY_PER_TIMELY_SALE)
+		barangay_trust_changed.emit(campaign_state.barangay_trust)
 	campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 	customer.finish_as_paid()
 	customer_served.emit(customer.customer_id, order_units)
@@ -398,6 +424,8 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	current_spawn_delay = _next_spawn_delay()
 	cash_changed.emit(campaign_state.cash)
 	customers_changed.emit()
+	if is_running and is_closing and active_customers.is_empty():
+		finish_shift()
 
 func _payment_patience_seconds() -> float:
 	var base: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
@@ -443,6 +471,7 @@ func _spawn_customer() -> void:
 	
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer.exact_pay = bool(story_entry.get("exact_pay", false))
+	customer.tendered_override = int(story_entry.get("tendered", 0))
 	customer_sequence += 1
 	customer.instance_id = "%s_%d" % [id, customer_sequence]
 
@@ -450,6 +479,9 @@ func _spawn_customer() -> void:
 	active_customers.append(customer)
 
 	customers_changed.emit()
+	var arrival_beats: Array = story_entry.get("arrival_beats", [])
+	if not arrival_beats.is_empty():
+		story_customer_arrived.emit(customer.instance_id, arrival_beats)
 
 func _active_customer_limit() -> int:
 	return active_customer_limit_override if active_customer_limit_override > 0 else campaign_state.get_active_customer_limit()

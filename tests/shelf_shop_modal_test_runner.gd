@@ -101,6 +101,9 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 	_assert(cash_label != null and cash_label.text == "₱%d" % expected_cash, "%s purchase refreshes the cash tag immediately" % group_id)
 	var refreshed_button := shop.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_%s/BuyButton" % group_id) as Button
 	_assert(refreshed_button != null and refreshed_button.disabled and refreshed_button.text == "PURCHASED", "%s purchase refreshes its button state immediately" % group_id)
+	var confirmation := shop.get_node_or_null("SupplierShopPanel/PurchaseConfirmation") as PanelContainer
+	var confirmation_text := confirmation.get_child(0) as Label if confirmation != null else null
+	_assert(confirmation != null and confirmation.visible and confirmation_text != null, "purchase displays a supplier confirmation")
 	var renderer := main.get("store_layer_renderer") as Control
 	var config: Dictionary = StoreConfigScript.load_config("res://data/store_config.json")
 	for product_id in config.get("products", {}):
@@ -109,6 +112,8 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 			continue
 		_assert(renderer != null and renderer.get_node_or_null("Slots/%s_product" % product_id) != null, "%s product art appears in the storefront after purchase" % product_id)
 		_assert(main.get("product_items_by_id").has(str(entry.get("game_product_id", ""))), "%s becomes draggable after purchase" % product_id)
+		var product: ProductData = main.get("products_by_id").get(str(entry.get("game_product_id", "")))
+		_assert(product != null and confirmation_text != null and confirmation_text.text.contains(product.display_name), "confirmation names each newly stocked product")
 	main.queue_free()
 
 func _test_shop_icon_availability() -> void:
@@ -119,8 +124,9 @@ func _test_shop_icon_availability() -> void:
 	var shop_icon := main.find_child("ShopIcon", true, false) as TextureRect
 	var bubble := main.get("bubble") as Control
 	_assert(shop_button != null and not shop_button.visible, "Shop icon stays hidden on Day 1")
-	_assert(shop_button != null and shop_button.size == Vector2(72, 72) and shop_button.z_index == 55 and _button_texture_path(shop_button) == "res://assets/sprites/ui/sukli/sized/ibigay_button.png", "Shop icon uses the ibigay texture as a compact square button above dialogue")
-	_assert(shop_icon != null and shop_icon.texture != null and shop_icon.texture.resource_path == "res://assets/sprites/ui/shop/lucide_store.svg" and shop_icon.size == Vector2(40, 40), "Shop icon uses the hollow Lucide Store art")
+	_assert(shop_button != null and shop_button.size == Vector2(74, 74) and shop_button.z_index == 55 and shop_button.text.is_empty(), "supplier list uses an icon-only notebook button above dialogue")
+	_assert(shop_button != null and shop_button.get_node_or_null("SupplierNotebookIcon") != null, "supplier button displays a notebook icon")
+	_assert(shop_icon == null, "supplier list no longer uses the floating store icon")
 	_assert(shop_button != null and shop_button.get_parent() == main, "Shop icon is attached to the main UI")
 	var campaign = main.get("campaign")
 	campaign.day = 2

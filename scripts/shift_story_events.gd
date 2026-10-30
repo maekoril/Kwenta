@@ -38,6 +38,7 @@ var _queue: Array[Dictionary] = []              # popups waiting for their turn
 var _beats: Array[Dictionary] = []              # reaction lines waiting to be shown
 var _timed: Array[Dictionary] = []              # events waiting for their minute
 var _haggle_entries: Dictionary = {}            # customer_id -> merged haggle entry
+var _payment_beats_seen: Dictionary = {}
 var _hover_text: Dictionary = {}                # customer_id -> remark shown when they start paying
 var _mixup_entry: Dictionary = {}
 
@@ -55,6 +56,7 @@ func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: Dial
 	shift.haggle_requested.connect(_on_haggle_requested)
 	shift.mixup_requested.connect(_on_mixup_requested)
 	shift.payment_started.connect(_on_payment_started)
+	shift.story_customer_arrived.connect(_on_story_customer_arrived)
 
 
 func _disconnect_shift() -> void:
@@ -68,6 +70,8 @@ func _disconnect_shift() -> void:
 		shift.mixup_requested.disconnect(_on_mixup_requested)
 	if shift.payment_started.is_connected(_on_payment_started):
 		shift.payment_started.disconnect(_on_payment_started)
+	if shift.story_customer_arrived.is_connected(_on_story_customer_arrived):
+		shift.story_customer_arrived.disconnect(_on_story_customer_arrived)
 
 
 # True while a story popup is on screen. main.gd ignores bubble taps while this is true.
@@ -86,6 +90,7 @@ func begin_shift(day: int) -> void:
 	_beats.clear()
 	_timed.clear()
 	_haggle_entries.clear()
+	_payment_beats_seen.clear()
 	_hover_text.clear()
 	_mixup_entry = {}
 	shift.reset_story_state()
@@ -168,14 +173,21 @@ func _on_game_minutes(minute: int) -> void:
 		_timed.pop_front()
 		if kind == "customer":
 			_run_customer_event(event)
+		elif kind == "scene" and minute <= MAX_EVENT_MINUTE:
+			_queue_popup({"kind": "scene", "event": event})
 
 
 func _run_customer_event(event: Dictionary) -> void:
 	var order: Dictionary = event.get("order", {})
-	shift.queue_story_customer(str(event.get("customer", "")), order, bool(event.get("exact_pay", false)))
+	var arrival_beats := story.filter_story_beats(event.get("arrival_beats", []))
+	shift.queue_story_customer(str(event.get("customer", "")), order, bool(event.get("exact_pay", false)), arrival_beats, int(event.get("tendered", 0)))
 
 
 # ------------------------------------------------------------ shift signals
+
+func _on_story_customer_arrived(_customer_instance_id: String, beats: Array) -> void:
+	if _in_shift and not _suppressed:
+		_queue_popup({"kind": "arrival", "beats": beats})
 
 func _on_haggle_requested(customer_instance_id: String, ask: int) -> void:
 	if not _in_shift or _suppressed:
@@ -192,13 +204,19 @@ func _on_mixup_requested(customer_instance_id: String, product_id: String) -> vo
 
 
 func _on_payment_started(customer_instance_id: String) -> void:
-	if _hover_text.is_empty():
-		return
 	for customer in shift.get_active_customers():
-		if customer.instance_id == customer_instance_id and _hover_text.has(customer.customer_id):
+		if customer.instance_id != customer_instance_id:
+			continue
+		var entry: Dictionary = _haggle_entries.get(customer.customer_id, {})
+		var payment_beats: Array = entry.get("payment_beats", [])
+		if _in_shift and not _suppressed and not payment_beats.is_empty() and not _payment_beats_seen.has(customer.customer_id):
+			_payment_beats_seen[customer.customer_id] = true
+			_queue_popup({"kind": "arrival", "beats": story.filter_story_beats(payment_beats)})
+		if _hover_text.has(customer.customer_id):
 			var text := str(_hover_text[customer.customer_id])
 			if not text.is_empty():
 				remark_requested.emit(customer_instance_id, text)
+		return
 
 
 # ------------------------------------------------------------ popups
@@ -221,6 +239,14 @@ func _start_next() -> void:
 		return
 	_current = _queue.pop_front()
 	match str(_current.get("kind", "")):
+		"arrival":
+			_play_beats(_current.get("beats", []))
+		"scene":
+			var event: Dictionary = _current.get("event", {})
+			var flag := str(event.get("seen_flag", ""))
+			if not flag.is_empty():
+				story.choices[flag] = "seen"
+			_play_beats(story.filter_story_beats(event.get("beats", [])))
 		"haggle":
 			_show_haggle()
 		"mixup":
@@ -325,8 +351,11 @@ func _show_haggle() -> void:
 func _resolve_haggle(accepted: bool) -> void:
 	var instance_id := str(_current.get("id", ""))
 	var customer_id := _customer_id_of(instance_id)
-	shift.resolve_haggle(instance_id, accepted)
 	var entry: Dictionary = _haggle_entries.get(customer_id, {})
+	var choice_id := str(entry.get("choice_id", ""))
+	if not choice_id.is_empty():
+		story.record_haggle_choice(choice_id, accepted)
+	shift.resolve_haggle(instance_id, accepted)
 	_play_beats(entry.get("accepted" if accepted else "refused", []))
 
 
