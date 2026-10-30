@@ -1,190 +1,287 @@
 # KWENTA — Master Project Context
 
-**Purpose:** Give teammates and coding agents one reliable place to understand the game, agreed decisions, current implementation, and next steps.
+**Purpose:** Handoff reference for teammates and coding agents. Read this before changing gameplay, story, UI, or Android delivery.
 
-**Last updated:** 2026-10-23
-**Project:** Kwenta — Sari-Sari Store Simulator  
-**Status:** Gameplay prototype in progress; the current storefront build still needs to be run and visually checked in Godot.
+**Last updated:** 2026-10-30
+**Current branch:** `feature/product-selection`
+**Current remote-aligned commit when updated:** `26e9023 Resolve merge conflicts and integrate game features`
+**Working-tree note:** `tmp/` is intentionally untracked. Never commit it.
+**Status:** The merged Android-first Godot prototype has working story, shop, tutorials, sukli, notebook panels, and seven-day pacing.
 
 ---
 
-## 1. What this game is
+## 1. Game overview
 
-Kwenta is a 2D, landscape, pixel-art sari-sari store game for Android. It is a hands-on time-management game inspired by the active customer/order flow of Papa's Pizzeria and Cooking Fever, while retaining its own Filipino setting, story, products, characters, and visual identity.
+**Kwenta** is a landscape, pixel-art Android sari-sari store management game. The player controls Tonyo as he runs his family store over a seven-day story campaign. Core play combines touch drag-and-drop serving, multiple-item orders, sukli/change-making, shelf purchases, customer patience and trust, and choice-based narrative events.
 
-The title *Kwenta* means “value.” The game explores value as more than money: taking responsibility, doing work carefully, showing up for school and family, and earning the trust of neighbors.
+Primary player loop:
 
-The target feel is warm, lived-in, readable pixel art, in the general spirit of narrative pixel games such as *Until Then*. References are for broad direction only; do not copy another game's art, branding, characters, interface, or assets.
+1. Read story dialogue and the pre-shift notebook briefing.
+2. Review the day focus, stock, closing time, and optional daily goal.
+3. Optionally shop for shelf/product groups.
+4. Serve products to customers and make correct sukli.
+5. Manage pressure, trust, story interruptions, and simultaneous customers.
+6. Finish outro/callback dialogue, read the day summary notebook, then advance.
 
-## 2. Story premise — agreed
+The game is mobile-first: use taps, drag-and-drop, and finger-drag scrolling. Do not add desktop-only interaction requirements.
 
-The approved story is the seven-day Tonyo campaign. Tonyo is 12 years old and has been skipping school to play with his friends. When his mother, Aling Cora, must spend one week in the province caring for his sick Lola, she leaves Tonyo responsible for the family sari-sari store and gives him the notebook containing its prices, instructions, and utang.
+---
 
-Each day has a short scene before and after the playable store shift. Six key choices are remembered as flags rather than scored as right or wrong: playing on Day 1, returning Mang Berting's extra ₱50, helping Paolo with the missing ₱3, responding to the rainy-day invitation, handling Aling Nena's utang, and asking the kalaro for fiesta help. A smaller Day 2 haggling choice also receives a Day 6 callback.
+## 2. Technology and Android delivery
 
-The story ends with Tonyo choosing to play after finishing his work, then returning to class to present “Ang Tindahan ni Nanay.” The full campaign can be replayed to explore other choices. `data/story/kwenta_7_day_story.json` is the editable narrative source of truth and supersedes the older ten-shift summer/shelf-replacement story in historical specs and plans.
+- **Engine:** Godot 4.7.2 Stable, standard build—not .NET.
+- **Language:** GDScript. No custom Kotlin or Java source modules exist in the repository.
+- **Android package:** `com.uri.kwenta`.
+- **Toolchain:** JDK 17; Android API/platform 35; Build Tools 35.0.1; NDK 28.1.13356709; CMake 3.10.2.4988404.
+- **Renderer:** Godot GL Compatibility; ETC2/ASTC texture compression enabled.
+- **Display:** 1920×1080 internal viewport; 1280×720 window override; landscape; `viewport` stretch mode; `expand` aspect.
+- **Jetpack/native integrations:** None directly. Godot generates the Android wrapper.
+- **Hardware:** Touch input only—tap, drag/drop, and touch scrolling. No CameraX, GPS, BLE, camera, gyroscope, accelerometer, microphone capture, or biometric APIs.
 
-## 3. Core gameplay — agreed
+`export_presets.cfg` is not versioned. Developers create Android export presets locally, so do not claim a committed minSdk setting.
 
-1. The store opens at **8:00 AM** and closes at **8:00 PM**. The in-game day advances continuously during a short real-time shift.
-2. Customers enter the scene from the **left or right**, walk toward the front of the store, and stop to place an order.
-3. Each customer is a character in the scene, with their own order bubble, patience, and trust. They are not cards in a dashboard.
-4. The player drags products directly from the lower shelf/counter onto the customer who requested them. Correct items advance only that customer's order.
-5. A wrong product is rejected, does not advance the order, and returns to the shelf. Duplicate requests require a separate successful drag for each unit.
-6. When the order is complete, the customer collects the order, pays automatically, and leaves.
-7. If patience expires, that customer leaves, loses trust, and any units already given to them are lost. Trust belongs to each customer and affects how likely they are to return.
-8. Day 1 has a maximum of two active customers. Later days raise the cap, up to five, to create busier shifts.
-9. Product stock is unlimited. The available product range expands as the summer progresses. Optional store fixture upgrades can be bought between shifts with earnings.
-10. The campaign has seven story shifts. Day 7 removes customer patience pressure and ends with notebook callbacks, the epilogue, final stats, and a replay option.
+---
 
-### Order and progression choices
+## 3. Story source of truth
 
-- The requested quantity is randomized, not fixed. Day 1 orders contain 1–3 units; later days can allow larger orders.
-- Multiple units of the same product can appear in one order.
-- Scheduled products unlock on later days; optional fixture upgrades can grant early product access or improve drink prices.
-- Upgrade spending counts toward the shelf replacement goal so improving the store does not reduce overall progress.
+The editable story source is `data/story/kwenta_7_day_story.json`. Campaign configuration lives in `data/story/summer_campaign.tres`, `scripts/campaign_config.gd`, and `scripts/story_progression.gd`.
 
-## 4. Storefront presentation — latest agreed direction
+The current campaign is Tonyo’s seven-day story. JSON supports intro/outro beats, pre-shift `intro_choices`, after-shift choices, conditional callbacks, cash consequences, patience modifiers, and in-shift events. Do not restore older story text from historical specifications.
 
-The revised “Kwenta — Cooking Fever Gameplay Reference (Target Feel)” is the current screen-layout and interaction source of truth. It explicitly replaces the earlier street-side camera. The camera is **inside the store**, looking out through the central window at customers outside. Keep the agreed story, trust, and campaign rules below.
+### Story systems that must remain connected
 
-- Central window/street/customer area: approximately x=150–490, y=24–200. Customers fit in this window and face the player.
-- The sill/counter spans y=200–222. Player-side product shelves occupy the lower portion, around y=224–352.
-- Sachet strips hang at the top-left and top-right frame edges. Row A holds noodles, biscuits, sardines, and the candy jar; row B holds the red cooler/soft drinks and water.
-- Every available product has one fixed visible touch slot. Product scales are tuned per item; candy and the Coke cooler are each drawn as a single stocked composition, while drag previews use one product sprite.
-- Customer order bubbles use product icons only, quantity marks for multiples, and a visible green→yellow→red patience meter. Names/trust are small secondary tags.
-- A light grille is limited to the window edges and never intercepts a drag. No bars cross the clear customer/window area.
-- Day 1 shows four starting products. Scheduled and optional products remain absent until unlocked; only empty hook/shelf space shows before then.
-- Live gameplay has only the thin HUD and optional small customer tags: no scrolling, text product lists, active-shift prices, lock labels, or modal feedback popups.
-- Keep optional fixture purchases between shifts; preserve customer movement, patience/trust, wrong-item rejection, automatic payment, and completion departure.
-- Original generic packaging only: no real brand names/logos or readable text. No Mom’s Tips, tutorial overlay, cooking minigame, tips/stars, or equipment upgrade tree.
+- `StoryProgression` loads story JSON, tracks choices, filters conditional beats, provides cash deltas and modifiers.
+- `ShiftStoryEvents` runs scripted customers, interruptions, haggles, hover remarks, helper mix-ups, and popup input blocking.
+- Story popups freeze the shift while active and block underlying customer/product/cash/store input.
+- Pre-shift choices resolve before the notebook briefing/store flow.
+- Post-shift outro and callback dialogue must complete before the summary notebook appears.
+- Day 7 is the finale/replay endpoint; customers have effectively unlimited patience.
 
-## 5. Product and customer content
+Key files: `scripts/main.gd`, `scripts/story_progression.gd`, `scripts/shift_story_events.gd`, `scripts/Dialogue_bubble.gd`, `scripts/pause_menu.gd`.
 
-### Starting products (4)
+---
 
-- Instant Noodles — ₱15
-- Biscuits — ₱8
-- Bottled Water — ₱12
-- Candy — ₱5
-- Instant Noodles — ₱15
+## 4. Seven-day progression (current)
 
-### Scheduled products
+| Day | Shift end | Real duration | Customer cap | Main focus |
+|---|---:|---:|---:|---|
+| 1 | 12:00 PM | 160 sec | 1 | Drag serving and multiple-item orders; tutorial |
+| 2 | 5:00 PM | 360 sec | 2 | Shop and sukli; tutorial |
+| 3 | 6:00 PM | 400 sec | 2 | Multi-item practice; sukli stays visible |
+| 4 | 6:00 PM | 400 sec | 3 | Rain and faster decisions |
+| 5 | 8:00 PM | 480 sec | 4 | Trust and regulars |
+| 6 | 8:00 PM | 480 sec | 5 | Fiesta rush, story events, brownout |
+| 7 | 8:00 PM | 480 sec | 4 | Finale; no practical patience loss |
 
-- Day 2: Chips, Coffee Sachet
-- Day 3: Soft Drink
-- Day 4: Canned Sardines, Tang Orange Sachet
-- Day 5: Bread, Eggs
-- Day 6: Soy Sauce, Vinegar, Fish Sauce
-- Day 7: Laundry Sachet, Nestea Lemon Sachet
-- Day 8: Cooking Oil
-- Day 9: Jasmine Rice
+Current values from `summer_campaign.tres`:
 
-### Optional fixture upgrades
+- Initial cash: ₱150.
+- Close minutes: `[240, 540, 600, 600, 720, 720, 720]` from an 8:00 AM start.
+- Spawn intervals: `[18, 16, 14, 12, 9, 6, 12]` seconds.
+- Patience: `[999, 50, 40, 32, 28, 25, 999999]` seconds.
+- Maximum order units: `[2, 3, 3, 4, 4, 5, 5]`.
+- Trust loss after timeout: 25.
+- Trusted regular threshold: 80 trust.
 
-- After Day 2: Sachet Hanging Rail — ₱100; unlocks Shampoo and Toothpaste Sachets
-- After Day 3: Drink Cooler — ₱180; adds ₱5 to Soft Drink and ₱3 to Water sale prices
-- After Day 3: Extra Shelf — ₱250; early access to Bread and Eggs
-- After Day 4: Condiment Rack — ₱300; early access to Soy Sauce, Vinegar, and Fish Sauce
-- After Day 7: Bulk Goods Crates — ₱400; early access to Cooking Oil and Jasmine Rice
+**Critical:** `ShiftManager.start_shift()` must call `CampaignState.get_shift_length_seconds()` and `CampaignState.get_shift_close_minutes()`. Do not revert to the old fixed 480-second/600-minute shift calculation.
 
-Product names, prices, unlocks, order pools, customer caps, and story text should stay data-driven in `data/` Resources/configuration rather than being duplicated in UI logic.
+---
 
-### Customers
+## 5. Core systems and non-negotiable behavior
 
-The playable customer roster uses the approved cast: Aling Nena, Mang Berting, Bea, Paolo, Kuya Dodong, and Jun-jun. Mikay, Bogs, Tonyo, and Aling Cora appear in dialogue scenes. Existing portrait art is reused for simple static poses. Trust remains tracked per playable customer.
+### Serving
 
-## 6. Current campaign configuration snapshot
+- Customers have unique IDs, order bubbles, patience, and trust.
+- Products are dragged onto the intended customer.
+- Wrong products are rejected. Duplicate product quantities require separate deliveries.
+- Product stock is unlimited; `CampaignState.stocked_product_ids` defines the available gameplay catalog.
+- State belongs in `OrderState`, `OrderFactory`, `CustomerState`, `CampaignState`, and `ShiftManager`, not duplicated in UI code.
 
-Values currently in `data/story/summer_campaign.tres` and `scripts/campaign_config.gd`:
+### Sukli
 
-- Initial cash: **₱150**
-- Shift length: **480 seconds** (8 real-time minutes mapped to 8:00 AM–8:00 PM)
-- Customer spawn interval: **18 seconds**
-- Customer patience: **55 seconds**
-- Trust loss on timeout: **25 points**
-- Shelf replacement goal: **₱1,500**
-- Trusted regular goal: **3 customers** at **80% trust or more**
-- Campaign length: **7 days**
-- Active customer caps by day: **2, 2, 2, 3, 3, 4, 4**
-- Maximum order units by day: **3, 3, 3, 4, 4, 4, 5**
+- Sukli starts on **Day 2** (`SukliRules.FIRST_CHANGE_DAY = 2`).
+- Day 1 has no change-making requirement.
+- Cash tray progress/selected total remains visible after Day 2; only helper wording fades.
+- Day 2’s spotlight guides denominations → exact total → `IBIGAY`; too much points to `LINISIN`.
+- Keep these cash-tray node names exactly, as the tutorial finds them dynamically:
+  - `Denomination%d`
+  - `GiveChangeButton`
+  - `ClearChangeButton`
+- `cash_tray.gd` emits `denomination_selected` and `change_amount_changed`; `main.gd` consumes them for the tutorial.
 
-These are tunable prototype values, not immutable design laws.
+Key files: `scripts/cash_tray.gd`, `scripts/sukli_rules.gd`, `scripts/payment_state.gd`, `scripts/main.gd`.
 
-## 7. Current implementation snapshot
+### Daily goals
 
-The project currently contains the model and prototype for:
+Goals are optional and have no failure penalty. They display in the HUD, pre-shift notebook, and end-of-day notebook.
 
-- `OrderState` and `OrderFactory`: randomized order creation, duplicate quantities, correct/wrong item validation, completion, and totals.
-- `CustomerState`: individual order, patience, timeout, and trust behavior.
-- `CampaignState` / `CampaignConfig`: seven-day pacing, product unlocks, optional purchases, and customer trust.
-- `StoryProgression`: data-driven dialogue beats, validated choice flags, conditional callbacks, and replay reset support.
-- `ShiftManager`: customer arrivals, timer, direct delivery validation, payment on completion, timeout handling, and shift close.
-- `scripts/main.gd`: HUD, seven-day dialogue/choice flow, simple portrait poses, campaign replay, fixed product sprites, customer arrival/departure, and between-shift cash unlocks.
-- `scripts/storefront_layout.gd`: inside-window customer positions, player-side product slots, and icon-only order entry data.
-- `scripts/product_drag_item.gd`: fixed-slot product sprite, scaled preview, and rejection shake.
-- `scripts/customer_slot.gd`: compact window customer, icon-only bubble, patience meter, and drop feedback.
-- Product and customer art atlases in `assets/sprites/`.
-- The runtime storefront uses the layered art in `assets/store/kwenta_layer_pack/`; `bg_empty.png` and `bg_front.png` frame the customer layer.
-- `assets/sprites/kwenta_generic_products.png` is the current transparent generic product atlas; its in-game crop and display sizes need editor review.
+- `scripts/daily_goal.gd` — goal definitions/progress/rewards.
+- `scripts/main.gd` — lifecycle, HUD refresh, event tracking, finalization.
 
-The current source uses the seller-side composition: product sprites sit on the player's lower shelves/edge strips, while customers and icon order bubbles fit inside the center window. The seven-day story overlay reuses the same palette, panels, and portrait atlas; it does not replace the established storefront or product art direction.
+### Shop and stock
 
-### Verification status
+- Supplier shop data: `data/store_config.json`.
+- Buyable fixtures: `hanging_strip`, `water_shelf`, `condiments`, `oil_shelf`, `rice_shelf`.
+- Purchase must deduct cash, record `purchased_store_groups`, refresh storefront art, rebuild draggable stock, update the shop cash label, and change the button to `PURCHASED`.
+- Store art is owned by `StoreLayerRenderer`; transparent interactive drag targets are rebuilt in `main.gd`.
+- The shop icon must remain above the dialogue bubble in draw **and input** order. `_refresh_shop_button()` moves it to the root’s final child position while visible.
+- After a shift starts, the shop remains available for **60 real seconds** through `SHOP_GRACE_DURATION_SECONDS`; then the rush locks it.
 
-- All six automated Godot test suites passed on 2026-10-23 after the seven-day story integration.
-- The dialogue overlay and static portrait layout were rendered at 1920×1080 in Godot 4.7.2 and visually checked for clipping and alignment.
-- On first open after adding the new images, let Godot import them before running the scene.
+Key files: `scripts/shelf_shop_modal.gd`, `scripts/store_layer_renderer.gd`, `scripts/store_config.gd`, `scripts/campaign_state.gd`, `scripts/main.gd`.
 
-## 8. Project setup and technical constraints
+---
 
-Read `README.md` for the full setup walkthrough. Key project constraints:
+## 6. Tutorials and notebook panels
 
-- Godot **4.7.2 stable**, standard (not .NET); use GDScript.
-- Android-first target; landscape 2D.
-- Base viewport: **640 × 360**; stretch mode `viewport`, aspect `expand`; keep essential controls within the central design area.
-- Android package name in the setup README: `com.uri.kwenta`.
-- JDK 17 and the Android SDK versions in `README.md` are the team's documented export setup.
-- Do not upgrade Godot or change shared display/render/input settings without coordinating with the team.
-- Products/orders/campaign content are data-driven Resources.
+### Interactive tutorials
 
-## 9. Git and team workflow
+`InteractiveTutorialOverlay` is the required tutorial approach: dimmed backdrop, spotlight cutout, and target-specific guidance.
 
-- Never commit directly to `main`; use a feature branch and PR.
-- Pull before beginning new team work.
-- Coordinate scene ownership before editing another teammate's `.tscn` file.
-- Never commit export presets, APK/AAB builds, or signing keys.
-- Avoid broad staging (`git add .`) while the working tree contains other unfinished work; review `git status` and stage only intended files.
-- The last recorded local working branch for this prototype was `codex/product-selection` (snapshot from 2026-10-20). This is a branch inside the local repository; it does not itself create or update a GitHub branch/PR.
-- A prior screenshot showed team branches named `feature/art-characters-products`, `feature/art-store`, `feature/audio`, `feature/customer-spawner`, `feature/main-menu`, `feature/money-rewards`, `feature/order-system`, `feature/patience-timer`, `feature/payment-change`, `feature/product-data`, `feature/product-selection`, `feature/shift-system`, `feature/store-scene`, `feature/ui-hud`, and `develop`. Their current remote status/contents have not been verified here.
+- Day 1: highlight product, then customer.
+- Day 2: highlight shop, denominations, clear, and give controls.
+- `TutorialStep` is defined in `main.gd`.
+- Do not replace this with plain static text.
 
-## 10. Important working files
+Files: `scripts/interactive_tutorial_overlay.gd`, `scripts/main.gd`.
 
-- Main scene: `scenes/main.tscn`
-- Gameplay/UI orchestration: `scripts/main.gd`
-- Product drag control: `scripts/product_drag_item.gd`, `scenes/product_drag_item.tscn`
-- Customer drop-target scene/script: `scenes/customer_slot.tscn`, `scripts/customer_slot.gd` (the script/node is now being used as a moving customer actor, despite the legacy “slot” filename)
-- Shift/customer/order logic: `scripts/shift_manager.gd`, `scripts/customer_state.gd`, `scripts/order_state.gd`, `scripts/order_factory.gd`
-- Campaign/story logic and data: `scripts/campaign_state.gd`, `scripts/campaign_config.gd`, `scripts/story_progression.gd`, `data/story/summer_campaign.tres`, `data/story/kwenta_7_day_story.json`
-- Product/order data: `data/products/`, `data/orders/`
-- Gameplay checks: `tests/gameplay_test_runner.gd`
-- Approved design: `docs/superpowers/specs/2026-10-19-kwenta-gameplay-design.md`
-- Implementation notes: `docs/superpowers/plans/2026-10-19-kwenta-gameplay.md`
-- Current storefront reference: `docs/Kwenta - Cooking Fever Gameplay Reference (Target Feel).md`
-- Storefront rebuild plan: `docs/superpowers/plans/2026-10-20-kwenta-inside-store-rebuild.md`
+### Notebook panels
 
-## 11. Next actions
+- **Pre-shift:** `main.gd._show_pre_shift_briefing()` uses `DayBriefing`; shows focus, starting shelf/unlocks, shift details, and optional goal. Day 1 title is **YOUR FIRST SHIFT**, not “WHAT CHANGED.”
+- **Post-shift:** `_show_shift_summary()` captures results; `_show_pending_shift_summary()` displays them only after the last story/callback line.
+- Long notebook content must support finger-drag scrolling.
+- Section tags use `wooden_tag.png`; action buttons use `ibigay_button.png` as background.
 
-1. Open the project in Godot 4.7.2 and verify new image imports and GDScript parsing.
-2. Check that products occupy only the lower shelf/edge-strip zones and remain small enough for the new reference.
-3. Test 2–5 customers and icon bubbles in the center window, including patience and direct correct/wrong drops.
-4. Check scheduled/optional unlocks, empty-space return, coin feedback, and end-of-day story flow.
-5. Update implementation/verification status only after those runtime checks; inspect Git status before any later staging.
+Files:
 
-## 12. Keep these distinctions clear
+- `scripts/main.gd`
+- `scripts/day_briefing.gd`
+- `scripts/notebook_summary.gd`
+- `scripts/notebook_scroll.gd`
+- `scripts/daily_goal.gd`
 
-- **Design decision:** what the team has agreed the game should do.
-- **Implementation status:** what is currently present in the project, which may still be a prototype.
-- **Reference image/document text:** inspiration or context, not automatic instructions to copy or implement every visual detail.
+---
 
-If a new proposal changes an agreed gameplay rule, flag it as a proposal and get team agreement before treating it as the new source of truth.
+## 7. UI/layering rules
+
+- `StoreLayerRenderer` draws storefront layers.
+- Customer/product interaction layers sit above the relevant art.
+- HUD is about z-index 30.
+- Cash tray is above HUD but below story/notebook panels.
+- Dialogue bubble is intentionally moved to the top for story interactions.
+- Visible shop icon must be moved after the bubble, or the bubble will consume its taps.
+- Shop modal moves itself to the top when opened and uses z-index 60.
+- Story popup input blocking includes customer layer, product layer, cash tray, and store renderer; do not block the active popup itself.
+
+---
+
+## 8. Important file map
+
+### Main and models
+
+- `scenes/main.tscn`
+- `scripts/main.gd`
+- `scripts/campaign_config.gd`
+- `scripts/campaign_state.gd`
+- `scripts/shift_manager.gd`
+- `scripts/customer_state.gd`
+- `scripts/order_state.gd`
+- `scripts/order_factory.gd`
+- `scripts/payment_state.gd`
+- `scripts/sukli_rules.gd`
+
+### Story
+
+- `data/story/kwenta_7_day_story.json`
+- `data/story/summer_campaign.tres`
+- `scripts/story_progression.gd`
+- `scripts/shift_story_events.gd`
+- `scripts/Dialogue_bubble.gd`
+- `scripts/pause_menu.gd`
+
+### Store and UI
+
+- `data/store_config.json`
+- `scripts/store_config.gd`
+- `scripts/store_layer_renderer.gd`
+- `scripts/shelf_shop_modal.gd`
+- `scripts/product_drag_item.gd`
+- `scenes/product_drag_item.tscn`
+- `scripts/customer_slot.gd`
+- `scenes/customer_slot.tscn`
+- `scripts/interactive_tutorial_overlay.gd`
+- `scripts/cash_tray.gd`
+- `scripts/day_briefing.gd`
+- `scripts/notebook_summary.gd`
+- `scripts/notebook_scroll.gd`
+- `scripts/daily_goal.gd`
+
+### Assets
+
+- `assets/store/kwenta_layer_pack/` — storefront art and slot layout.
+- `assets/sprites/ui/sukli/sized/` — cash art, tags, notebook buttons, progress art.
+- `assets/sprites/ui/shop/` — shop panel/icon art.
+- `assets/sprites/customer_portraits_v2.png` — portraits.
+
+---
+
+## 9. Tests and verification
+
+Test runners are in `tests/`:
+
+- `gameplay_test_runner.gd`
+- `core_gameplay_loop_test_runner.gd`
+- `shelf_shop_modal_test_runner.gd`
+- `store_layer_renderer_test_runner.gd`
+- `store_layer_config_test_runner.gd`
+- `dialogue_audio_test_runner.gd`
+- `kwenta_audio_test_runner.gd`
+
+Use Godot 4.7.2 headless when possible:
+
+```powershell
+& 'F:\USTI DOWNLOAD\Personal\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe' --headless --path . --script res://tests/gameplay_test_runner.gd
+```
+
+This Windows setup can emit a sandboxed `user://logs/godot.log` write warning in headless mode. Do not mistake it for a parser/gameplay failure. Confirm critical paths in Godot editor/device when practical.
+
+Regression checklist after relevant edits:
+
+1. Parse/load `main.gd`.
+2. Verify Day 1 drag tutorial.
+3. Verify Day 2 shop and sukli spotlights, including `IBIGAY`/`LINISIN` targets.
+4. Verify Day 1 noon, Day 2 5 PM, Days 3–4 6 PM, Days 5–7 8 PM.
+5. Verify purchases update shop state, storefront art, and draggables.
+6. Verify shop icon works above dialogue and survives the 60-second grace window.
+7. Verify summary appears after final outro/callback dialogue.
+8. Verify notebook finger-drag scrolling.
+
+---
+
+## 10. Git and collaboration rules
+
+- Do not commit directly to `main`.
+- The integration branch is `feature/product-selection`.
+- It contains both teammate story/assets/story-event work and product-data shop/tutorial/notebook/progression work.
+- Be extremely careful merging `scripts/main.gd`, `scripts/shift_manager.gd`, and `scripts/cash_tray.gd`; they contain cross-branch dependencies and were previously damaged by conflict resolution.
+- After merges, search for `<<<<<<<`, `=======`, and `>>>>>>>` markers.
+- Never commit `tmp/`, local export presets, APK/AAB builds, signing keys, or machine-specific editor files unless explicitly directed by the team.
+- Do not use `git add .`; stage intended files only.
+- Preserve unrelated worktree changes; never reset or delete them casually.
+
+## 11. Handoff cautions
+
+1. Do not revert per-day timing to a fixed full-day shift.
+2. Do not remove the cash tray’s tutorial lookup names.
+3. Do not place shop behind dialogue.
+4. Do not show summary before all outro/callback dialogue.
+5. Do not hide sukli progress after Day 2.
+6. Do not hard-code story content in UI; use JSON and `StoryProgression`.
+7. Do not claim Android sensors not present in the codebase.
+
+## 12. Recommended first actions for the next AI
+
+1. Read this file, `README.md`, and `git status -sb`.
+2. Read `scripts/main.gd` before changing UI flow; it is the integration hub.
+3. Trace bugs from `main.gd` into model/data sources before editing.
+4. Add focused regression coverage before production behavior changes.
+5. Use `apply_patch`, validate with Godot, and stage only intended files.

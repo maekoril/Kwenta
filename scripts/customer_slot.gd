@@ -38,6 +38,11 @@ var portrait_shadow: TextureRect
 var name_tag: PanelContainer
 var name_label: Label
 var _drop_hovered: bool = false
+var _shown_impatient: bool = false
+var _impatience_pulse: Tween
+const IMPATIENT_BELOW := 0.3     # patience ratio under which the customer looks impatient
+const IMPATIENT_PULSE_BIG := 1.08     # how much the character grows on each pulse
+const IMPATIENT_PULSE_SMALL := 1.05
 var _bubble_paying: bool = false
 var _pay_pulse: Tween
 
@@ -136,8 +141,7 @@ func set_facing_right(from_right: bool) -> void:
 func refresh_display() -> void:
 	if customer == null or not is_instance_valid(name_label):
 		return
-	portrait.texture = COUNTER_ART.customer_portrait(customer.customer_id, PORTRAIT_ATLAS)
-	portrait_shadow.texture = portrait.texture
+	_apply_portrait()
 	for child in order_grid.get_children():
 		order_grid.remove_child(child)
 		child.queue_free()
@@ -173,18 +177,72 @@ func _place_bubble(bubble_size: Vector2) -> void:
 	order_bubble.pivot_offset = bubble_size * 0.5
 	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
 
+func _has_impatient_sprite() -> bool:
+	return customer != null and COUNTER_ART.CUSTOMER_REGIONS.has(customer.customer_id + "_impatient")
+
+func _apply_portrait() -> void:
+	if customer == null or not is_instance_valid(portrait):
+		return
+	var portrait_id: String = customer.customer_id
+	if _shown_impatient and _has_impatient_sprite():
+		portrait_id += "_impatient"
+	portrait.texture = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+	portrait_shadow.texture = portrait.texture
+
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
 		return
+	
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
 	patience_bar.value = patience_ratio * 100.0
 	_refresh_name_tag()
+
+	# Low patience: switch to the impatient sprite (if this character has one) and pulse
+	# the character like "huy, asan na yung binili ko?!" No more red tint.
+	var impatient: bool = patience_ratio < IMPATIENT_BELOW and customer.active
+	if impatient != _shown_impatient:
+		_shown_impatient = impatient
+		_apply_portrait()
+		if impatient:
+			_start_impatience_pulse()
+		else:
+			_stop_impatience_pulse()
+
+	portrait.modulate = Color.WHITE
 	if patience_ratio > 0.6:
 		patience_fill.bg_color = PATIENCE_GREEN
-	elif patience_ratio >= 0.3:
+	elif patience_ratio >= IMPATIENT_BELOW:
 		patience_fill.bg_color = PATIENCE_YELLOW
 	else:
 		patience_fill.bg_color = PATIENCE_RED
+
+func _start_impatience_pulse() -> void:
+	_stop_impatience_pulse()
+	if not is_instance_valid(portrait):
+		return
+	# Grow from the feet so the character "puffs up" instead of drifting around.
+	portrait.pivot_offset = Vector2(portrait.size.x * 0.5, portrait.size.y)
+	portrait_shadow.pivot_offset = portrait.pivot_offset
+	_impatience_pulse = create_tween().set_loops()
+	_pulse_step(IMPATIENT_PULSE_BIG, 0.16)      # huy!
+	_pulse_step(1.0, 0.16)
+	_pulse_step(IMPATIENT_PULSE_SMALL, 0.14)    # huy!
+	_pulse_step(1.0, 0.14)
+	_impatience_pulse.tween_interval(0.45)      # short rest, then again
+
+func _pulse_step(target_scale: float, seconds: float) -> void:
+	var target := Vector2(target_scale, target_scale)
+	_impatience_pulse.tween_property(portrait, "scale", target, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_impatience_pulse.parallel().tween_property(portrait_shadow, "scale", target, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _stop_impatience_pulse() -> void:
+	if _impatience_pulse != null and _impatience_pulse.is_valid():
+		_impatience_pulse.kill()
+	_impatience_pulse = null
+	if is_instance_valid(portrait):
+		portrait.scale = Vector2.ONE
+	if is_instance_valid(portrait_shadow):
+		portrait_shadow.scale = Vector2.ONE
 
 func _refresh_name_tag() -> void:
 	if not is_instance_valid(name_tag) or not is_instance_valid(name_label):
@@ -309,7 +367,8 @@ func _display_name(customer_id: String) -> String:
 		"aleng_mila": "Mila", "kuya_ben": "Ben", "ate_liza": "Liza",
 		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina",
 		"aling_nena": "Aling Nena", "mang_berting": "Mang Berting",
-		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun"
+		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun",
+		"classmate_1": "Kaklase", "classmate_2": "Kaklase", "classmate_3": "Kaklase"
 	}
 	return str(names.get(customer_id, customer_id.capitalize()))
 
@@ -383,9 +442,9 @@ func _set_bubble_paying(paying: bool) -> void:
 	_bubble_paying = paying
 	if paying:
 		name_tag.visible = false
-		patience_bar.visible = false
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("fff0c2"), Color("c9892b"), 4, ORDER_BUBBLE_PADDING, 9))
-		_start_pay_pulse()
+		patience_bar.visible = true # <-- BINAGO MULA FALSE PA-TRUE
+		# Pinalitan na natin to ng eksaktong BROWN color gaya ng sa orders
+		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
 	else:
 		name_tag.visible = true
 		patience_bar.visible = true

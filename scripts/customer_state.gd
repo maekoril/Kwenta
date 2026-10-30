@@ -16,6 +16,12 @@ var trust_loss_on_timeout: float = 25.0
 var phase: int = Phase.ORDERING
 var payment: PaymentState = null
 
+# Story hooks (see shift_manager.gd and shift_story_events.gd)
+var price_discount: int = 0     # pesos knocked off the bill (a haggle, or a refunded wrong item)
+var exact_pay: bool = false     # pays the exact amount, no change needed
+var parked: bool = false        # order is done, but the sale waits on a story popup (haggle / mix-up)
+var mixup_done: bool = false    # a helper mix-up already happened for this customer
+
 func _init(id: String, customer_order: OrderState, patience: float, initial_trust: float = 100.0) -> void:
 	customer_id = id
 	order = customer_order
@@ -31,9 +37,19 @@ func receive_product(product_id: String) -> int:
 func advance_time(delta_seconds: float) -> bool:
 	if not active or delta_seconds <= 0.0:
 		return false
+
 	patience_remaining = maxf(0.0, patience_remaining - delta_seconds)
+
 	if patience_remaining > 0.0:
 		return false
+
+	# --- BAGONG LOGIC: Continuous Trust Drain sa Suklian ---
+	if phase == Phase.PAYING:
+		# Babawas ng 1 trust point per second kapag naubos ang patience
+		trust = maxf(0.0, trust - (1.0 * delta_seconds))
+		return false # HINDI aalis ang customer
+	# -------------------------------------------------------
+
 	active = false
 	timed_out = true
 	trust = maxf(0.0, trust - trust_loss_on_timeout)
@@ -49,6 +65,10 @@ func begin_payment(order_total: int, tendered: int, payment_patience: float) -> 
 
 func is_paying() -> bool:
 	return active and phase == Phase.PAYING
+
+# Customer is still waiting for change but their patience bar is already empty.
+func is_overdue_paying() -> bool:
+	return active and phase == Phase.PAYING and patience_remaining <= 0.0
 
 # Used for wrong (short) change: the customer gets more impatient, but never hits zero
 # from this alone; the normal timer tick does that.

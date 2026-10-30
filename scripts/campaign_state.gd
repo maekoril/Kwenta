@@ -11,6 +11,7 @@ var product_price_bonuses: Dictionary = {}
 var customer_trust: Dictionary = {}
 var purchased_store_groups: Array[String] = []
 var stocked_product_ids: Array[String] = []
+var barangay_trust: float = 100.0 # BAGO: Global trust limit kada araw
 
 func purchase_store_group(group_id: String, price: int) -> bool:
 	if group_id.is_empty() or purchased_store_groups.has(group_id) or cash < price:
@@ -31,6 +32,18 @@ func get_active_customer_limit() -> int:
 	if config.customer_caps.is_empty():
 		return 2
 	return int(config.customer_caps[mini(day - 1, config.customer_caps.size() - 1)])
+
+func get_shift_close_minutes() -> int:
+	return config.get_shift_close_minutes(day)
+
+func get_shift_length_seconds() -> float:
+	return config.get_shift_length_seconds_for_day(day)
+
+func get_customer_spawn_interval() -> float:
+	return config.get_customer_spawn_interval_for_day(day)
+
+func get_customer_patience_seconds() -> float:
+	return config.get_customer_patience_seconds_for_day(day)
 
 func get_max_order_units() -> int:
 	if config.max_order_sizes.is_empty():
@@ -54,7 +67,7 @@ func set_stocked_product_ids(product_ids: Array[String]) -> void:
 			stocked_product_ids.append(product_id)
 
 func to_dict() -> Dictionary:
-	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate()}
+	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust}
 
 func from_dict(data: Dictionary) -> void:
 	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
@@ -64,6 +77,7 @@ func from_dict(data: Dictionary) -> void:
 		var value := str(group_id)
 		if not value.is_empty() and not purchased_store_groups.has(value):
 			purchased_store_groups.append(value)
+			barangay_trust = float(data.get("barangay_trust", 100.0))
 
 func get_order_data_for_day(requested_day: int) -> OrderData:
 	var result := OrderData.new()
