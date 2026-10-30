@@ -41,6 +41,10 @@ const CUSTOMER_REGIONS := {
 	"kuya_dodong": Rect2(0.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_thoughtful": Rect2(512.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_soaked": Rect2(1024.0, 2048.0, 512.0, 512.0),
+	"bea_impatient": Rect2(0.0, 2560.0, 512.0, 512.0),
+	"paolo_impatient": Rect2(512.0, 2560.0, 512.0, 512.0),
+	"kuya_dodong_impatient": Rect2(1024.0, 2560.0, 512.0, 512.0),
+	"jun_jun_impatient": Rect2(1536.0, 2560.0, 512.0, 512.0),
 }
 
 static func product_icon(product_id: String, _product_atlas: Texture2D = null) -> Texture2D:
@@ -64,6 +68,16 @@ static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) ->
 	portrait.atlas = portrait_atlas
 	portrait.region = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
 	return portrait
+
+# Sprite switching for impatient customers. A character has an impatient sprite when
+# CUSTOMER_REGIONS contains "<customer_id>_impatient" (e.g. "aling_nena_impatient").
+static func has_impatient_portrait(customer_id: String) -> bool:
+	return CUSTOMER_REGIONS.has(customer_id + "_impatient")
+
+static func customer_mood_portrait(customer_id: String, portrait_atlas: Texture2D, impatient: bool) -> AtlasTexture:
+	if impatient and has_impatient_portrait(customer_id):
+		return customer_portrait(customer_id + "_impatient", portrait_atlas)
+	return customer_portrait(customer_id, portrait_atlas)
 
 static func fit_texture_rect(texture_size: Vector2, bounds: Vector2) -> Rect2:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or bounds.x <= 0.0 or bounds.y <= 0.0:

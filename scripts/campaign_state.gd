@@ -11,6 +11,7 @@ var product_price_bonuses: Dictionary = {}
 var customer_trust: Dictionary = {}
 var purchased_store_groups: Array[String] = []
 var stocked_product_ids: Array[String] = []
+var barangay_trust: float = 100.0 # BAGO: Global trust limit kada araw
 
 func purchase_store_group(group_id: String, price: int) -> bool:
 	if group_id.is_empty() or purchased_store_groups.has(group_id) or cash < price:
@@ -54,7 +55,7 @@ func set_stocked_product_ids(product_ids: Array[String]) -> void:
 			stocked_product_ids.append(product_id)
 
 func to_dict() -> Dictionary:
-	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate()}
+	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust}
 
 func from_dict(data: Dictionary) -> void:
 	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
@@ -64,6 +65,7 @@ func from_dict(data: Dictionary) -> void:
 		var value := str(group_id)
 		if not value.is_empty() and not purchased_store_groups.has(value):
 			purchased_store_groups.append(value)
+			barangay_trust = float(data.get("barangay_trust", 100.0))
 
 func get_order_data_for_day(requested_day: int) -> OrderData:
 	var result := OrderData.new()

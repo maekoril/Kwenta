@@ -8,6 +8,8 @@ signal game_minutes_changed(value: int)
 signal feedback_changed(message: String)
 signal shift_completed
 signal customer_timed_out(customer_instance_id: String)
+signal barangay_trust_changed(new_value: float) # BAGO
+signal game_over_triggered() # BAGO
 
 var campaign_state: CampaignState
 var products_by_id: Dictionary
@@ -25,11 +27,18 @@ var spawn_delay_min_seconds: float = 0.0
 var spawn_delay_max_seconds: float = 0.0
 var patience_seconds_override: float = 0.0
 
+# Suki Meter points lost per second for EACH customer still waiting for change
+# after their patience bar is empty. Tune this to taste.
+const OVERDUE_CHANGE_TRUST_DRAIN_PER_SECOND := 2.0
+var _overdue_drain_accumulator: float = 0.0
+
 # Sukli stats for the current shift.
 var change_total: int = 0          # sales that needed change and were completed
 var change_correct: int = 0        # of those, exact change on the first try
 var change_streak: int = 0         # current run of first-try exact change
 var best_change_streak: int = 0
+var total_satisfaction_score: float = 0.0 # BAGO
+var total_tips_earned: int = 0            # BAGO
 
 func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGenerator) -> void:
 	campaign_state = state
@@ -46,10 +55,33 @@ func start_shift() -> void:
 	change_correct = 0
 	change_streak = 0
 	best_change_streak = 0
+	total_satisfaction_score = 0.0 # BAGO
+	total_tips_earned = 0          # BAGO
 	did_emit_completion = false
 	is_running = true
 	_spawn_customer()
 	_update_clock()
+
+func _drain_trust_for_overdue_change(delta_seconds: float) -> void:
+	if campaign_state.barangay_trust <= 0.0:
+		return
+	var overdue := 0
+	for customer in active_customers:
+		if customer.is_overdue_paying():
+			overdue += 1
+	if overdue == 0:
+		_overdue_drain_accumulator = 0.0
+		return
+	# Accumulate, then apply in whole points so the HUD isn't updated every single frame.
+	_overdue_drain_accumulator += OVERDUE_CHANGE_TRUST_DRAIN_PER_SECOND * float(overdue) * delta_seconds
+	if _overdue_drain_accumulator < 1.0:
+		return
+	var points := floorf(_overdue_drain_accumulator)
+	_overdue_drain_accumulator -= points
+	campaign_state.barangay_trust = maxf(0.0, campaign_state.barangay_trust - points)
+	barangay_trust_changed.emit(campaign_state.barangay_trust)
+	if campaign_state.barangay_trust <= 0.0:
+		game_over_triggered.emit()
 
 func advance_time(delta_seconds: float) -> void:
 	if not is_running or delta_seconds <= 0.0:
@@ -60,10 +92,18 @@ func advance_time(delta_seconds: float) -> void:
 		finish_shift()
 		return
 	var customer_left := false
+	_drain_trust_for_overdue_change(delta_seconds)
 	for customer in active_customers:
 		if customer.advance_time(delta_seconds):
 			customer_left = true
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
+			# --- BAGO: Bawasan ang global Barangay Trust kapag may walk-out ---
+			campaign_state.barangay_trust = maxf(0.0, campaign_state.barangay_trust - 25.0)
+			barangay_trust_changed.emit(campaign_state.barangay_trust)
+			
+			if campaign_state.barangay_trust <= 0.0:
+				game_over_triggered.emit()
+			# ------------------------------------------------------------------
 			if customer.phase == CustomerState.Phase.PAYING:
 				change_streak = 0
 				feedback_changed.emit("%s didn't wait for their change. Trust fell to %d." % [customer.customer_id.capitalize(), int(customer.trust)])
@@ -132,29 +172,46 @@ func give_change(customer_id: String, amount: int) -> Dictionary:
 			continue
 		if not customer.is_paying():
 			break
+
 		var payment: PaymentState = customer.payment
 		var result := payment.evaluate(amount)
 		var diff := amount - payment.change_due()
+		var tip := 0
+
 		if result == PaymentState.Result.SHORT:
 			payment.mistakes += 1
 			change_streak = 0
 			customer.penalize_patience(SukliRules.SHORT_PENALTY_SECONDS)
 			feedback_changed.emit("Kulang po ang sukli!")
 			return {"result": result, "diff": diff}
+
 		change_total += 1
+		
+		# --- SATISFACTION AT BONUS TIP LOGIC ---
+		var satisfaction := (customer.patience_remaining / customer.patience_seconds) * 100.0
+		total_satisfaction_score += satisfaction
+
 		if result == PaymentState.Result.EXACT and payment.mistakes == 0:
 			change_correct += 1
 			change_streak += 1
 			best_change_streak = maxi(best_change_streak, change_streak)
-			feedback_changed.emit("Tamang sukli!")
+			
+			if satisfaction >= 80.0:
+				tip = int(randf_range(2.0, 5.0)) # Random tip 2 to 5 pesos
+				total_tips_earned += tip
+				feedback_changed.emit("Tamang sukli! Ang bilis, may tip na  %d!" % tip)
+			else:
+				feedback_changed.emit("Tamang sukli!")
 		else:
 			change_streak = 0
 			if result == PaymentState.Result.OVER:
-				feedback_changed.emit("Sobra ang naibigay mong sukli: ₱%d." % diff)
+				feedback_changed.emit("Sobra ang naibigay mong sukli:  %d." % diff)
 			else:
 				feedback_changed.emit("Tamang sukli, pero may mali muna.")
-		_finish_sale(customer, payment.net_cash(amount))
+
+		_finish_sale(customer, payment.net_cash(amount) + tip)
 		return {"result": result, "diff": diff}
+
 	return {"result": PaymentState.Result.NO_PAYMENT, "diff": 0}
 
 func get_active_customers() -> Array[CustomerState]:
