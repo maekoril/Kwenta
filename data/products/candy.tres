@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://1fiw8cl4vvxc"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/maximo_jar.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/maximo_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "candy"
+display_name = "Maximo"
+price = 2
+shelf_location = "Shelf Row A"
+stacked_texture_key = "candy"
+single_unit_texture_key = "candy"

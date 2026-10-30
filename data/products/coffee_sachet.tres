@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://l83apfq46d4m"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/sachets/kapeko_blanca_strip.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/sachets/kapeko_blanca_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "coffee_sachet"
+display_name = "Kapeko Blanca"
+price = 14
+shelf_location = "Top Left Rail"
+stacked_texture_key = "coffee_sachet"
+single_unit_texture_key = "coffee_sachet"
+display_scale = 1.45
+unlock_day = 2

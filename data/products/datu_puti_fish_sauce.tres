@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://car28ntp5irn5"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/bottles/pating_rack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/bottles/pating_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "fish_sauce"
+display_name = "Pating"
+price = 27
+shelf_location = "Shelf Row B"
+stacked_texture_key = "fish_sauce"
+single_unit_texture_key = "fish_sauce"
+display_scale = 1.9
+unlock_day = 6

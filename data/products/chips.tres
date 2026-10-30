@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://dbitvilc885o5"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1_product"]
+
+[ext_resource type="Texture2D" path="res://assets/products/sachets/patos_strip.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/sachets/patos_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1_product")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "chips"
+display_name = "Patos"
+price = 18
+shelf_location = "Top Left Rail"
+stacked_texture_key = "chips"
+single_unit_texture_key = "chips"
+display_scale = 1.8
+unlock_day = 2

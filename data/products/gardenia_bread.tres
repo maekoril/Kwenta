@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://7xydb4roag8e"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/bread_winner_stack.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/shelf_goods/bread_winner_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "bread"
+display_name = "Bread-winner"
+price = 75
+shelf_location = "Countertop"
+stacked_texture_key = "bread"
+single_unit_texture_key = "bread"
+display_scale = 1.85
+unlock_day = 5

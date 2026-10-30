@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://ljb7cth47q6y"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/sachets/champ_powder_strip.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/sachets/champ_powder_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "laundry_sachet"
+display_name = "Champ Powder"
+price = 12
+shelf_location = "Top Right Rail"
+stacked_texture_key = "laundry_sachet"
+single_unit_texture_key = "laundry_sachet"
+display_scale = 1.45
+unlock_day = 7

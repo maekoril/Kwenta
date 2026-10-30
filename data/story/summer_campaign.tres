@@ -1,0 +1,47 @@
+[gd_resource type="Resource" script_class="CampaignConfig" format=3 uid="uid://c4f435lsairaq"]
+
+[ext_resource type="Script" uid="uid://cbw8vdawvm7b3" path="res://scripts/campaign_config.gd" id="1_script"]
+[ext_resource type="Resource" uid="uid://dxx6bnqgo8ybc" path="res://data/products/instant_noodles.tres" id="2_noodles"]
+[ext_resource type="Resource" uid="uid://c3qex1ruynqjo" path="res://data/products/soft_drink.tres" id="3_drink"]
+[ext_resource type="Resource" uid="uid://dbitvilc885o5" path="res://data/products/chips.tres" id="4_chips"]
+[ext_resource type="Resource" uid="uid://btwdu7xgb1igg" path="res://data/products/biscuits.tres" id="5_biscuits"]
+[ext_resource type="Resource" uid="uid://dlnyktugwsem4" path="res://data/products/bottled_water.tres" id="6_water"]
+[ext_resource type="Resource" uid="uid://1fiw8cl4vvxc" path="res://data/products/candy.tres" id="7_candy"]
+[ext_resource type="Resource" uid="uid://l83apfq46d4m" path="res://data/products/coffee_sachet.tres" id="8_coffee"]
+[ext_resource type="Resource" uid="uid://ddgh7p5l3c7sd" path="res://data/products/canned_sardines.tres" id="9_sardines"]
+[ext_resource type="Resource" uid="uid://ljb7cth47q6y" path="res://data/products/laundry_sachet.tres" id="10_laundry"]
+[ext_resource type="Resource" uid="uid://br8e8p7t4jbct" path="res://data/orders/order_pool_day_01.tres" id="11_day1"]
+[ext_resource type="Resource" uid="uid://dgbg27gjtte53" path="res://data/orders/order_pool_day_04.tres" id="12_day4"]
+[ext_resource type="Resource" uid="uid://dnq4xy3cb3803" path="res://data/orders/order_pool_day_07.tres" id="13_day7"]
+[ext_resource type="Resource" uid="uid://cev5gvf6wcn58" path="res://data/products/shampoo_sachet.tres" id="14_shampoo"]
+[ext_resource type="Resource" uid="uid://dm0pcxqq6aino" path="res://data/products/toothpaste_sachet.tres" id="15_toothpaste"]
+[ext_resource type="Resource" uid="uid://dp5usm2ddvm2a" path="res://data/products/juice_sachet.tres" id="16_juice"]
+[ext_resource type="Resource" uid="uid://c5mobdnfgrnwc" path="res://data/products/iced_tea_sachet.tres" id="17_tea"]
+[ext_resource type="Resource" uid="uid://7xydb4roag8e" path="res://data/products/gardenia_bread.tres" id="18_bread"]
+[ext_resource type="Resource" uid="uid://bndfm7jq7iiw7" path="res://data/products/egg.tres" id="19_eggs"]
+[ext_resource type="Resource" uid="uid://b0kwbycuwtmun" path="res://data/products/datu_puti_soy_sauce.tres" id="20_soy"]
+[ext_resource type="Resource" uid="uid://bf17ursdegksy" path="res://data/products/datu_puti_vinegar.tres" id="21_vinegar"]
+[ext_resource type="Resource" uid="uid://car28ntp5irn5" path="res://data/products/datu_puti_fish_sauce.tres" id="22_fish"]
+[ext_resource type="Resource" uid="uid://c3imfsuufgytf" path="res://data/products/golden_fiesta_oil.tres" id="23_oil"]
+[ext_resource type="Resource" uid="uid://doek8kf52l72c" path="res://data/products/princess_jasmine_rice.tres" id="24_rice"]
+[ext_resource type="Resource" path="res://data/upgrades/sachet_rail.tres" id="25_rail"]
+[ext_resource type="Resource" path="res://data/upgrades/extra_shelf.tres" id="27_shelf"]
+[ext_resource type="Resource" path="res://data/upgrades/condiment_rack.tres" id="28_condiments"]
+[ext_resource type="Resource" path="res://data/upgrades/bulk_crates.tres" id="29_crates"]
+[ext_resource type="Resource" path="res://data/products/sandwich_biscuits.tres" id="30_wemby"]
+[ext_resource type="Resource" path="res://data/products/noodle_pack.tres" id="31_ticnap"]
+[ext_resource type="Resource" path="res://data/products/bubble_gum.tres" id="32_bfresh"]
+
+[resource]
+script = ExtResource("1_script")
+product_catalog = Array[Resource]([ExtResource("2_noodles"), ExtResource("3_drink"), ExtResource("4_chips"), ExtResource("5_biscuits"), ExtResource("6_water"), ExtResource("7_candy"), ExtResource("8_coffee"), ExtResource("9_sardines"), ExtResource("10_laundry"), ExtResource("14_shampoo"), ExtResource("15_toothpaste"), ExtResource("16_juice"), ExtResource("17_tea"), ExtResource("18_bread"), ExtResource("19_eggs"), ExtResource("20_soy"), ExtResource("21_vinegar"), ExtResource("22_fish"), ExtResource("23_oil"), ExtResource("24_rice"), ExtResource("30_wemby"), ExtResource("31_ticnap"), ExtResource("32_bfresh")])
+store_upgrades = Array[Resource]([ExtResource("25_rail"), ExtResource("27_shelf"), ExtResource("28_condiments"), ExtResource("29_crates")])
+day_order_pools = Array[Resource]([ExtResource("11_day1"), ExtResource("12_day4"), ExtResource("13_day7")])
+customer_ids = Array[String](["aling_nena", "mang_berting", "bea", "paolo", "kuya_dodong", "jun_jun"])
+campaign_day_count = 7
+story_source_path = "res://data/story/kwenta_7_day_story.json"
+shift_close_minutes_by_day = Array[int]([240, 540, 600, 600, 720, 720, 720])
+customer_spawn_intervals_by_day = Array[float]([18.0, 16.0, 14.0, 12.0, 9.0, 6.0, 12.0])
+customer_patience_seconds_by_day = Array[float]([999.0, 50.0, 40.0, 32.0, 28.0, 25.0, 999999.0])
+customer_caps = Array[int]([1, 2, 2, 3, 4, 5, 4])
+max_order_sizes = Array[int]([2, 3, 3, 4, 4, 5, 5])

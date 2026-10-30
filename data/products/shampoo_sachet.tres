@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ProductData" format=3 uid="uid://cev5gvf6wcn58"]
+
+[ext_resource type="Script" uid="uid://vc5317y2kkah" path="res://scripts/product_data.gd" id="1"]
+
+[ext_resource type="Texture2D" path="res://assets/products/sachets/clean_strip.png" id="2_stack"]
+[ext_resource type="Texture2D" path="res://assets/products/sachets/clean_single.png" id="3_single"]
+
+[resource]
+script = ExtResource("1")
+stacked_texture = ExtResource("2_stack")
+single_unit_texture = ExtResource("3_single")
+id = "shampoo_sachet"
+display_name = "Clean"
+price = 9
+shelf_location = "Top Right Rail"
+stacked_texture_key = "shampoo_sachet"
+single_unit_texture_key = "shampoo_sachet"
+display_scale = 1.45
+unlock_day = 0
