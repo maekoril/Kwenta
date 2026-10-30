@@ -334,8 +334,6 @@ func _make_slot(root: Control, data: Dictionary) -> void:
 		sprite.scale = Vector2(data.scale.x, data.scale.y)
 		sprite.z_index = 20
 		root.add_child(sprite)
-	elif entry.get("unlock_type") == "buyable" and _is_lock_leader(data.id, entry):
-		_add_lock(root, data.id, entry)
 	area.input_event.connect(_slot_input.bind(data.id))
 
 func _is_lock_leader(product_id: String, entry: Dictionary) -> bool:
@@ -390,12 +388,8 @@ func _get_group_rect(group_id: String) -> Rect2:
 
 func _slot_input(_viewport: Node, event: InputEvent, _shape: int, id: String) -> void:
 	if not (event is InputEventMouseButton and event.pressed) and not (event is InputEventScreenTouch and event.pressed): return
-	if stock.has(id): return
-	var entry: Dictionary = store_config.get("products", {}).get(id, {})
-	if entry.get("unlock_type") == "buyable" and current_day >= int(entry.get("unlock_day", 1)):
-		var group_id := str(entry.get("purchase_group", id))
-		if current_cash < int(entry.get("price", 0)): purchase_denied.emit(group_id)
-		else: purchase_requested.emit(group_id)
+	# Locked goods direct players to the upper-right shop; shelves never purchase on tap.
+	if not stock.has(id): return
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode==KEY_F1:
