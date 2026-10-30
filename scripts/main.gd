@@ -9,6 +9,8 @@ const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
+const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
 const SUMMARY_PANEL_POS := Vector2(240, 129)
 const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
 const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_rain.png"
@@ -28,6 +30,8 @@ var product_layer: Control
 var product_items_by_id: Dictionary = {}
 var customer_layer: Control
 var store_layer_renderer: StoreLayerRenderer
+var shelf_shop: ShelfShopModal
+var shop_button: Button
 var customer_actors: Dictionary = {}
 var summary_panel: PanelContainer
 var summary_backdrop: ColorRect
@@ -51,6 +55,7 @@ var story_after_action: String = ""
 var pending_story_choices: Array[Dictionary] = []
 const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for shelf purchases after skipping
 var shift_in_progress: bool = false
+var shop_available: bool = false
 var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
@@ -97,6 +102,7 @@ func _ready() -> void:
 	_build_summary_panel()
 	_build_bubble()
 	_build_cash_tray()
+	_build_shop_button()
 	_build_debug_tools()
 	_update_cash(campaign.cash)
 	_create_shift_manager()
@@ -105,7 +111,7 @@ func _ready() -> void:
 	_present_prologue()
 
 func _process(delta: float) -> void:
-	if shift != null:
+	if shift != null and shift_in_progress:
 		shift.advance_time(delta)
 	ui_refresh_elapsed += delta
 	if ui_refresh_elapsed >= 0.12:
@@ -142,6 +148,37 @@ func _build_hud() -> void:
 		tag.position = Vector2(x, 0.0)
 		hud.add_child(tag)
 		x += float(spec[1]) + gap
+
+func _build_shop_button() -> void:
+	shop_button = Button.new()
+	shop_button.name = "ShopIconButton"
+	shop_button.position = Vector2(1836, 4) + _ui_offset()
+	shop_button.size = Vector2(72, 72)
+	shop_button.z_index = 55
+	shop_button.z_as_relative = false
+	shop_button.add_theme_stylebox_override("normal", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("hover", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("pressed", _button_texture_box(SHOP_BUTTON_TEXTURE))
+	shop_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	shop_button.focus_mode = Control.FOCUS_NONE
+	shop_button.tooltip_text = "Open shop before the shift"
+	shop_button.visible = false
+	var shop_icon := TextureRect.new()
+	shop_icon.name = "ShopIcon"
+	shop_icon.texture = SHOP_ICON_TEXTURE
+	shop_icon.position = Vector2(16, 16)
+	shop_icon.size = Vector2(40, 40)
+	shop_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shop_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	shop_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_button.add_child(shop_icon)
+	shop_icon.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	shop_icon.offset_left = 16.0
+	shop_icon.offset_top = 16.0
+	shop_icon.offset_right = 56.0
+	shop_icon.offset_bottom = 56.0
+	shop_button.pressed.connect(_open_shelf_shop)
+	add_child(shop_button)
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
@@ -839,6 +876,8 @@ func _finish_story_day() -> void:
 		summary_button.text = "REPLAY STORY"
 		return
 	campaign.advance_day()
+	shop_available = campaign.day > 1
+	_refresh_shop_button()
 	day_label.text = "DAY %d" % campaign.day
 	_update_cash(campaign.cash)
 	_rebuild_product_shelf()
@@ -855,6 +894,8 @@ func _restart_story() -> void:
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	story_complete = false
 	campaign_started = false
+	shop_available = false
+	_refresh_shop_button()
 	displayed_cash = -1
 	_create_shift_manager()
 	_rebuild_product_shelf()
@@ -864,6 +905,8 @@ func _restart_story() -> void:
 	_present_prologue()
 
 func _begin_shift() -> void:
+	shop_available = false
+	_refresh_shop_button()
 	shift_in_progress = true
 	if debug_skip_button != null:
 		debug_skip_button.visible = true
@@ -891,6 +934,16 @@ func _make_box(fill_color: Color, border_color: Color) -> StyleBoxFlat:
 	box.content_margin_right = 18.0
 	box.content_margin_bottom = 12.0
 	return box
+
+func _button_texture_box(texture: Texture2D) -> StyleBoxTexture:
+	var style := StyleBoxTexture.new()
+	style.texture = texture
+	style.set_texture_margin_all(12)
+	style.content_margin_left = 4
+	style.content_margin_top = 4
+	style.content_margin_right = 4
+	style.content_margin_bottom = 4
+	return style
 
 func _build_cash_tray() -> void:
 	cash_tray = CashTray.new()
@@ -969,9 +1022,31 @@ func _build_store_layer_renderer() -> void:
 	store_layer_renderer = STORE_LAYER_RENDERER.new()
 	store_layer_renderer.z_index = 0
 	add_child(store_layer_renderer)
-	store_layer_renderer.purchase_requested.connect(_on_store_purchase_requested)
-	store_layer_renderer.purchase_denied.connect(_on_store_purchase_denied)
 	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+	shelf_shop = ShelfShopModal.new()
+	add_child(shelf_shop)
+	shelf_shop.purchase_requested.connect(_on_shelf_shop_purchase_requested)
+
+func _open_shelf_shop() -> void:
+	if shelf_shop == null or not _is_shop_available():
+		return
+	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
+	move_child(shelf_shop, get_child_count() - 1)
+	shelf_shop.open()
+
+func _is_shop_available() -> bool:
+	return campaign != null and campaign.day > 1 and shop_available and not shift_in_progress
+
+func _refresh_shop_button() -> void:
+	if shop_button != null:
+		shop_button.visible = _is_shop_available()
+
+func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
+	if not campaign.purchase_store_group(group_id, price): return
+	_update_cash(campaign.cash)
+	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
+	_rebuild_product_shelf()
+	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
 
 func _on_store_purchase_requested(group_id: String) -> void:
 	var config := StoreConfig.load_config("res://data/store_config.json")

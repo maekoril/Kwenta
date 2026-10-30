@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_closing_emits_once()
 	_test_two_customers_keep_separate_orders_and_capacity()
 	_test_campaign_unlocks_and_pacing()
+	_test_shelf_purchase_costs_cash_once()
 	_test_optional_unlock_costs_cash_once()
 	_test_seven_day_story_remembers_choices_and_callbacks()
 	_test_counter_sprite_atlases_cover_the_campaign_catalog()
@@ -189,6 +190,13 @@ func _test_optional_unlock_costs_cash_once() -> void:
 	_assert(campaign.cash == cash_before - optional_product.unlock_cost, "duplicate purchase does not spend more cash")
 	campaign.advance_day()
 	_assert(campaign.is_product_available(optional_product), "optional product remains unlocked on later days")
+
+func _test_shelf_purchase_costs_cash_once() -> void:
+	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
+	_assert(campaign.purchase_store_group("water_shelf", 120), "sufficient Day 1 cash buys the water shelf")
+	_assert(campaign.cash == 30 and campaign.purchased_store_groups.has("water_shelf"), "water shelf purchase records ownership and deducts its configured cost")
+	_assert(not campaign.purchase_store_group("water_shelf", 120), "an owned shelf cannot be purchased twice")
+	_assert(campaign.cash == 30, "duplicate shelf purchase does not spend cash")
 
 func _test_seven_day_story_remembers_choices_and_callbacks() -> void:
 	var story: StoryProgression = StoryProgressionScript.new(CampaignFixture)
