@@ -3,10 +3,9 @@ extends RefCounted
 
 # Everything you might want to tune about the change (sukli) system lives here.
 
-# Day 1: customers pay exact, so you only learn to drag products.
-# Day 2 ("Mali ang Sukli") and later: customers hand over a bigger bill and you give change.
-# Set this to 1 while testing so change shows up straight away.
-const FIRST_CHANGE_DAY := 1
+# Day 1 teaches direct serving. Day 2 ("Mali ang Sukli") introduces change,
+# then keeps it in the loop for the rest of the campaign.
+const FIRST_CHANGE_DAY := 2
 
 # Coins and bills in the player's tray.
 const DENOMINATIONS: Array[int] = [1, 5, 10, 20, 50]
@@ -30,8 +29,9 @@ const SHORT_PENALTY_SECONDS := 4.0
 static func is_enabled(day: int) -> bool:
 	return day >= FIRST_CHANGE_DAY
 
-# Central difficulty rule for every Sukli presentation. Days 1–2 teach the
-# calculation; day 3 onward leaves it to the player.
+# Days 1–2 show the complete calculation helper. Every day still shows the
+# amount due, so later difficulty comes from serving under pressure instead of
+# remembering a hidden number.
 static func sukli_guide_enabled_for_day(day: int) -> bool:
 	return day == 1 or day == 2
 

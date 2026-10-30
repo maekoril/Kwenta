@@ -99,15 +99,16 @@ The playable customer roster uses the approved cast: Aling Nena, Mang Berting, B
 Values currently in `data/story/summer_campaign.tres` and `scripts/campaign_config.gd`:
 
 - Initial cash: **₱150**
-- Shift length: **480 seconds** (8 real-time minutes mapped to 8:00 AM–8:00 PM)
-- Customer spawn interval: **18 seconds**
-- Customer patience: **55 seconds**
+- Full-day shift length: **480 seconds** (8 real-time minutes mapped to 8:00 AM–8:00 PM)
+- Closing times by day: **12 PM, 5 PM, 6 PM, 6 PM, 8 PM, 8 PM, 8 PM** (Days 1–7)
+- Customer spawn intervals by day: **18, 16, 14, 12, 9, 6, 12 seconds**
+- Customer patience by day: **tutorial/no pressure, 50, 40, 32, 28, 25, finale/no loss seconds**
 - Trust loss on timeout: **25 points**
 - Shelf replacement goal: **₱1,500**
 - Trusted regular goal: **3 customers** at **80% trust or more**
 - Campaign length: **7 days**
-- Active customer caps by day: **2, 2, 2, 3, 3, 4, 4**
-- Maximum order units by day: **3, 3, 3, 4, 4, 4, 5**
+- Active customer caps by day: **1, 2, 2, 3, 4, 5, 4**
+- Maximum order units by day: **2, 3, 3, 4, 4, 5, 5**
 
 These are tunable prototype values, not immutable design laws.
 
