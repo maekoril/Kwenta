@@ -18,6 +18,7 @@ const PAUSE_MENU = preload("res://scripts/pause_menu.gd")
 const SHIFT_STORY_EVENTS = preload("res://scripts/shift_story_events.gd")
 const SHOP_BUTTON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const SHOP_ICON_TEXTURE: Texture2D = preload("res://assets/sprites/ui/shop/lucide_store.svg")
+const SHOP_GRACE_DURATION_SECONDS := 60.0
 const SUMMARY_PANEL_POS := Vector2(240, 129)
 const STORE_ATMOSPHERE = preload("res://scripts/store_atmosphere.gd")
 const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_rain.png"
@@ -80,6 +81,7 @@ var pending_story_choices: Array[Dictionary] = []
 const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for shelf purchases after skipping
 var shift_in_progress: bool = false
 var shop_available: bool = false
+var shop_grace_remaining_seconds := 0.0
 var debug_skip_button: Button
 var pending_choice_index: int = 0
 var showing_shift_results: bool = false
@@ -162,6 +164,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if shift != null and shift_in_progress:
 		shift.advance_time(delta)
+		if shop_grace_remaining_seconds > 0.0:
+			shop_grace_remaining_seconds = maxf(0.0, shop_grace_remaining_seconds - delta)
+			if is_zero_approx(shop_grace_remaining_seconds):
+				_refresh_shop_button()
 	ui_refresh_elapsed += delta
 	if ui_refresh_elapsed >= 0.12:
 		ui_refresh_elapsed = 0.0
@@ -1189,8 +1195,9 @@ func _show_pre_shift_briefing() -> void:
 
 func _begin_shift() -> void:
 	shop_available = false
-	_refresh_shop_button()
+	shop_grace_remaining_seconds = SHOP_GRACE_DURATION_SECONDS
 	shift_in_progress = true
+	_refresh_shop_button()
 	if pause_menu != null:
 		pause_menu.set_available(true)
 	if debug_skip_button != null:
@@ -1471,15 +1478,25 @@ func _open_shelf_shop() -> void:
 		tutorial_overlay.visible = false
 
 func _is_shop_available() -> bool:
-	return campaign != null and campaign.day > 1 and shop_available and not shift_in_progress
+	if campaign == null or campaign.day <= 1:
+		return false
+	# The pre-shift shop stays open normally. Once the shift starts, players get
+	# one real minute to make a final shelf purchase before the rush locks it.
+	return shop_available or (shift_in_progress and shop_grace_remaining_seconds > 0.0)
 
 func _refresh_shop_button() -> void:
 	if shop_button != null:
 		shop_button.visible = _is_shop_available()
+		# ShiftStoryEvents moves the full-screen dialogue bubble to the top of the
+		# tree. Keep this tap target after it, otherwise the bubble consumes taps.
+		if shop_button.visible:
+			move_child(shop_button, get_child_count() - 1)
 
 func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
 	if not campaign.purchase_store_group(group_id, price): return
 	_update_cash(campaign.cash)
+	# Refresh both the authored storefront art and the transparent drag targets
+	# from the same purchased-group state in this frame.
 	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
 	_rebuild_product_shelf()
 	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)

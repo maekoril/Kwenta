@@ -67,6 +67,7 @@ func _initialize() -> void:
 
 	modal.queue_free()
 	await _test_shop_icon_availability()
+	await _test_shop_grace_period()
 	await _test_live_purchase("hanging_strip", 0)
 	await _test_live_purchase("water_shelf", 30)
 	if failures > 0:
@@ -100,6 +101,14 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 	_assert(cash_label != null and cash_label.text == "₱%d" % expected_cash, "%s purchase refreshes the cash tag immediately" % group_id)
 	var refreshed_button := shop.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_%s/BuyButton" % group_id) as Button
 	_assert(refreshed_button != null and refreshed_button.disabled and refreshed_button.text == "PURCHASED", "%s purchase refreshes its button state immediately" % group_id)
+	var renderer := main.get("store_layer_renderer") as Control
+	var config: Dictionary = StoreConfigScript.load_config("res://data/store_config.json")
+	for product_id in config.get("products", {}):
+		var entry: Dictionary = config.products[product_id]
+		if str(entry.get("purchase_group", "")) != group_id:
+			continue
+		_assert(renderer != null and renderer.get_node_or_null("Slots/%s_product" % product_id) != null, "%s product art appears in the storefront after purchase" % product_id)
+		_assert(main.get("product_items_by_id").has(str(entry.get("game_product_id", ""))), "%s becomes draggable after purchase" % product_id)
 	main.queue_free()
 
 func _test_shop_icon_availability() -> void:
@@ -112,12 +121,15 @@ func _test_shop_icon_availability() -> void:
 	_assert(shop_button != null and not shop_button.visible, "Shop icon stays hidden on Day 1")
 	_assert(shop_button != null and shop_button.size == Vector2(72, 72) and shop_button.z_index == 55 and _button_texture_path(shop_button) == "res://assets/sprites/ui/sukli/sized/ibigay_button.png", "Shop icon uses the ibigay texture as a compact square button above dialogue")
 	_assert(shop_icon != null and shop_icon.texture != null and shop_icon.texture.resource_path == "res://assets/sprites/ui/shop/lucide_store.svg" and shop_icon.size == Vector2(40, 40), "Shop icon uses the hollow Lucide Store art")
-	_assert(shop_button != null and shop_button.get_parent() == main and bubble != null and shop_button.get_index() > bubble.get_index(), "Shop icon is added after dialogue so it receives taps first")
+	_assert(shop_button != null and shop_button.get_parent() == main, "Shop icon is attached to the main UI")
 	var campaign = main.get("campaign")
 	campaign.day = 2
 	main.set("shop_available", true)
 	main.call("_refresh_shop_button")
 	_assert(shop_button != null and shop_button.visible, "Shop icon appears before Day 2 starts")
+	# Story setup moves its dialogue bubble to the top of the tree. The shop must
+	# be moved back above it whenever it is available, or the bubble eats the tap.
+	_assert(shop_button != null and bubble != null and shop_button.get_index() > bubble.get_index(), "Shop icon stays above the dialogue bubble after story setup")
 	if shop_button != null:
 		shop_button.emit_signal("pressed")
 	var shop := main.get("shelf_shop") as Control
@@ -125,9 +137,26 @@ func _test_shop_icon_availability() -> void:
 	if shop != null:
 		shop.call("close")
 	main.call("_begin_shift")
-	_assert(shop_button != null and not shop_button.visible, "Shop icon hides when the shift starts")
+	_assert(shop_button != null and shop_button.visible, "Shop icon remains visible during the post-dialogue grace period")
+	main.set("shop_grace_remaining_seconds", 0.0)
+	main.call("_refresh_shop_button")
+	_assert(shop_button != null and not shop_button.visible, "Shop icon hides after the post-dialogue grace period")
 	main.call("_open_shelf_shop")
 	_assert(shop != null and not shop.visible, "shop cannot open during an active shift")
+	main.queue_free()
+
+func _test_shop_grace_period() -> void:
+	var main := MainScene.instantiate() as Control
+	root.add_child(main)
+	await process_frame
+	var campaign = main.get("campaign")
+	campaign.day = 2
+	main.set("shop_available", false)
+	main.set("shift_in_progress", true)
+	main.set("shop_grace_remaining_seconds", 60.0)
+	_assert(bool(main.call("_is_shop_available")), "Shop remains available for its 60-second post-dialogue grace period")
+	main.set("shop_grace_remaining_seconds", 0.0)
+	_assert(not bool(main.call("_is_shop_available")), "Shop grace closes after 60 seconds")
 	main.queue_free()
 
 func _assert(condition: bool, message: String) -> void:
