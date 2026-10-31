@@ -5,6 +5,7 @@ const RAIN_STORE_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_e
 const FIESTA_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_fiesta.png")
 const FIESTA_BROWNOUT_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png")
 const EVENING_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png")
+const NIGHT_BACKGROUND = preload("res://assets/store/kwenta_layer_pack/bg_empty_night_lights.png")
 const SUNBEAMS = preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
 var failures := 0
 func _initialize() -> void:
@@ -84,6 +85,17 @@ func _initialize() -> void:
 			main.call("set_environment_game_minute", 540)
 			var evening_fade := main_renderer.get_node_or_null("EnvironmentFadeBackground") as TextureRect
 			_assert(evening_fade != null and evening_fade.texture == EVENING_BACKGROUND and is_equal_approx(evening_fade.modulate.a, 0.5), "5 PM crossfades a sunny day to the evening image")
+			main.call("apply_environment", 3)
+			var stocked_before: Array = main_renderer.stock.duplicate()
+			main.call("set_environment_game_minute", 510)
+			_assert(evening_fade.texture == EVENING_BACKGROUND and is_equal_approx(evening_fade.modulate.a, 0.5), "Day 3 reaches half golden hour at 4:30")
+			main.call("set_environment_game_minute", 570)
+			_assert(main_renderer.get_node("EmptyBackground").texture == EVENING_BACKGROUND and evening_fade.texture == NIGHT_BACKGROUND and is_equal_approx(evening_fade.modulate.a, 0.5), "Day 3 crossfades golden hour to lit night at 5:30")
+			_assert(not day_one_sunbeams.visible and main_renderer.stock == stocked_before and main_renderer.get_node_or_null("Slots/feeta_product") != null, "night hides sunbeams and preserves products")
+			main.call("set_environment_game_minute", 600)
+			_assert(is_equal_approx(evening_fade.modulate.a, 1.0), "Day 3 shows full night at 6 PM")
+			main.call("set_environment_game_minute", 480)
+			_assert(main_renderer.get_node("EmptyBackground").texture == Renderer.EMPTY_BACKGROUND and evening_fade.texture == EVENING_BACKGROUND and is_zero_approx(evening_fade.modulate.a), "rewinding the preview restores daytime")
 		main.call("apply_environment", 6)
 		_assert(main.has_method("trigger_day_six_brownout"), "main exposes a Day 6 brownout trigger")
 		main.call("apply_environment", 7)

@@ -55,6 +55,9 @@ var _hover_text: Dictionary = {}                # customer_id -> remark shown wh
 var _mixup_entry: Dictionary = {}
 var _visitor_layer: CanvasLayer
 var _visitor_tutorial_seen := false
+var _scene_choice_done := false
+var _paolo_note_visible := false
+var _scene_options: Array[Dictionary] = []
 
 
 func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: DialogueBubble, atlas: Texture2D) -> void:
@@ -134,7 +137,7 @@ func begin_shift(day: int) -> void:
 		shift.mixup_remaining = int(_mixup_entry.get("count", 0))
 		shift.mixup_every = int(_mixup_entry.get("every", 3))
 	for event in story.get_day_shift_events(day):
-		var reserved := str(event.get("visitor", ""))
+		var reserved := str(event.get("reserve_customer", event.get("visitor", "")))
 		if not reserved.is_empty() and not shift.reserved_story_ids.has(reserved):
 			shift.reserved_story_ids.append(reserved)
 		if str(event.get("type", "")) == "customer" and int(event.get("at_minute", 0)) <= 0:
@@ -184,13 +187,16 @@ func suppress() -> void:
 # ------------------------------------------------------------ timed events
 
 func _on_game_minutes(minute: int) -> void:
-	if not _in_shift or _suppressed or shift.is_closing:
+	if not _in_shift or _suppressed:
 		return
 	while not _timed.is_empty():
 		var event: Dictionary = _timed[0]
 		if int(event.get("at_minute", 0)) > minute:
 			return
 		var kind := str(event.get("type", ""))
+		if shift.is_closing and not (kind == "scene" and bool(event.get("wait_for_clear", false))):
+			_timed.pop_front()
+			continue
 		if kind == "scene" and bool(event.get("wait_for_clear", false)):
 			if not _waiting_scene.is_empty():
 				return
@@ -225,6 +231,10 @@ func _try_start_waiting_scene() -> void:
 		return
 	var event := _waiting_scene
 	_waiting_scene = {}
+	# Older saves may already have added Berting's money to the register.
+	# Check affordability at the encounter, after any pre-shift purchases.
+	if str(event.get("visitor", "")) == "mang_berting" and not story.get_choice("day2_cash_legacy").is_empty():
+		story.choices["day2_cash_legacy"] = "available" if shift.campaign_state.cash >= 50 else "spent"
 	shift.story_waiting_for_clear = false
 	_queue_popup({"kind": "scene", "event": event})
 
@@ -304,6 +314,7 @@ func _start_next() -> void:
 		_finish()
 		return
 	_current = _queue.pop_front()
+	_scene_choice_done = false
 	match str(_current.get("kind", "")):
 		"arrival":
 			_play_beats(_current.get("beats", []))
@@ -377,7 +388,8 @@ func _on_story_visitor_tapped() -> void:
 		story_visitor_tapped.emit()
 		return
 	var event: Dictionary = _current.get("event", {})
-	shift.reserved_story_ids.erase(str(event.get("visitor", "")))
+	if not bool(event.get("reserve_until_shift_end", false)):
+		shift.reserved_story_ids.erase(str(event.get("reserve_customer", event.get("visitor", ""))))
 	_hide_story_visitor()
 	if str(_current.get("kind", "")) == "interruption":
 		_show_interruption()
@@ -385,6 +397,8 @@ func _on_story_visitor_tapped() -> void:
 		var flag := str(event.get("seen_flag", ""))
 		if not flag.is_empty():
 			story.choices[flag] = "seen"
+		for key in event.get("set_choices", {}):
+			story.choices[str(key)] = str(event["set_choices"][key])
 		_play_beats(story.filter_story_beats(event.get("beats", [])))
 
 func _mark_visitor_tutorial_seen() -> void:
@@ -397,6 +411,12 @@ func _hide_story_visitor() -> void:
 	if is_instance_valid(_visitor_layer):
 		_visitor_layer.queue_free()
 		_visitor_layer = null
+	_hide_paolo_note()
+
+func _hide_paolo_note() -> void:
+	if _paolo_note_visible:
+		_paolo_note_visible = false
+		story_prop_requested.emit("hide_paolo_debt_note")
 
 
 func _finish() -> void:
@@ -422,6 +442,8 @@ func _release() -> void:
 	if shift != null:
 		shift.frozen = false
 	popup_state_changed.emit(false)
+	if shift != null and shift.is_closing:
+		_on_game_minutes(shift.shift_close_minutes)
 	_try_start_waiting_scene.call_deferred()
 
 
@@ -430,6 +452,8 @@ func _on_bubble_choice(index: int) -> void:
 		return
 	_mode = ""
 	match str(_current.get("kind", "")):
+		"scene":
+			_resolve_scene_choice(index)
 		"haggle":
 			_resolve_haggle(index == 0)
 		"mixup":
@@ -453,7 +477,14 @@ func _play_beats(raw_beats: Variant) -> void:
 
 
 func _next_beat() -> void:
+	_hide_paolo_note()
 	if _beats.is_empty():
+		if str(_current.get("kind", "")) == "scene" and not _scene_choice_done:
+			var event: Dictionary = _current.get("event", {})
+			var choice: Dictionary = event.get("choice", {})
+			if not choice.is_empty():
+				_show_scene_choice(choice)
+				return
 		if str(_current.get("kind", "")) == "customer_visitor":
 			var instance_id := str(_current.get("id", ""))
 			var customer := _find_story_customer(instance_id)
@@ -466,9 +497,44 @@ func _next_beat() -> void:
 	_mode = "beats"
 	var beat: Dictionary = _beats.pop_front()
 	if beat.has("show_prop"):
+		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
 		story_prop_requested.emit(str(beat["show_prop"]))
 	var portrait_id := str(beat.get("portrait", ""))
 	bubble.show_beat(str(beat.get("speaker", "Narrator")), str(beat.get("text", "")), _portrait(portrait_id), portrait_id)
+
+func _show_scene_choice(choice: Dictionary) -> void:
+	var labels: Array[String] = []
+	_scene_options = story.filter_story_beats(choice.get("options", []))
+	for option in _scene_options:
+		labels.append(str(option.get("label", "")))
+	_mode = "choice"
+	bubble.ask("Narrator", str(choice.get("prompt", "Ano ang gagawin?")), labels, _portrait("tonyo"), "tonyo")
+
+func _resolve_scene_choice(index: int) -> void:
+	var event: Dictionary = _current.get("event", {})
+	var choice: Dictionary = event.get("choice", {})
+	var options: Array = _scene_options
+	if index < 0 or index >= options.size():
+		_show_scene_choice(choice)
+		return
+	var option: Dictionary = options[index]
+	var choice_id := str(choice.get("id", ""))
+	var option_id := str(option.get("id", ""))
+	if not story.record_choice(choice_id, option_id):
+		push_warning("Could not record story choice %s / %s" % [choice_id, option_id])
+		return
+	var amount := int(option.get("cash_delta", 0))
+	if story.get_choice("day2_cash_legacy") == "available":
+		amount += int(option.get("cash_delta_legacy", 0))
+	if amount != 0:
+		shift.campaign_state.cash += amount
+		if bool(choice.get("record_sale", false)):
+			shift.shift_earnings += amount
+			shift.customers_served += 1
+			shift.customer_served.emit(str(event.get("visitor", "")), 1)
+		shift.cash_changed.emit(shift.campaign_state.cash)
+	_scene_choice_done = true
+	_play_beats(story.get_choice_response(choice, option_id))
 
 
 func _portrait(portrait_id: String) -> Texture2D:

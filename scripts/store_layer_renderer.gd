@@ -244,6 +244,22 @@ func set_front_background_alpha(alpha: float) -> void:
 	foreground.modulate.a = clampf(alpha, 0.0, 1.0)
 	foreground.visible = foreground.modulate.a > 0.0
 
+func set_time_blend_base(texture: Texture2D) -> void:
+	var background := get_node_or_null("EmptyBackground") as TextureRect
+	var target := texture if texture != null else EMPTY_BACKGROUND
+	if background == null or background.texture == target:
+		return
+	background.texture = target
+	_apply_full_background_sill(texture != null, target)
+
+func set_time_sunbeam_alpha(alpha: float) -> void:
+	var beams := get_node_or_null("SunbeamOverlay") as Sprite2D
+	if beams != null:
+		if sunbeam_tween != null and sunbeam_tween.is_valid():
+			sunbeam_tween.kill()
+		beams.modulate.a = clampf(alpha, 0.0, 1.0)
+		beams.visible = beams.modulate.a > 0.0
+
 func _apply_full_background_sill(show: bool, background_texture: Texture2D) -> void:
 	var rainy_sill := get_node_or_null("RainForegroundSill") as TextureRect
 	if rainy_sill == null:

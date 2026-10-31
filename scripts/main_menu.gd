@@ -8,6 +8,7 @@ const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
 const BRUSH_STROKE = preload("res://scripts/menu_brush_stroke.gd")
 const STORY_TRANSITION = preload("res://scripts/menu_story_transition.gd")
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
+const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
 const DESIGN_SIZE := Vector2(1920, 1080)
 var menu_canvas: Control
 var settings_menu
@@ -17,6 +18,8 @@ func _ready() -> void:
 	AUDIO_SETTINGS.initialize()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_menu()
+	if OS.is_debug_build():
+		add_child(DEBUG_TOOLS.new())
 	settings_menu = SETTINGS_MENU.new()
 	add_child(settings_menu)
 	resized.connect(_layout_menu)

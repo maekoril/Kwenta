@@ -1,7 +1,12 @@
 extends SceneTree
+const SAVE = preload("res://scripts/campaign_save.gd")
+const TEST_PATH := "res://tests/main_menu_flow_save_temp.json"
 func _initialize() -> void:
 	call_deferred("run")
 func run() -> void:
+	SAVE.save_path = TEST_PATH
+	if FileAccess.file_exists(TEST_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 	assert(change_scene_to_file("res://scenes/main_menu.tscn") == OK)
 	await process_frame
 	await process_frame
@@ -30,5 +35,6 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	assert(not paused and current_scene.get_script().resource_path == "res://scripts/main_menu.gd")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
 	print("Main menu, prologue, and pause return passed")
 	quit()

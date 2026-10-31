@@ -8,6 +8,13 @@ const CAMPAIGN := preload("res://data/story/summer_campaign.tres")
 const DISPLAY_TINT := Color.WHITE
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
+const NEIGHBOR_PORTRAITS := {
+	"neighbor_lina": preload("res://assets/sprites/customers/neighbor_lina.png"),
+	"neighbor_rosa": preload("res://assets/sprites/customers/neighbor_rosa.png"),
+	"neighbor_nico": preload("res://assets/sprites/customers/neighbor_nico.png"),
+	"neighbor_ramon": preload("res://assets/sprites/customers/neighbor_ramon.png"),
+}
+
 const CUSTOMER_REGIONS := {
 	"tonyo": Rect2(0.0, 0.0, 512.0, 512.0),
 	"tonyo_bored": Rect2(0.0, 0.0, 512.0, 512.0),
@@ -66,6 +73,14 @@ static func product_fixture_texture(product_id: String) -> Texture2D:
 	return product_display_texture(product_id)
 
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:
+	if NEIGHBOR_PORTRAITS.has(customer_id):
+		var texture: Texture2D = NEIGHBOR_PORTRAITS[customer_id]
+		var neighbor := AtlasTexture.new()
+		neighbor.atlas = texture
+		var texture_size := texture.get_size()
+		var side := minf(texture_size.x, texture_size.y)
+		neighbor.region = Rect2((texture_size.x - side) / 2.0, 0.0, side, side)
+		return neighbor
 	if portrait_atlas == null:
 		return null
 	var portrait := AtlasTexture.new()

@@ -11,7 +11,7 @@ signal shift_completed
 signal customer_timed_out(customer_instance_id: String)
 signal barangay_trust_changed(new_value: float) # BAGO
 signal game_over_triggered() # BAGO
-signal customer_served(customer_id: String, order_units: int)
+signal customer_served(customer_id: String, product_types: int)
 signal story_customer_arrived(customer_instance_id: String, beats: Array)
 signal haggle_requested(customer_instance_id: String, ask: int)
 signal mixup_requested(customer_instance_id: String, product_id: String)
@@ -25,6 +25,7 @@ var campaign_state: CampaignState
 var products_by_id: Dictionary
 var rng: RandomNumberGenerator
 var active_customers: Array[CustomerState] = []
+var recent_customer_ids: Array[String] = []
 var elapsed_seconds: float = 0.0
 var spawn_elapsed: float = 0.0
 var current_spawn_delay: float = 0.0
@@ -92,6 +93,7 @@ func reset_story_state() -> void:
 func start_shift() -> void:
 	frozen = false
 	active_customers.clear()
+	recent_customer_ids.clear()
 	elapsed_seconds = 0.0
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
@@ -410,9 +412,10 @@ func finish_shift() -> void:
 	shift_completed.emit()
 
 func _finish_sale(customer: CustomerState, net_cash: int) -> void:
-	var order_units := 0
+	var product_types := 0
 	for quantity in customer.order.delivered.values():
-		order_units += int(quantity)
+		if int(quantity) > 0:
+			product_types += 1
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
 	customers_served += 1
@@ -421,7 +424,7 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 		barangay_trust_changed.emit(campaign_state.barangay_trust)
 	campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 	customer.finish_as_paid()
-	customer_served.emit(customer.customer_id, order_units)
+	customer_served.emit(customer.customer_id, product_types)
 	active_customers.erase(customer)
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
@@ -461,6 +464,8 @@ func _spawn_customer() -> void:
 		else:
 			# Random spawn para sa mga susunod na customers
 			id = _choose_customer_id()
+			if id.is_empty():
+				return
 			var order_data := campaign_state.get_order_data_for_day(campaign_state.day)
 			order = OrderFactory.make_order(order_data, campaign_state.get_available_product_ids(), rng)
 		# ------------------------------------------------------
@@ -479,6 +484,9 @@ func _spawn_customer() -> void:
 	customer.tendered_override = int(story_entry.get("tendered", 0))
 	customer_sequence += 1
 	customer.instance_id = "%s_%d" % [id, customer_sequence]
+	recent_customer_ids.append(id)
+	if recent_customer_ids.size() > 2:
+		recent_customer_ids.pop_front()
 
 	campaign_state.save_customer_trust(id, customer.trust)
 	active_customers.append(customer)
@@ -509,7 +517,13 @@ func _choose_customer_id() -> String:
 		if not already_here:
 			ids.append(candidate)
 	if ids.is_empty():
-		return campaign_state.config.customer_ids[0]
+		return ""
+	var fresh_ids: Array[String] = []
+	for id in ids:
+		if not recent_customer_ids.has(id):
+			fresh_ids.append(id)
+	if not fresh_ids.is_empty():
+		ids = fresh_ids
 	var total_weight := 0.0
 	for id in ids:
 		total_weight += maxf(0.05, campaign_state.get_customer_trust(id) / 100.0)

@@ -53,6 +53,10 @@ func record_choice(choice_id: String, option_id: String) -> bool:
 	for day in range(1, get_campaign_day_count() + 1):
 		var day_choices: Array[Dictionary] = get_day_intro_choices(day)
 		day_choices.append_array(get_day_choices(day))
+		for event in get_day_shift_events(day):
+			var event_choice: Variant = event.get("choice", {})
+			if event_choice is Dictionary and not event_choice.is_empty():
+				day_choices.append(event_choice)
 		for choice_data in day_choices:
 			if str(choice_data.get("id", "")) != choice_id:
 				continue

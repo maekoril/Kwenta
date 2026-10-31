@@ -17,7 +17,7 @@ func _init(day: int) -> void:
 		2:
 			_setup(Type.EXACT_CHANGE, "Give 2 exact sukli", "Tamang Sukli medal", 2)
 		3:
-			_setup(Type.MULTI_ITEM_ORDERS, "Finish 3 multi-item orders", "Maayos na Order medal", 3)
+			_setup(Type.MULTI_ITEM_ORDERS, "Complete 3 orders with 2+ different products", "Maayos na Order medal", 3)
 		4:
 			_setup(Type.NO_TIMEOUTS, "Let no customer leave", "Tag-ulan medal", 1)
 		5:
@@ -33,10 +33,10 @@ func _setup(goal_type: int, goal_title: String, goal_reward: String, goal_target
 	reward = goal_reward
 	target = goal_target
 
-func record_customer_served(order_units: int) -> void:
+func record_customer_served(product_types: int) -> void:
 	if type == Type.CUSTOMERS_SERVED:
 		current = mini(target, current + 1)
-	elif type == Type.MULTI_ITEM_ORDERS and order_units > 1:
+	elif type == Type.MULTI_ITEM_ORDERS and product_types > 1:
 		current = mini(target, current + 1)
 
 func record_exact_change() -> void:

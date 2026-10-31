@@ -45,7 +45,6 @@ const CONTENT_PADDING := 24.0
 const CONTENT_GAP := 21.0
 const TRAY_VERTICAL_GAP := 21.0
 const TRAY_SCALE := 0.95
-const NOTE_UNGUIDED_HEIGHT_RATIO := 0.30
 const NOTE_GUIDED_EXTRA_HEIGHT := 36.0
 const HELPER_AMBER := Color("#8b4f19")
 const HELPER_RED := Color("#992f25")
@@ -133,9 +132,11 @@ func open_for(customer: CustomerState, guide_enabled: bool) -> void:
 	_due_label.visible = true
 	_list_change_row.visible = true
 	_list_rule.visible = true
-	_note_paper.size.y = _top_row_height + NOTE_GUIDED_EXTRA_HEIGHT if _guide_enabled else _drawer_size.y * NOTE_UNGUIDED_HEIGHT_RATIO
-	for index in _list_spacers.size():
-		_list_spacers[index].visible = _guide_enabled or index < 2
+	# All days display BAYAD, BILI, and SUKLI. Keep enough paper and spacing
+	# for all three rows even when the extra calculation guide is hidden.
+	_note_paper.size.y = _top_row_height + NOTE_GUIDED_EXTRA_HEIGHT
+	for spacer in _list_spacers:
+		spacer.visible = true
 	_progress_bar.visible = true
 	_helper_row.visible = _guide_enabled
 	# The selected-total progress stays visible after the Day 2 lesson; only the

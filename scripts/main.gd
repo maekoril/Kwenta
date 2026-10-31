@@ -14,6 +14,8 @@ const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
 const AUDIO_SETTINGS = preload("res://scripts/audio_settings.gd")
 const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
 const STORY_EVENT_MARKER = preload("res://scripts/story_event_marker.gd")
+const PAOLO_DEBT_NOTE = preload("res://scripts/paolo_debt_note.gd")
+const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
@@ -32,12 +34,13 @@ const RAIN_STORE_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_emp
 const FIESTA_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta.png"
 const FIESTA_BROWNOUT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_fiesta_brownout.png"
 const EVENING_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_golden_hour.png"
+const NIGHT_BACKGROUND_PATH := "res://assets/store/kwenta_layer_pack/bg_empty_night_lights.png"
 const NO_GRADE := Color(0.0, 0.0, 0.0, 0.0)
 const GAME_OVER_SCREEN = preload("res://scripts/game_over_screen.gd")
 const DAY_FOCUS_HINTS := {
 	1: "Drag a product from the shelf to the customer who ordered it.",
 	2: "Shop before opening. Today, give the correct sukli after each sale.",
-	3: "Practice multi-item orders. More customers are starting to overlap.",
+	3: "Practice orders with different products while customers overlap.",
 	4: "Rain makes customers less patient. Serve the shortest bar first.",
 	5: "Keep your regulars happy during the Mini-Save rush.",
 	6: "Fiesta rush! Up to five customers can wait at once.",
@@ -74,6 +77,8 @@ var customer_story_actor: Control
 var story_visitor_portrait: TextureRect
 var resumed_campaign := false
 var resumed_completed := false
+var debug_session := false
+var debug_launch_data: Dictionary = {}
 var checkpoint_ready := false
 var completed_tutorials: Dictionary = {}
 var story_visitor_entrance: Tween
@@ -90,6 +95,7 @@ var bubble: DialogueBubble
 var prologue_background: TextureRect
 var prologue_fade: ColorRect
 var story_illustration: TextureRect
+var paolo_debt_note: Control
 var supplier_note
 var current_choice_data: Dictionary = {}
 var current_choice_ids: Array[String] = []
@@ -130,7 +136,7 @@ var angry_customer_ids: Dictionary = {}
 var ENVIRONMENT_BY_DAY: Dictionary = {
 	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 540, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 540, "night_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 	4: {"base_path": RAIN_STORE_BACKGROUND_PATH, "full_background": true, "evening_path": "", "grade_color": NO_GRADE, "rain_particles": true, "sunbeams": false, "flicker_event": true},
 	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 	6: {"base_path": FIESTA_BACKGROUND_PATH, "full_background": true, "evening_path": "", "brownout_path": FIESTA_BROWNOUT_BACKGROUND_PATH, "brownout_at_game_minute": 360, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": false, "flicker_event": false},
@@ -163,6 +169,7 @@ var daily_goal
 var daily_goal_day := 0
 var showing_pre_shift_briefing := false
 var resume_briefing_after_shop := false
+var new_purchase_groups_today: Array[String] = []
 
 enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE }
 func _ready() -> void:
@@ -171,11 +178,34 @@ func _ready() -> void:
 	resized.connect(_recenter_fixed_hud)
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
-	if bool(get_tree().get_meta("kwenta_continue_game", false)):
+	if OS.is_debug_build() and get_tree().has_meta("kwenta_debug_launch"):
+		debug_launch_data = get_tree().get_meta("kwenta_debug_launch")
+		get_tree().remove_meta("kwenta_debug_launch")
+		debug_session = true
+		campaign.day = clampi(int(debug_launch_data.get("day", 1)), 1, CAMPAIGN_CONFIG.campaign_day_count)
+		campaign.cash = 1500
+		if campaign.day > 1:
+			story.choices["day1_play"] = str(debug_launch_data.get("day1", "stay"))
+		var money_choice := str(debug_launch_data.get("day2", "none")) if campaign.day > 2 else "none"
+		if money_choice != "none":
+			story.choices["day2_berting_money"] = "seen"
+			story.choices["day2_overpayment"] = money_choice
+			if money_choice == "keep":
+				story.choices["day2_money_separate"] = "yes"
+		if campaign.day == 3 and int(debug_launch_data.get("moment", 0)) in [6, 7, 8]:
+			var friends_choice := str(debug_launch_data.get("day3_friends", "none"))
+			if friends_choice in ["later", "stay"]:
+				story.choices["day3_friends"] = friends_choice
+		if bool(debug_launch_data.get("skip_tutorials", true)):
+			completed_tutorials = {"day1_hud": true, "day1_drag": true, "day2_shop": true, "day2_sukli": true, "story_event": true}
+			day_two_sukli_tutorial_complete = true
+	elif bool(get_tree().get_meta("kwenta_continue_game", false)):
 		var saved := CAMPAIGN_SAVE.load_progress()
 		if not saved.is_empty():
 			campaign.from_dict(saved["campaign"])
 			story.choices = saved["choices"].duplicate(true)
+			if campaign.day >= 3 and story.get_choice("day2_overpayment") == "keep" and story.get_choice("day2_money_separate").is_empty():
+				story.choices["day2_cash_legacy"] = "available" if campaign.cash >= 50 else "spent"
 			resumed_campaign = true
 			resumed_completed = bool(saved.get("completed", false))
 			checkpoint_ready = true
@@ -209,6 +239,9 @@ func _ready() -> void:
 	_build_bubble()
 	_build_prologue_background()
 	_build_day_two_visuals()
+	paolo_debt_note = PAOLO_DEBT_NOTE.new()
+	paolo_debt_note.name = "PaoloDebtNote"
+	add_child(paolo_debt_note)
 	supplier_note = SUPPLIER_NOTE.new()
 	supplier_note.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(supplier_note)
@@ -223,6 +256,11 @@ func _ready() -> void:
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_build_story_events()
+	if debug_session:
+		story_events._visitor_tutorial_seen = bool(completed_tutorials.get("story_event", false))
+		day_label.text = "D%d" % campaign.day
+		shop_available = campaign.day > 1
+		_refresh_shop_button()
 	if resumed_campaign:
 		story_events._visitor_tutorial_seen = bool(completed_tutorials.get("story_event", false))
 		day_label.text = "D%d" % campaign.day
@@ -230,7 +268,14 @@ func _ready() -> void:
 		_refresh_shop_button()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
-	if get_tree().has_meta("kwenta_menu_story_transition"):
+	if OS.is_debug_build():
+		var debug_tools = DEBUG_TOOLS.new()
+		debug_tools.is_test_session = debug_session
+		add_child(debug_tools)
+	if debug_session:
+		pause_menu.set_available(true)
+		_launch_debug_start.call_deferred()
+	elif get_tree().has_meta("kwenta_menu_story_transition"):
 		prologue_background.visible = not resumed_campaign
 		pause_menu.set_available(false)
 	else:
@@ -250,6 +295,53 @@ func _finish_menu_transition() -> void:
 			_show_save_warning()
 		_present_prologue()
 	pause_menu.set_available(true)
+
+func _launch_debug_start() -> void:
+	if not debug_session or not OS.is_debug_build():
+		return
+	var moment := int(debug_launch_data.get("moment", 0))
+	if moment == 0:
+		_present_day_intro()
+		return
+	if moment == 1:
+		_show_pre_shift_briefing()
+		return
+	if moment == 2:
+		_begin_shift()
+		return
+	# Direct scene previews start a real shift, but skip its opening and customers.
+	_begin_shift()
+	_clear_tutorial_spotlight()
+	if store_sign_tween != null and store_sign_tween.is_valid():
+		store_sign_tween.kill()
+	opening_sign_active = false
+	opening_blocker.visible = false
+	store_sign.visible = false
+	story_events.begin_shift(campaign.day)
+	shift.story_queue.clear()
+	shift.start_shift()
+	shift.active_customers.clear()
+	shift.customers_changed.emit()
+	if moment == 8:
+		story_events.suppress()
+		shift.finish_shift()
+		return
+	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo"}.get(moment, "") as String
+	var matching: Array[Dictionary] = []
+	for event in story_events._timed:
+		if str(event.get("visitor", "")) == visitor:
+			matching.append(event)
+	if matching.is_empty():
+		push_warning("Debug event is not available with those choices.")
+		return
+	var minute := int(matching[0].get("at_minute", 0))
+	var remaining: Array[Dictionary] = []
+	for event in story_events._timed:
+		if int(event.get("at_minute", 0)) >= minute:
+			remaining.append(event)
+	story_events._timed = remaining
+	shift.elapsed_seconds = shift.shift_duration_seconds * float(minute) / float(shift.shift_close_minutes)
+	shift._update_clock()
 
 func _remember_story_event_tutorial() -> void:
 	_remember_tutorial("story_event")
@@ -803,7 +895,7 @@ func set_environment_game_minute(game_minute: int) -> void:
 
 func _prepare_environment_textures(settings: Dictionary) -> void:
 	environment_textures.clear()
-	for key in ["base_path", "evening_path", "brownout_path"]:
+	for key in ["base_path", "evening_path", "night_path", "brownout_path"]:
 		var path := str(settings.get(key, ""))
 		if not path.is_empty():
 			environment_textures[key] = load(path) as Texture2D
@@ -821,8 +913,21 @@ func _update_environment_for_time() -> void:
 		var start := int(environment_settings.get("evening_start_minute", 480))
 		var finish := int(environment_settings.get("evening_end_minute", 600))
 		var progress := clampf(float(environment_game_minute - start) / float(maxi(1, finish - start)), 0.0, 1.0)
-		store_layer_renderer.set_environment_crossfade(environment_textures.get("evening_path") as Texture2D, progress)
-		store_layer_renderer.set_front_background_alpha(1.0 - progress)
+		var night_texture := environment_textures.get("night_path") as Texture2D
+		var night_start := int(environment_settings.get("night_start_minute", 540))
+		if night_texture != null and environment_game_minute >= night_start:
+			var night_end := int(environment_settings.get("night_end_minute", 600))
+			var night_progress := clampf(float(environment_game_minute - night_start) / float(maxi(1, night_end - night_start)), 0.0, 1.0)
+			store_layer_renderer.set_time_blend_base(environment_textures.get("evening_path") as Texture2D)
+			store_layer_renderer.set_front_background_alpha(0.0)
+			store_layer_renderer.set_environment_crossfade(night_texture, night_progress)
+		else:
+			if night_texture != null:
+				store_layer_renderer.set_time_blend_base(null)
+			store_layer_renderer.set_environment_crossfade(environment_textures.get("evening_path") as Texture2D, progress)
+			store_layer_renderer.set_front_background_alpha(1.0 - progress)
+		if night_texture != null:
+			store_layer_renderer.set_time_sunbeam_alpha(0.65 * (1.0 - progress))
 	else:
 		store_layer_renderer.clear_environment_crossfade()
 	if environment_day == 6 and not day_six_brownout_triggered and environment_game_minute >= int(environment_settings.get("brownout_at_game_minute", 9999)):
@@ -1094,7 +1199,7 @@ func _on_customer_timed_out(customer_instance_id: String) -> void:
 	if is_instance_valid(actor):
 		actor.call("play_annoyed")
 
-func _on_customer_served(_customer_id: String, order_units: int) -> void:
+func _on_customer_served(_customer_id: String, product_types: int) -> void:
 	# A completed sale is the authoritative end of the first drag lesson. This
 	# signal survives the customer actor being removed before the drag callback
 	# finishes, so the overlay cannot follow a customer who has already left.
@@ -1106,7 +1211,7 @@ func _on_customer_served(_customer_id: String, order_units: int) -> void:
 	if daily_goal == null:
 		return
 	var was_complete: bool = daily_goal.is_complete()
-	daily_goal.record_customer_served(order_units)
+	daily_goal.record_customer_served(product_types)
 	_refresh_daily_goal_hud()
 	if not was_complete and daily_goal.is_complete():
 		_show_daily_goal_achievement()
@@ -1418,6 +1523,12 @@ func _build_day_two_visuals() -> void:
 	story_illustration.visible = false
 	add_child(story_illustration)
 func _show_story_prop(prop_name: String) -> void:
+	if prop_name == "paolo_debt_note":
+		paolo_debt_note.show_note()
+		return
+	if prop_name == "hide_paolo_debt_note":
+		paolo_debt_note.visible = false
+		return
 	if not is_instance_valid(story_illustration):
 		return
 	if prop_name == "berting_counter_closeup":
@@ -1579,6 +1690,8 @@ func _select_story_choice(choice_data: Dictionary, option_id: String) -> void:
 	var choice_id: String = str(choice_data.get("id", ""))
 	if not story.record_choice(choice_id, option_id):
 		return
+	if choice_id == "day2_overpayment" and option_id == "keep":
+		story.choices["day2_money_separate"] = "yes"
 	var cash_delta := story.get_choice_cash_delta(choice_data, option_id)
 	if cash_delta != 0:
 		var previous_cash := campaign.cash
@@ -1610,9 +1723,10 @@ func _finish_story_day() -> void:
 
 func _show_pending_shift_summary() -> void:
 	bubble.close()
-	checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
-	if not checkpoint_ready:
-		_show_save_warning()
+	if not debug_session:
+		checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
+		if not checkpoint_ready:
+			_show_save_warning()
 	showing_post_shift_summary = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
@@ -1636,6 +1750,7 @@ func _advance_story_day() -> void:
 		summary_button.text = "REPLAY STORY"
 		return
 	campaign.advance_day()
+	new_purchase_groups_today.clear()
 	_update_clock("8:00 AM")
 	shop_available = campaign.day > 1
 	_refresh_shop_button()
@@ -1661,13 +1776,15 @@ func _restart_story() -> void:
 	choices_before_shift = false
 	day_two_sukli_tutorial_complete = false
 	completed_tutorials.clear()
-	checkpoint_ready = CAMPAIGN_SAVE.write_checkpoint(campaign, story, completed_tutorials)
-	if not checkpoint_ready:
-		_show_save_warning()
+	if not debug_session:
+		checkpoint_ready = CAMPAIGN_SAVE.write_checkpoint(campaign, story, completed_tutorials)
+		if not checkpoint_ready:
+			_show_save_warning()
 	daily_goal = null
 	daily_goal_day = 0
 	showing_pre_shift_briefing = false
 	resume_briefing_after_shop = false
+	new_purchase_groups_today.clear()
 	if briefing_card != null:
 		briefing_card.hide_briefing()
 	showing_post_shift_summary = false
@@ -1708,7 +1825,7 @@ func _on_briefing_start_pressed() -> void:
 
 func _show_pre_shift_briefing() -> void:
 	_ensure_daily_goal()
-	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"))
+	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"), new_purchase_groups_today)
 	showing_pre_shift_briefing = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
@@ -1858,6 +1975,9 @@ func _begin_day_two_shop_tutorial() -> void:
 func _on_shelf_shop_closed() -> void:
 	if resume_briefing_after_shop:
 		resume_briefing_after_shop = false
+		_show_pre_shift_briefing()
+		return
+	if showing_pre_shift_briefing:
 		_show_pre_shift_briefing()
 		return
 	if tutorial_step != TutorialStep.DAY2_SHOP:
@@ -2272,6 +2392,7 @@ func _refresh_shop_button() -> void:
 
 func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
 	if not campaign.purchase_store_group(group_id, price): return
+	new_purchase_groups_today.append(group_id)
 	_update_cash(campaign.cash)
 	# Refresh both the authored storefront art and the transparent drag targets
 	# from the same purchased-group state in this frame.
@@ -2295,6 +2416,7 @@ func _on_store_purchase_requested(group_id: String) -> void:
 		if str(entry.get("purchase_group", product_id)) != group_id:
 			continue
 		if campaign.purchase_store_group(group_id, int(entry.get("price", 0))):
+			new_purchase_groups_today.append(group_id)
 			_update_cash(campaign.cash)
 			store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
 			_rebuild_product_shelf()

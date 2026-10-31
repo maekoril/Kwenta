@@ -13,7 +13,7 @@ var product_section_title: String = ""
 var unlocked_product_names: Array[String] = []
 var unlocked_products: Array[ProductData] = []
 
-func _init(day: int, goal, products: Array = [], store_config: Dictionary = {}) -> void:
+func _init(day: int, goal, products: Array = [], store_config: Dictionary = {}, new_purchase_groups: Array = []) -> void:
 	heading = "DAY %d" % day
 	change_lines = _change_lines(day)
 	goal_title = str(goal.title)
@@ -22,14 +22,17 @@ func _init(day: int, goal, products: Array = [], store_config: Dictionary = {}) 
 	title = heading
 	focus = change_lines[0]
 	shift_detail = change_lines[1] if change_lines.size() > 1 else ""
-	var story_unlock_ids: Array[String] = []
+	var new_product_ids: Array[String] = []
 	if not store_config.is_empty():
 		for entry_value in store_config.get("products", {}).values():
 			var entry: Dictionary = entry_value
-			if entry.get("unlock_type") == "story" and int(entry.get("unlock_day", 1)) == day:
-				story_unlock_ids.append(str(entry.get("game_product_id", "")))
+			var is_story_unlock: bool = entry.get("unlock_type") == "story" and int(entry.get("unlock_day", 1)) == day
+			var is_new_purchase: bool = entry.get("unlock_type") == "buyable" and new_purchase_groups.has(str(entry.get("purchase_group", "")))
+			var product_id := str(entry.get("game_product_id", ""))
+			if (is_story_unlock or is_new_purchase) and not product_id.is_empty() and not new_product_ids.has(product_id):
+				new_product_ids.append(product_id)
 	for product_value in products:
-		if product_value is ProductData and (story_unlock_ids.has(product_value.id) if not store_config.is_empty() else product_value.unlock_day == day) and not product_value.display_name.is_empty():
+		if product_value is ProductData and (new_product_ids.has(product_value.id) if not store_config.is_empty() else product_value.unlock_day == day) and not product_value.display_name.is_empty() and not unlocked_products.has(product_value):
 			unlocked_product_names.append(product_value.display_name)
 			unlocked_products.append(product_value)
 	if not unlocked_product_names.is_empty():
@@ -61,7 +64,7 @@ func _change_lines(day: int) -> Array[String]:
 	match day:
 		1: return ["Drag products to serve each order.", "Shift ends at 12:00 PM"]
 		2: return ["Give the correct sukli after each sale.", "Shift ends at 5:00 PM"]
-		3: return ["Multi-item orders begin to overlap.", "Shift ends at 6:00 PM"]
+		3: return ["Practice orders with different products as customers overlap.", "Shift ends at 6:00 PM"]
 		4: return ["Rain makes customers less patient", "Shift ends at 6:00 PM"]
 		5: return ["Regulars matter during the rush.", "Shift ends at 8:00 PM"]
 		6: return ["Fiesta rush: more customers at once.", "A brownout arrives mid-shift"]

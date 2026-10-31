@@ -246,12 +246,12 @@ func _animate_medal(medal: TextureRect) -> void:
 func _settle(viewport_size: Vector2, play_intro: bool = true) -> void:
 	# Let containers recalculate their minimum sizes after switching card contents.
 	await get_tree().process_frame
-	if not visible:
+	if not is_inside_tree() or not visible:
 		return
 	_card.reset_size()
 	_card.size = CARD_SIZE
 	await get_tree().process_frame
-	if not visible:
+	if not is_inside_tree() or not visible:
 		return
 	var fit := minf(1.0, minf((viewport_size.x - 80.0) / _card.size.x, (viewport_size.y - 80.0) / _card.size.y))
 	_card.position = ((viewport_size - _card.size) * 0.5).round()

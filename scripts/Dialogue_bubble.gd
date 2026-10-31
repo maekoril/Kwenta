@@ -453,7 +453,11 @@ func _present(speaker: String, line: String, portrait_tex: Texture2D, portrait_k
 	_choices.custom_minimum_size = Vector2(cw, 0.0)
 	_choices.reset_size()
 	await get_tree().process_frame
+	if not is_inside_tree():
+		return
 	await get_tree().process_frame
+	if not is_inside_tree():
+		return
 	_panel.reset_size()
 	_choices.reset_size()
 	var h := _panel.size.y

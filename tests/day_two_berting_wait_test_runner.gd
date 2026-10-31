@@ -44,6 +44,9 @@ func run() -> void:
 	main.shift.active_customers.append(remaining)
 	main.story_events.find_child("StoryVisitorButton", true, false).pressed.emit()
 	assert(main.shift.get_active_customers().has(remaining))
+	assert(main.shift.reserved_story_ids.has("mang_berting"))
+	for i in range(30):
+		assert(main.shift._choose_customer_id() != "mang_berting")
 	assert(main.story_events._mode == "beats")
 	print("Berting waits for customers and sukli; story tap preserves customers")
 	quit()

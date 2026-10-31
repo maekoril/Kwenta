@@ -12,7 +12,7 @@ func _initialize() -> void:
 	story.choices["day2_berting_money"] = "seen"
 	assert(story.get_day_choices(2).size() == 1)
 	assert(story.record_choice("day2_overpayment", "keep"))
-	assert(story.get_choice_cash_delta(story.get_day_choices(2)[0], "keep") == 50)
+	assert(story.get_choice_cash_delta(story.get_day_choices(2)[0], "keep") == 0)
 	for result in ["perfect", "mistakes", "none"]:
 		story.choices["day2_sukli_result"] = result
 		var beats = story.get_day_outro_beats(2)
