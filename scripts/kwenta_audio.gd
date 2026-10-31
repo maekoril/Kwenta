@@ -13,6 +13,8 @@ var _cue_player: AudioStreamPlayer
 var _ambience_player: AudioStreamPlayer
 var _music_player: AudioStreamPlayer
 var _dialogue_player: AudioStreamPlayer
+var _alert_player: AudioStreamPlayer
+var _alert_wanted := false
 
 const DEFAULT_CUE_PATHS := {
 	"pickup": "res://assets/audio/pixabay/sfx/pick_up.mp3",
@@ -21,6 +23,7 @@ const DEFAULT_CUE_PATHS := {
 	"sale": "res://assets/audio/pixabay/sfx/cash_register_sale.wav",
 	"timeout": "res://assets/audio/pixabay/sfx/patience_warning.mp3",
 	"conversation": "res://assets/audio/pixabay/sfx/convo.mp3",
+	"angry": "res://assets/audio/pixabay/sfx/patience_warning.mp3", 
 }
 
 const DEFAULT_MUSIC_PATHS := {
@@ -149,6 +152,28 @@ func set_dialogue(cue_name: String) -> bool:
 			_dialogue_player.play()
 	return true
 
+
+func start_alert(cue_name: String = "angry") -> void:
+	var stream := cue_streams.get(cue_name) as AudioStream
+	if stream == null:
+		return
+	_ensure_players()
+	_alert_wanted = true
+	if is_inside_tree() and not _alert_player.playing:
+		_alert_player.stream = stream
+		_alert_player.play()
+
+func stop_alert() -> void:
+	_alert_wanted = false
+	if _alert_player != null:
+		_alert_player.stop()
+
+func _on_alert_finished() -> void:
+	if _alert_wanted:
+		_alert_player.play()
+
+
+
 func _stop_dialogue() -> void:
 	current_dialogue = ""
 	if _dialogue_player != null:
@@ -177,3 +202,9 @@ func _ensure_players() -> void:
 		_dialogue_player.name = "DialoguePlayer"
 		_dialogue_player.volume_db = -2.0
 		add_child(_dialogue_player)
+	if _alert_player == null:
+		_alert_player = AudioStreamPlayer.new()
+		_alert_player.name = "AlertPlayer"
+		_alert_player.volume_db = -7.0
+		_alert_player.finished.connect(_on_alert_finished)
+		add_child(_alert_player)

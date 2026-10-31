@@ -115,6 +115,7 @@ var audio: KwentaAudio
 var atmosphere
 var trust_tag: TrustTag
 var game_over_screen   # GameOverScreen (game_over_screen.gd)
+var angry_customer_ids: Dictionary = {}
 
 var ENVIRONMENT_BY_DAY: Dictionary = {
 	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
@@ -1061,6 +1062,7 @@ func _rebuild_customer_slots() -> void:
 		if leaving == drag_hover_customer:
 			_clear_drag_hover()
 		customer_actors.erase(instance_id)
+		_clear_angry_customer(instance_id)
 		var moving_right := leaving.position.x < 960.0
 		var exit_tween := create_tween()
 		exit_tween.tween_property(leaving, "position:x", 1980.0 if moving_right else -420.0, 0.32)
@@ -1078,6 +1080,8 @@ func _rebuild_customer_slots() -> void:
 			actor.call("set_customer", customer, products_by_id)
 			actor.connect("product_dropped", _on_product_dropped)
 			actor.connect("payment_tapped", _on_payment_tapped)
+			actor.connect("became_impatient", _on_customer_became_impatient)
+			actor.connect("calmed_down", _on_customer_calmed_down)
 			var from_right := randf() < 0.5
 			actor.position = Vector2(1980.0 if from_right else -270.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
 			actor.modulate.a = 0.0
@@ -2102,6 +2106,24 @@ func _on_game_over() -> void:
 	_play_audio_cues(["timeout"])
 	var cora_portrait: Texture2D = COUNTER_ART.customer_portrait("aling_cora", PORTRAIT_ATLAS)
 	game_over_screen.present(cora_portrait, campaign.day)
+
+func _on_customer_became_impatient(customer_instance_id: String) -> void:
+	angry_customer_ids[customer_instance_id] = true
+	if audio != null:
+		audio.start_alert()
+
+func _on_customer_calmed_down(customer_instance_id: String) -> void:
+	_clear_angry_customer(customer_instance_id)
+
+func _clear_angry_customer(customer_instance_id: String) -> void:
+	angry_customer_ids.erase(customer_instance_id)
+	if angry_customer_ids.is_empty() and audio != null:
+		audio.stop_alert()
+
+func _clear_all_angry_customers() -> void:
+	angry_customer_ids.clear()
+	if audio != null:
+		audio.stop_alert()
 
 func _retry_current_day() -> void:
 	game_over_screen.dismiss()

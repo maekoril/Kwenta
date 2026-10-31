@@ -2,6 +2,8 @@ extends Control
 
 signal product_dropped(customer_id: String, product_id: String)
 signal payment_tapped(customer_id: String)
+signal became_impatient(customer_id: String)
+signal calmed_down(customer_id: String)
 
 const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
@@ -200,7 +202,7 @@ func _apply_portrait() -> void:
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
 		return
-	
+
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
 	patience_bar.value = patience_ratio * 100.0
 	_refresh_name_tag()
@@ -213,8 +215,19 @@ func refresh_patience() -> void:
 		_apply_portrait()
 		if impatient:
 			_start_impatience_pulse()
+			if customer.phase == CustomerState.Phase.ORDERING:
+				became_impatient.emit(customer.instance_id)
 		else:
 			_stop_impatience_pulse()
+			calmed_down.emit(customer.instance_id)
+
+	portrait.modulate = Color.WHITE
+	if patience_ratio > 0.6:
+		patience_fill.bg_color = PATIENCE_GREEN
+	elif patience_ratio >= IMPATIENT_BELOW:
+		patience_fill.bg_color = PATIENCE_YELLOW
+	else:
+		patience_fill.bg_color = PATIENCE_RED
 
 	portrait.modulate = Color.WHITE
 	if patience_ratio > 0.6:
