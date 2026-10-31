@@ -30,6 +30,7 @@ var cash := 0
 var purchased_groups: Array = []
 var config: Dictionary = {}
 var _cash_label: Label
+var _panel: Control
 var _fixture_grid: Control
 var _confirmation: PanelContainer
 var _confirmation_label: Label
@@ -41,6 +42,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	_build_shell()
+	resized.connect(_layout_panel)
 
 func configure(shop_config: Dictionary, owned_groups: Array, current_cash: int) -> void:
 	config = shop_config
@@ -52,6 +54,7 @@ func configure(shop_config: Dictionary, owned_groups: Array, current_cash: int) 
 
 func open() -> void:
 	visible = true
+	_layout_panel()
 	_update_cash_label()
 	_request_fixture_render()
 
@@ -84,11 +87,13 @@ func _build_shell() -> void:
 	dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dimmer)
 
-	var panel := Control.new()
-	panel.name = "SupplierShopPanel"
-	panel.position = PANEL_POSITION
-	panel.size = PANEL_SIZE
-	add_child(panel)
+	_panel = Control.new()
+	_panel.name = "SupplierShopPanel"
+	_panel.size = PANEL_SIZE
+	_panel.pivot_offset = PANEL_SIZE * 0.5
+	add_child(_panel)
+	_layout_panel()
+	var panel := _panel
 
 	var frame := _texture_rect("PanelArt", FRAME_TEXTURE, Vector2.ZERO, PANEL_SIZE)
 	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -147,6 +152,13 @@ func _build_shell() -> void:
 	_confirmation_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_confirmation_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_confirmation.add_child(_confirmation_label)
+
+func _layout_panel() -> void:
+	if not is_instance_valid(_panel) or size == Vector2.ZERO:
+		return
+	var fit := minf(1.0, minf((size.x - 48.0) / PANEL_SIZE.x, (size.y - 48.0) / PANEL_SIZE.y))
+	_panel.position = ((size - PANEL_SIZE) * 0.5).round()
+	_panel.scale = Vector2.ONE * fit
 
 func _render_fixture_cards() -> void:
 	if _fixture_grid == null:

@@ -42,6 +42,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
 	z_index = 41
+	resized.connect(_on_viewport_resized)
 	_build()
 
 func _build() -> void:
@@ -208,7 +209,7 @@ func show_summary(title: String, summary: String, viewport_size: Vector2) -> voi
 	_card.modulate.a = 0.0
 	_settle.call_deferred(viewport_size)
 
-func _settle(viewport_size: Vector2) -> void:
+func _settle(viewport_size: Vector2, play_intro: bool = true) -> void:
 	# Let containers recalculate their minimum sizes after switching card contents.
 	await get_tree().process_frame
 	if not visible:
@@ -220,7 +221,17 @@ func _settle(viewport_size: Vector2) -> void:
 		return
 	var fit := minf(1.0, minf((viewport_size.x - 80.0) / _card.size.x, (viewport_size.y - 80.0) / _card.size.y))
 	_card.position = ((viewport_size - _card.size) * 0.5).round()
-	_play_intro(fit)
+	if play_intro:
+		_play_intro(fit)
+	else:
+		if _intro != null and _intro.is_valid():
+			_intro.kill()
+		_card.scale = Vector2.ONE * fit
+		_card.modulate.a = 1.0
+
+func _on_viewport_resized() -> void:
+	if visible:
+		_settle.call_deferred(size, false)
 
 func hide_briefing() -> void:
 	visible = false

@@ -131,8 +131,8 @@ class Tail extends Control:
 
 
 func _ready() -> void:
-	if size == Vector2.ZERO:
-		size = get_viewport_rect().size
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	resized.connect(_fit_to_viewport)
 	mouse_filter = Control.MOUSE_FILTER_STOP   # swallow taps so nothing behind gets pressed
 	visible = false
 	if ResourceLoader.exists(FONT_PATH):
@@ -236,6 +236,15 @@ func _ready() -> void:
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_title_label.visible = false
 	add_child(_title_label)
+	_fit_to_viewport()
+
+
+func _fit_to_viewport() -> void:
+	if not is_instance_valid(_dim):
+		return
+	_dim.size = size
+	_group.size = size
+	_title_label.size = size
 
 
 func _box_style(bg: Color, edge: Color) -> StyleBoxFlat:

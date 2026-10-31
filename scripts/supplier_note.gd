@@ -7,23 +7,25 @@ const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 const PAGE_SIZE := Vector2(1080.0, 850.0)
 
 var _page: PanelContainer
+var _dim: ColorRect
 var _intro: Tween
 var _product_list: Label
 
 func _ready() -> void:
-	size = StorefrontLayout.VIEWPORT_SIZE
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	resized.connect(_layout_page)
 	z_index = 55
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
-	var dim := ColorRect.new()
-	dim.color = Color(0.06, 0.035, 0.02, 0.68)
-	dim.size = size
-	dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(dim)
+	_dim = ColorRect.new()
+	_dim.color = Color(0.06, 0.035, 0.02, 0.68)
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_dim)
 	_page = PanelContainer.new()
 	_page.name = "SupplierNotePage"
 	_page.size = PAGE_SIZE
-	_page.position = ((size - PAGE_SIZE) * 0.5).round()
+	_layout_page()
 	var page_style := KwentaStyle.box(KwentaStyle.PAPER, KwentaStyle.INK, 56.0, 36.0, 12, 6, 12)
 	page_style.content_margin_left = 100.0
 	_page.add_theme_stylebox_override("panel", page_style)
@@ -82,17 +84,30 @@ func present() -> void:
 		_group_price(config, "condiments"), _group_price(config, "oil_shelf"),
 		_group_price(config, "rice_shelf")]
 	visible = true
-	_page.reset_size()
-	_page.size = PAGE_SIZE
-	_page.position = ((size - _page.size) * 0.5).round()
-	_page.pivot_offset = _page.size * 0.5
-	_page.scale = Vector2(0.96, 0.96)
+	_layout_page()
+	var fit := _page_fit()
+	_page.scale = Vector2.ONE * fit * 0.96
 	_page.modulate.a = 0.0
 	if _intro != null and _intro.is_valid():
 		_intro.kill()
 	_intro = create_tween().set_parallel(true)
-	_intro.tween_property(_page, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_intro.tween_property(_page, "scale", Vector2.ONE * fit, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_intro.tween_property(_page, "modulate:a", 1.0, 0.16)
+
+func _page_fit() -> float:
+	return minf(1.0, minf((size.x - 80.0) / PAGE_SIZE.x, (size.y - 80.0) / PAGE_SIZE.y))
+
+func _layout_page() -> void:
+	if not is_instance_valid(_page) or size == Vector2.ZERO:
+		return
+	_page.reset_size()
+	_page.size = PAGE_SIZE
+	_page.position = ((size - PAGE_SIZE) * 0.5).round()
+	_page.pivot_offset = PAGE_SIZE * 0.5
+	if visible:
+		if _intro != null and _intro.is_valid():
+			_intro.kill()
+		_page.scale = Vector2.ONE * _page_fit()
 
 func _group_price(config: Dictionary, group_id: String) -> int:
 	for entry in config.get("products", {}).values():

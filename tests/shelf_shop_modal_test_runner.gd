@@ -9,7 +9,10 @@ var requested_purchases: Array[Dictionary] = []
 
 func _initialize() -> void:
 	var modal := ShelfShopModalScript.new() as Control
-	root.add_child(modal)
+	var phone_viewport := Control.new()
+	phone_viewport.size = Vector2(945.0, 430.0)
+	root.add_child(phone_viewport)
+	phone_viewport.add_child(modal)
 	await process_frame
 	modal.purchase_requested.connect(_record_purchase)
 	var config: Dictionary = StoreConfigScript.load_config("res://data/store_config.json")
@@ -19,6 +22,8 @@ func _initialize() -> void:
 
 	_assert(modal.get_node_or_null("SupplierShopPanel") != null, "shop builds a named wooden supplier panel")
 	var panel := modal.get_node_or_null("SupplierShopPanel") as Control
+	_assert(panel != null and Rect2(Vector2.ZERO, phone_viewport.size).encloses(panel.get_global_rect()), "shop panel stays fully visible on a phone-sized viewport")
+	_assert(panel != null and absf(panel.get_global_rect().get_center().x - phone_viewport.size.x * 0.5) <= 1.0, "shop panel stays horizontally centered on a phone-sized viewport")
 	var panel_art := modal.get_node_or_null("SupplierShopPanel/PanelArt") as TextureRect
 	_assert(panel_art != null and panel_art.texture != null and panel_art.texture.resource_path == "res://assets/sprites/ui/shop/supplier_shelf_panel_v3.png", "shop uses the supplied Supplier Shelf panel as its single background")
 	_assert(panel_art != null and panel != null and panel_art.position == Vector2.ZERO and panel_art.size == panel.size, "composed panel art fills the complete panel bounds")
@@ -65,7 +70,7 @@ func _initialize() -> void:
 		close_button.emit_signal("pressed")
 	_assert(not modal.visible, "close button hides the modal")
 
-	modal.queue_free()
+	phone_viewport.queue_free()
 	await _test_shop_icon_availability()
 	await _test_shop_grace_period()
 	await _test_live_purchase("hanging_strip", 0)
@@ -133,6 +138,8 @@ func _test_shop_icon_availability() -> void:
 	main.set("shop_available", true)
 	main.call("_refresh_shop_button")
 	_assert(shop_button != null and shop_button.visible, "Shop icon appears before Day 2 starts")
+	var pause_button := main.pause_menu.get("_button") as Control
+	_assert(shop_button != null and pause_button != null and is_equal_approx(shop_button.position.x + shop_button.size.x * 0.5, pause_button.position.x + pause_button.size.x * 0.5) and shop_button.position.y >= pause_button.position.y + pause_button.size.y, "Shop icon is centered below the pause control")
 	# Story setup moves its dialogue bubble to the top of the tree. The shop must
 	# be moved back above it whenever it is available, or the bubble eats the tap.
 	_assert(shop_button != null and bubble != null and shop_button.get_index() > bubble.get_index(), "Shop icon stays above the dialogue bubble after story setup")

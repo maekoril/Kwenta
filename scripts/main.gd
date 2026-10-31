@@ -59,6 +59,7 @@ var goal_count_label: Label
 var goal_panel: PanelContainer
 var goal_progress: ProgressBar
 var goal_progress_fill: StyleBoxFlat
+var gameplay_hud: Control
 var product_layer: Control
 var product_items_by_id: Dictionary = {}
 var customer_layer: Control
@@ -154,6 +155,7 @@ var showing_pre_shift_briefing := false
 enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE }
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	resized.connect(_recenter_fixed_hud)
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
 	for product_resource in CAMPAIGN_CONFIG.product_catalog:
@@ -181,7 +183,7 @@ func _ready() -> void:
 	_build_bubble()
 	_build_prologue_background()
 	supplier_note = SUPPLIER_NOTE.new()
-	supplier_note.position = _ui_offset()
+	supplier_note.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(supplier_note)
 	_build_cash_tray()
 	_build_shop_button()
@@ -219,6 +221,7 @@ func _build_hud() -> void:
 	# Option 5: a small, intentional top strip, not the oversized Option 2 board.
 	# Exact coordinates are authored against the original 1920 x 1080 game canvas.
 	var hud := Control.new()
+	gameplay_hud = hud
 	hud.name = "GameplayHUDOption5"
 	hud.z_index = 30
 	hud.position = _ui_offset()
@@ -286,6 +289,16 @@ func _build_hud() -> void:
 	trust_tag = OPTION5_SUKI.new().setup(campaign.barangay_trust, 372.0, 0.0, 3.0, false)
 	trust_tag.position = Vector2(1401.0, Y)
 	hud.add_child(trust_tag)
+
+func _recenter_fixed_hud() -> void:
+	if is_instance_valid(gameplay_hud):
+		gameplay_hud.position = _ui_offset()
+	if is_instance_valid(pause_menu):
+		pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
+	if is_instance_valid(shop_button):
+		shop_button.position = _shop_button_position()
+	if is_instance_valid(briefing_card) and briefing_card.visible:
+		briefing_card.call_deferred("_settle", size, false)
 
 func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
 	var frame := StyleBoxTexture.new()
@@ -371,8 +384,7 @@ func _refresh_daily_goal_hud() -> void:
 func _build_store_sign() -> void:
 	opening_blocker = ColorRect.new()
 	opening_blocker.z_index = 54
-	opening_blocker.position = _ui_offset()
-	opening_blocker.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	opening_blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	opening_blocker.color = Color(0.08, 0.04, 0.02, 0.38)
 	opening_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	opening_blocker.visible = false
@@ -592,7 +604,7 @@ func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
 func _build_shop_button() -> void:
 	shop_button = Button.new()
 	shop_button.name = "ShopIconButton"
-	shop_button.position = Vector2(1811, 110) + _ui_offset()
+	shop_button.position = _shop_button_position()
 	shop_button.size = Vector2(74, 74)
 	shop_button.z_index = 55
 	shop_button.z_as_relative = false
@@ -607,6 +619,10 @@ func _build_shop_button() -> void:
 	shop_button.visible = false
 	shop_button.pressed.connect(_open_shelf_shop)
 	add_child(shop_button)
+
+func _shop_button_position() -> Vector2:
+	# Align the 74px notebook under the centered 89px pause control.
+	return Vector2(1802.5, 97.0) + _ui_offset()
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
@@ -914,8 +930,7 @@ func _on_summary_backdrop_visibility_changed() -> void:
 func _build_bubble() -> void:
 	bubble = DialogueBubble.new()
 	bubble.z_index = 50
-	bubble.position = _ui_offset()
-	bubble.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	bubble.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bubble)
 	bubble.advanced.connect(_on_bubble_advanced)
 	bubble.choice_made.connect(_on_bubble_choice)
@@ -1017,6 +1032,13 @@ func _on_customer_timed_out(customer_instance_id: String) -> void:
 		actor.call("play_annoyed")
 
 func _on_customer_served(_customer_id: String, order_units: int) -> void:
+	# A completed sale is the authoritative end of the first drag lesson. This
+	# signal survives the customer actor being removed before the drag callback
+	# finishes, so the overlay cannot follow a customer who has already left.
+	if campaign.day == 1 and not tutorial_delivery_seen:
+		tutorial_delivery_seen = true
+		_clear_tutorial_spotlight()
+		_show_tutorial_hint("Good! Serve every icon in the bubble before patience runs out.")
 	if daily_goal == null:
 		return
 	var was_complete: bool = daily_goal.is_complete()
@@ -1135,7 +1157,7 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 		actor.call("play_correct_drop")
 		if result == OrderState.DeliveryResult.COMPLETED and not _is_waiting_for_change(actor):
 			actor.call("play_happy")
-	if campaign.day == 1 and tutorial_step == TutorialStep.DAY1_CUSTOMER and customer_id == tutorial_customer_id and product_id == tutorial_product_id:
+	if campaign.day == 1 and tutorial_step in [TutorialStep.DAY1_PRODUCT, TutorialStep.DAY1_CUSTOMER] and product_id == tutorial_product_id:
 		tutorial_delivery_seen = true
 		_clear_tutorial_spotlight()
 		_show_tutorial_hint("Good! Serve every icon in the bubble before patience runs out.")
@@ -1263,16 +1285,14 @@ func _build_prologue_background() -> void:
 	prologue_background.texture = load("res://assets/story/tonyo_bedroom.png") as Texture2D
 	prologue_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	prologue_background.position = _ui_offset()
-	prologue_background.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	prologue_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_background.z_index = 38
 	prologue_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prologue_background.visible = false
 	add_child(prologue_background)
 	prologue_fade = ColorRect.new()
 	prologue_fade.color = Color.BLACK
-	prologue_fade.position = _ui_offset()
-	prologue_fade.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	prologue_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_fade.z_index = 49
 	prologue_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	prologue_fade.visible = false
@@ -1447,7 +1467,7 @@ func _show_pending_shift_summary() -> void:
 	showing_post_shift_summary = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
-	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, STOREFRONT_LAYOUT.VIEWPORT_SIZE)
+	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, size)
 	pending_shift_summary_text = ""
 	pending_shift_summary_title = ""
 
@@ -1521,7 +1541,7 @@ func _ensure_daily_goal() -> void:
 
 func _build_briefing_card() -> void:
 	briefing_card = BRIEFING_CARD.new()
-	briefing_card.position = _ui_offset()
+	briefing_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	briefing_card.start_pressed.connect(_on_briefing_start_pressed)
 	add_child(briefing_card)
 
@@ -1535,7 +1555,7 @@ func _show_pre_shift_briefing() -> void:
 	showing_pre_shift_briefing = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
-	briefing_card.show_briefing(briefing, STOREFRONT_LAYOUT.VIEWPORT_SIZE)
+	briefing_card.show_briefing(briefing, size)
 
 func _begin_shift() -> void:
 	shop_available = false
@@ -1637,11 +1657,21 @@ func _begin_day_one_drag_tutorial() -> void:
 			return
 
 func _show_day_one_product_step() -> void:
+	var target_is_active := false
+	for customer in shift.get_active_customers():
+		if customer.instance_id == tutorial_customer_id:
+			target_is_active = true
+			break
+	if not target_is_active:
+		tutorial_delivery_seen = true
+		_clear_tutorial_spotlight()
+		return
 	var product: Control = product_items_by_id.get(tutorial_product_id)
 	if not is_instance_valid(product):
 		_clear_tutorial_spotlight()
 		return
-	_show_tutorial_spotlight(TutorialStep.DAY1_PRODUCT, "Drag the highlighted product to the customer.", product, "SERVE THE CUSTOMER")
+	var product_rect := _tutorial_product_rect(tutorial_product_id, product)
+	tutorial_overlay.show_step("Drag the highlighted product to the customer.", product_rect, "SERVE THE CUSTOMER")
 	tutorial_overlay.show_skip()
 	var actor: Control = customer_actors.get(tutorial_customer_id)
 	if is_instance_valid(actor):
@@ -1653,7 +1683,18 @@ func _show_day_one_product_step() -> void:
 			if active[index].instance_id == tutorial_customer_id:
 				target_rect.position.x = customer_layer.global_position.x - tutorial_overlay.global_position.x + positions[index]
 				break
-		tutorial_overlay.show_drag_arrow(_tutorial_rect_for(product), target_rect)
+		tutorial_overlay.show_drag_arrow(product_rect, target_rect)
+
+func _tutorial_product_rect(product_id: String, fallback: Control) -> Rect2:
+	var config := StoreConfig.load_config("res://data/store_config.json")
+	for store_id in config.get("products", {}):
+		var entry: Dictionary = config.products[store_id]
+		if str(entry.get("game_product_id", "")) == product_id:
+			var display_rect := store_layer_renderer.get_product_display_rect(str(store_id))
+			if display_rect.size != Vector2.ZERO:
+				display_rect.position += product_layer.global_position - tutorial_overlay.global_position
+				return display_rect
+	return _tutorial_rect_for(fallback)
 
 func _begin_day_two_shop_tutorial() -> void:
 	if not is_instance_valid(shop_button):

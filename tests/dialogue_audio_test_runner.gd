@@ -5,6 +5,7 @@ const DIALOGUE_BUBBLE_PATH := "res://scripts/Dialogue_bubble.gd"
 var failures := 0
 
 func _initialize() -> void:
+	await _test_dialogue_fills_a_resized_phone_viewport()
 	await _test_visible_dialogue_emits_blips_while_typing()
 	await _test_scene_exit_finishes_active_conversation()
 	await _test_title_card_interrupts_active_conversation()
@@ -15,6 +16,26 @@ func _initialize() -> void:
 		print("All dialogue-audio assertions passed.")
 		quit(0)
 
+func _test_dialogue_fills_a_resized_phone_viewport() -> void:
+	var dialogue_script := load(DIALOGUE_BUBBLE_PATH)
+	_assert(dialogue_script != null, "DialogueBubble exists for responsive layout")
+	if dialogue_script == null:
+		return
+	var phone_viewport := Control.new()
+	phone_viewport.size = Vector2(945.0, 430.0)
+	root.add_child(phone_viewport)
+	var bubble: Control = dialogue_script.new()
+	phone_viewport.add_child(bubble)
+	await process_frame
+	_assert(is_equal_approx(bubble.size.x, phone_viewport.size.x) and is_equal_approx(bubble.size.y, phone_viewport.size.y), "dialogue follows a phone-sized parent viewport")
+	var dimmer := bubble.get("_dim") as Control
+	_assert(dimmer != null and dimmer.size.is_equal_approx(phone_viewport.size), "dialogue dimmer fills a phone-sized parent viewport")
+	phone_viewport.size = Vector2(430.0, 945.0)
+	await process_frame
+	_assert(is_equal_approx(bubble.size.x, phone_viewport.size.x) and is_equal_approx(bubble.size.y, phone_viewport.size.y), "dialogue follows viewport rotation without clipping")
+	_assert(dimmer != null and dimmer.size.is_equal_approx(phone_viewport.size), "dialogue dimmer follows viewport rotation without clipping")
+	phone_viewport.queue_free()
+
 func _test_visible_dialogue_emits_blips_while_typing() -> void:
 	var dialogue_script := load(DIALOGUE_BUBBLE_PATH)
 	_assert(dialogue_script != null, "DialogueBubble exists")
@@ -22,7 +43,6 @@ func _test_visible_dialogue_emits_blips_while_typing() -> void:
 		return
 	var bubble: Control = dialogue_script.new()
 	root.add_child(bubble)
-	bubble.size = Vector2(1920.0, 1080.0)
 	await process_frame
 	_assert(bubble.has_signal("typing_blip"), "visible dialogue exposes a typing-blip event")
 	_assert(bubble.has_signal("conversation_started"), "visible dialogue exposes a conversation-start event")
@@ -53,7 +73,6 @@ func _test_scene_exit_finishes_active_conversation() -> void:
 		return
 	var bubble: Control = dialogue_script.new()
 	root.add_child(bubble)
-	bubble.size = Vector2(1920.0, 1080.0)
 	await process_frame
 	if not bubble.has_signal("conversation_finished"):
 		_assert(false, "dialogue exposes a finish event for scene-exit cleanup")
@@ -73,7 +92,6 @@ func _test_title_card_interrupts_active_conversation() -> void:
 		return
 	var bubble: Control = dialogue_script.new()
 	root.add_child(bubble)
-	bubble.size = Vector2(1920.0, 1080.0)
 	await process_frame
 	if not bubble.has_signal("conversation_finished"):
 		_assert(false, "dialogue exposes a finish event for title-card interruption")
