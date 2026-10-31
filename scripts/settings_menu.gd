@@ -5,11 +5,13 @@ const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 var overlay: Control
 var music_slider: HSlider
 var sfx_slider: HSlider
+var settings_panel: PanelContainer
 
 func _ready() -> void:
 	layer = 110
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	get_viewport().size_changed.connect(_fit_panel)
 
 func _build() -> void:
 	overlay = Control.new()
@@ -25,6 +27,7 @@ func _build() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
 	var panel := PanelContainer.new()
+	settings_panel = panel
 	panel.custom_minimum_size = Vector2(800, 0)
 	panel.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f5e5c6"), Color("704225"), 66, 42, 18, 7, 9))
 	center.add_child(panel)
@@ -106,6 +109,18 @@ func open() -> void:
 	music_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.MUSIC_BUS) * 100)
 	sfx_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.SFX_BUS) * 100)
 	overlay.visible = true
+	_fit_panel.call_deferred()
+
+func _fit_panel() -> void:
+	if not is_instance_valid(settings_panel):
+		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	var panel_size := settings_panel.size
+	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
+		return
+	settings_panel.pivot_offset = panel_size * 0.5
+	var fit := minf(1.0, minf(maxf(1.0, viewport_size.x - 80.0) / panel_size.x, maxf(1.0, viewport_size.y - 80.0) / panel_size.y))
+	settings_panel.scale = Vector2.ONE * fit
 
 func close() -> void:
 	overlay.visible = false

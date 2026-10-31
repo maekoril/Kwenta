@@ -310,6 +310,9 @@ func _recenter_fixed_hud() -> void:
 		shop_button.position = _shop_button_position()
 	if is_instance_valid(briefing_card) and briefing_card.visible:
 		briefing_card.call_deferred("_settle", size, false)
+	for child in get_children():
+		if child.name.begins_with("DailyGoalAchievementNotice") and child is Control:
+			child.position = Vector2(33, 100) + _ui_offset()
 
 func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
 	var frame := StyleBoxTexture.new()
