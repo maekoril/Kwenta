@@ -19,14 +19,24 @@ func check_flow(previous: String, accept: bool) -> void:
 	main._begin_shift()
 	main.store_sign_tween.kill()
 	main._after_opening_sign()
-	assert(not main.shift.is_running and main.shift.get_active_customers().is_empty())
-	assert(main.story_after_action == "day2_first_customer")
-	assert(main.story_beats.size() == 4)
-	assert(main.story_beats[0].text.contains("sipag") if previous == "stay" else main.story_beats[0].text.contains("tumatakbo"))
-	for i in range(4): main.bubble.advanced.emit()
-	assert(main.shift.is_running and not main.story_events.is_active())
+	assert(main.shift.is_running and main.shift.frozen)
 	var customer = main.shift.get_active_customers()[0]
 	assert(customer.customer_id == "aling_nena" and customer.order.requested == {"chips": 1})
+	var actor = main.customer_actors[customer.instance_id]
+	assert(customer.story_arrival_pending and not actor.order_bubble.visible)
+	assert(main.story_events._mode == "customer_visitor" and is_instance_valid(main.customer_story_button))
+	assert(customer.receive_product("chips") == CustomerState.DeliveryResult.INACTIVE)
+	main.customer_story_button.pressed.emit()
+	assert(main.story_events._mode == "beats")
+	assert(main.bubble._text.text.contains("sipag") if previous == "stay" else main.bubble._text.text.contains("tumatakbo"))
+	while main.story_events._mode == "beats":
+		main.bubble.advanced.emit()
+	await create_timer(0.35).timeout
+	assert(not main.story_events.is_active() and not customer.story_arrival_pending)
+	assert(main.customer_actors[customer.instance_id] == actor and actor.order_bubble.visible)
+	var patience_before: float = customer.patience_remaining
+	assert(customer.tutorial_protected and not customer.advance_time(1000.0))
+	assert(customer.patience_remaining == patience_before)
 	main._resolve_product_delivery(customer.instance_id, "chips")
 	assert(main.story_events.is_active() and customer.parked)
 	main.bubble.choice_made.emit(0 if accept else 1)
@@ -46,7 +56,6 @@ func check_flow(previous: String, accept: bool) -> void:
 	assert(main.tutorial_step == main.TutorialStep.DAY2_CUSTOMER)
 	assert(main.tutorial_overlay.visible)
 	assert(main.tutorial_customer_id == customer.instance_id)
-	var actor = main.customer_actors[customer.instance_id]
 	main._update_day_two_customer_sukli_target()
 	var expected_target = main._tutorial_rect_for(actor).merge(main._tutorial_rect_for(actor.order_bubble)).grow(18.0).intersection(Rect2(Vector2.ZERO, main.tutorial_overlay.size))
 	assert(main.tutorial_overlay.spotlight_rect.is_equal_approx(expected_target))
@@ -77,10 +86,23 @@ func check_flow(previous: String, accept: bool) -> void:
 	assert(main.day_two_sukli_tutorial_complete and main.tutorial_step == main.TutorialStep.NONE)
 	assert(main.story.get_day_choices(2).is_empty())
 	main.story_events._on_game_minutes(120)
+	await process_frame
 	assert(main.story_events.is_active() and main.shift.frozen)
+	assert(main.story_events._mode == "visitor" and main.story.get_choice("day2_berting_money") == "")
+	await create_timer(0.7).timeout
+	var visitor_button = main.story_events.find_child("StoryVisitorButton", true, false)
+	var visitor_mark = visitor_button.find_child("StoryEventMarker", true, false)
+	assert(visitor_mark != null and is_instance_valid(main.story_visitor_portrait))
+	assert(visitor_button.get_global_rect().position.is_equal_approx(main.story_visitor_portrait.global_position))
+	assert(main.story_events.find_child("StoryVisitorTutorial", true, false) == null)
+	visitor_button.pressed.emit()
 	assert(main.story.get_choice("day2_berting_money") == "seen")
 	assert(main.story.get_day_choices(2).size() == 1)
-	while main.story_events._mode == "beats": main.bubble.advanced.emit()
+	var saw_money := false
+	while main.story_events._mode == "beats":
+		saw_money = saw_money or (main.story_illustration.visible and main.story_illustration.texture != null and main.story_illustration.texture.resource_path.ends_with("berting_counter_50.png"))
+		main.bubble.advanced.emit()
+	assert(saw_money and not main.story_illustration.visible)
 	await create_timer(0.35).timeout
 	assert(not main.story_events.is_active() and not main.shift.frozen)
 	main.queue_free()

@@ -26,6 +26,8 @@ func _check_visit(prior_choice: String, accepted: bool) -> void:
 	assert(customer.order.requested == {"chips": 1})
 	assert(main.story_events.is_active() and main.shift.frozen)
 	var original_beat_index: int = main.story_beat_index
+	assert(main.story_events._mode == "customer_visitor")
+	main.customer_story_button.pressed.emit()
 	while main.story_events._mode == "beats":
 		main.bubble.advanced.emit()
 		assert(main.story_beat_index == original_beat_index)

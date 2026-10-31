@@ -22,7 +22,7 @@ func _initialize() -> void:
 	var patience: float = customer.patience_remaining
 	manager.advance_time(2.0)
 	assert(customer.patience_remaining < patience and manager.active_customers.size() == 1)
-	assert(manager.elapsed_seconds == 10.0)
+	assert(manager.elapsed_seconds == 12.0)
 	manager.give_change("test_1", 5)
 	assert(completed == 1 and not manager.is_running)
 	manager.advance_time(5.0)

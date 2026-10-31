@@ -7,6 +7,7 @@ const AUDIO_SETTINGS = preload("res://scripts/audio_settings.gd")
 const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
 const BRUSH_STROKE = preload("res://scripts/menu_brush_stroke.gd")
 const STORY_TRANSITION = preload("res://scripts/menu_story_transition.gd")
+const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const DESIGN_SIZE := Vector2(1920, 1080)
 var menu_canvas: Control
 var settings_menu
@@ -40,11 +41,15 @@ func _build_menu() -> void:
 	background.stretch_mode = TextureRect.STRETCH_SCALE
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_canvas.add_child(background)
-	var play := _menu_button("StartButton", "NEW GAME", Vector2(725, 500))
-	play.pressed.connect(func(): _select_menu_item(play, _start_game))
-	var settings_button := _menu_button("SettingsButton", "SETTINGS", Vector2(748, 630))
+	var has_save := not CAMPAIGN_SAVE.load_progress().is_empty()
+	var play := _menu_button("StartButton", "NEW GAME", Vector2(725, 450 if has_save else 500))
+	play.pressed.connect(func(): _select_menu_item(play, _request_new_game))
+	if has_save:
+		var resume := _menu_button("ContinueButton", "CONTINUE", Vector2(740, 550))
+		resume.pressed.connect(func(): _select_menu_item(resume, _continue_game))
+	var settings_button := _menu_button("SettingsButton", "SETTINGS", Vector2(755 if has_save else 748, 650 if has_save else 630))
 	settings_button.pressed.connect(func(): _select_menu_item(settings_button, settings_menu.open))
-	var quit_button := _menu_button("QuitButton", "QUIT", Vector2(770, 760))
+	var quit_button := _menu_button("QuitButton", "QUIT", Vector2(770, 750 if has_save else 760))
 	quit_button.pressed.connect(func(): _select_menu_item(quit_button, get_tree().quit))
 
 func _menu_button(node_name: String, caption: String, at: Vector2) -> Button:
@@ -94,7 +99,28 @@ func _layout_menu() -> void:
 	menu_canvas.position = (size - DESIGN_SIZE * factor) * 0.5
 
 func _start_game() -> void:
+	_begin_game(false)
+
+func _continue_game() -> void:
+	if CAMPAIGN_SAVE.load_progress().is_empty():
+		return
+	_begin_game(true)
+
+func _request_new_game() -> void:
+	if CAMPAIGN_SAVE.load_progress().is_empty():
+		_start_game()
+		return
+	var confirm := ConfirmationDialog.new()
+	confirm.title = "New Game"
+	confirm.dialog_text = "Start a new game? This will replace your existing progress."
+	confirm.ok_button_text = "NEW GAME"
+	add_child(confirm)
+	confirm.confirmed.connect(_start_game)
+	confirm.close_requested.connect(confirm.queue_free)
+	confirm.popup_centered()
+
+func _begin_game(resume: bool) -> void:
 	var transition := STORY_TRANSITION.new()
 	transition.name = "MenuStoryTransition"
 	get_tree().root.add_child(transition)
-	transition.begin()
+	transition.begin(resume)

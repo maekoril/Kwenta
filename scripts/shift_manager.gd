@@ -49,6 +49,8 @@ var _overdue_drain_accumulator: float = 0.0
 
 # ---- Story hooks. ShiftStoryEvents fills these in before each shift. ----
 var frozen: bool = false                # true while a story popup is open: clock and patience stop
+var story_waiting_for_clear: bool = false # finish existing customers before a scheduled visitor
+var reserved_story_ids: Array[String] = []
 var drain_mult: float = 1.0             # patience drains this much faster while drain_boost_seconds > 0
 var drain_boost_seconds: float = 0.0
 var haggle_asks: Dictionary = {}        # customer_id -> pesos they ask off the bill (once per shift)
@@ -75,6 +77,7 @@ func _init(state: CampaignState, product_map: Dictionary, random: RandomNumberGe
 
 func reset_story_state() -> void:
 	frozen = false
+	story_waiting_for_clear = false
 	drain_mult = 1.0
 	drain_boost_seconds = 0.0
 	haggle_asks.clear()
@@ -136,13 +139,13 @@ func _drain_trust_for_overdue_change(delta_seconds: float) -> void:
 func advance_time(delta_seconds: float) -> void:
 	if not is_running or frozen or delta_seconds <= 0.0:
 		return
+	elapsed_seconds += delta_seconds
 	if not is_closing:
-		elapsed_seconds = minf(shift_duration_seconds, elapsed_seconds + delta_seconds)
 		if elapsed_seconds >= shift_duration_seconds:
 			is_closing = true
 			_update_clock()
 			closing_started.emit()
-			if active_customers.is_empty():
+			if active_customers.is_empty() and not story_waiting_for_clear:
 				finish_shift()
 				return
 			# A closing tutorial may pause the shift from the closing_started signal.
@@ -185,10 +188,10 @@ func advance_time(delta_seconds: float) -> void:
 			remaining_customers.append(customer)
 	active_customers = remaining_customers
 	var spawned_customer := false
-	if not is_closing and not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
+	if not is_closing and not story_waiting_for_clear and not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
 		_spawn_customer()   # a scripted story customer doesn't wait for the spawn timer
 		spawned_customer = true
-	elif not is_closing and active_customers.size() < _active_customer_limit():
+	elif not is_closing and not story_waiting_for_clear and active_customers.size() < _active_customer_limit():
 		spawn_elapsed += delta_seconds
 		if spawn_elapsed >= current_spawn_delay:
 			spawn_elapsed = 0.0
@@ -197,7 +200,7 @@ func advance_time(delta_seconds: float) -> void:
 			spawned_customer = true
 	if customer_left and not spawned_customer:
 		customers_changed.emit()
-	if is_closing and active_customers.is_empty():
+	if is_closing and active_customers.is_empty() and not story_waiting_for_clear:
 		finish_shift()
 		return
 	_update_clock()
@@ -424,7 +427,7 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	current_spawn_delay = _next_spawn_delay()
 	cash_changed.emit(campaign_state.cash)
 	customers_changed.emit()
-	if is_running and is_closing and active_customers.is_empty():
+	if is_running and is_closing and active_customers.is_empty() and not story_waiting_for_clear:
 		finish_shift()
 
 func _payment_patience_seconds() -> float:
@@ -468,6 +471,8 @@ func _spawn_customer() -> void:
 
 	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.get_customer_patience_seconds()
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
+	customer.tutorial_protected = campaign_state.day == 2 and id == "aling_nena" and not story_entry.is_empty()
+	customer.story_arrival_pending = customer.tutorial_protected and not story_entry.get("arrival_beats", []).is_empty()
 	
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer.exact_pay = bool(story_entry.get("exact_pay", false))
@@ -494,6 +499,8 @@ func _next_spawn_delay() -> float:
 func _choose_customer_id() -> String:
 	var ids: Array[String] = []
 	for candidate in campaign_state.config.customer_ids:
+		if reserved_story_ids.has(candidate):
+			continue
 		var already_here := false
 		for customer in active_customers:
 			if customer.customer_id == candidate:

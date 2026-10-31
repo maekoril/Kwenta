@@ -32,7 +32,7 @@
 	  "outro": [
 		{"speaker": "Narrator", "portrait": "", "text": "Tanghali na. Hindi namalayan ni Tonyo ang oras sa kanyang pagtitinda."},
 		{"speaker": "Narrator", "portrait": "", "text": "Sa gitna ng katanghalian, dumating ang mga kalaro niyang sina Jun-jun, Mikay at Bogs. Mukhang aayain nila siyang maglaro."},
-		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "text": "Tonyo! Tara na, laro na tayo! Tumbang preso!"},
+		{"speaker": "Jun-jun", "portrait": "jun_jun_tara", "story_visitor": "jun_jun_tara", "text": "Tonyo! Tara na, laro na tayo! Tumbang preso!"},
 		{"speaker": "Mikay", "portrait": "mikay_smug", "text": "Dalian mo, baka matalo ka na naman!"},
 		{"speaker": "Narrator", "portrait": "bogs_small_smile", "text": "Tahimik na kumaway si Bogs mula sa kalsada."}
 	  ],
@@ -106,27 +106,71 @@
 		{
 		  "type": "scene",
 		  "at_minute": 120,
+		  "visitor": "mang_berting",
+		  "wait_for_clear": true,
 		  "seen_flag": "day2_berting_money",
 		  "beats": [
 			{
+			  "speaker": "Narrator",
+			  "portrait": "",
+			  "text": "Sa gitna ng araw, dumating si Mang Berting sa tindahan."
+			},
+			{
 			  "speaker": "Mang Berting",
 			  "portrait": "mang_berting",
-			  "text": "Tonyo! Idadaan ko lang itong listahan. Naku, nakasalang pa pala ang sinaing ko!"
+			  "text": "Tonyo! Kumusta ka, iho? Ayos ka lang ba? Kumusta naman ang pagtitinda?"
 			},
 			{
 			  "speaker": "Tonyo",
 			  "portrait": "tonyo",
-			  "text": "Nong, teka po! May nalaglag yata kayo—"
+			  "text": "Ayos naman po, Mang Berting! Medyo nakakalito lang po ang sukli minsan, hehe."
+			},
+			{
+			  "speaker": "Mang Berting",
+			  "portrait": "mang_berting",
+			  "text": "Masasanay ka rin, iho. Pabili nga sana ng p—"
+			},
+			{
+			  "speaker": "Mang Berting",
+			  "portrait": "mang_berting_impatient",
+			  "text": "Ay, oo nga pala! Nakabukas pa ang kalan—nakasalang ang sinaing ko!"
+			},
+			{
+			  "speaker": "Mang Berting",
+			  "portrait": "mang_berting",
+			  "text": "Babalik na lang ako, Tonyo! Galingan mo, ha? Tiyak matutuwa ang nanay mo sa ’yo."
+			},
+			{
+			  "speaker": "Tonyo",
+			  "portrait": "tonyo",
+			  "text": "Ah, okay po, Mang Berting! Ingat po kayo!"
 			},
 			{
 			  "speaker": "Narrator",
 			  "portrait": "",
-			  "text": "Pero nakatakbo na si Mang Berting. May naiwan siyang ₱50 sa counter."
+			  "text": "Nagmamadaling umalis si Mang Berting. Maya-maya, may napansin si Tonyo sa may counter."
+			},
+			{
+			  "speaker": "Narrator",
+			  "portrait": "",
+			  "text": "Sa pagmamadali ni Mang Berting, naiwan niya ang kanyang ₱50 sa tindahan.",
+			  "show_prop": "berting_counter_closeup"
 			},
 			{
 			  "speaker": "Tonyo",
 			  "portrait": "tonyo_flustered",
-			  "text": "Ayun, nauna pa siyang tumakbo kaysa sa akin! Itatabi ko muna ’to."
+			  "text": "Mang Berting! Naiwan n’yo po ’yung pera n’yo!"
+			},
+			{
+			  "speaker": "Narrator",
+			  "portrait": "",
+			  "text": "Pero nakalayo na si Mang Berting at hindi na niya narinig si Tonyo.",
+			  "show_prop": "hide_berting_closeup"
+			},
+			{
+			  "speaker": "Tonyo",
+			  "portrait": "tonyo",
+			  "text": "Ang bilis naman ni Mang Berting! Itatabi ko muna ’to."
 			}
 		  ]
 		}
@@ -198,7 +242,8 @@
 		{
 		  "speaker": "Narrator",
 		  "portrait": "",
-		  "text": "Hindi niya napansin ang isang kahon sa daanan. Natapilok siya rito bago siya tuluyang makapasok."
+		  "text": "Hindi niya napansin ang isang kahon sa daanan. Natapilok siya at napadapa sa sahig!",
+		  "cutscene": "box_fall"
 		},
 		{
 		  "speaker": "Tonyo",
@@ -208,7 +253,8 @@
 		{
 		  "speaker": "Narrator",
 		  "portrait": "",
-		  "text": "May sulat-kamay na papel sa ibabaw ng kahon. Kinuha iyon ni Tonyo at binasa."
+		  "text": "May sulat-kamay na papel sa ibabaw ng kahon. Kinuha iyon ni Tonyo at binasa.",
+		  "cutscene": "end"
 		},
 		{
 		  "speaker": "Tonyo",
@@ -236,14 +282,14 @@
 		{
 		  "speaker": "Tonyo",
 		  "portrait": "tonyo",
-		  "text": "Buti tama ang mga sukling natapos ko. Binilang ko pa nang dalawang beses para sigurado!",
+		  "text": "Akala ko abot lang ng paninda at kuha ng bayad. Buti may listahan—mas madali palang sundan ang sukli!",
 		  "when_choice": "day2_sukli_result",
 		  "when_value": "perfect"
 		},
 		{
 		  "speaker": "Tonyo",
 		  "portrait": "tonyo_flustered",
-		  "text": "May mga sukli akong kailangang ayusin kanina. Sa susunod, magbibilang muna ako nang mabuti.",
+		  "text": "Kahit may listahan, kailangan ko pa ring mag-ingat sa sukli. Ang bilis kasi pag maraming bumibili!",
 		  "when_choice": "day2_sukli_result",
 		  "when_value": "mistakes"
 		},

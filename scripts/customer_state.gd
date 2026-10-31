@@ -13,6 +13,8 @@ var trust: float
 var active: bool = true
 var timed_out: bool = false
 var patience_expired: bool = false
+var tutorial_protected: bool = false
+var story_arrival_pending: bool = false
 var trust_loss_on_timeout: float = 25.0
 var phase: int = Phase.ORDERING
 var payment: PaymentState = null
@@ -32,12 +34,12 @@ func _init(id: String, customer_order: OrderState, patience: float, initial_trus
 	trust = clampf(initial_trust, 0.0, 100.0)
 
 func receive_product(product_id: String) -> int:
-	if not active or phase != Phase.ORDERING:
+	if not active or story_arrival_pending or phase != Phase.ORDERING:
 		return DeliveryResult.INACTIVE
 	return order.try_deliver(product_id)
 
 func advance_time(delta_seconds: float) -> bool:
-	if not active or delta_seconds <= 0.0:
+	if not active or tutorial_protected or delta_seconds <= 0.0:
 		return false
 
 	patience_remaining = maxf(0.0, patience_remaining - delta_seconds)

@@ -7,7 +7,7 @@ func _ready() -> void:
 	layer = 200
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
-func begin() -> void:
+func begin(resume: bool = false) -> void:
 	var curtain := ColorRect.new()
 	curtain.name = "TransitionCurtain"
 	curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -19,9 +19,11 @@ func begin() -> void:
 	fade_out.tween_property(curtain, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
 	await fade_out.finished
 	get_tree().set_meta(TRANSITION_META, true)
+	get_tree().set_meta("kwenta_continue_game", resume)
 	var error := get_tree().change_scene_to_file(GAME_SCENE)
 	if error != OK:
 		get_tree().remove_meta(TRANSITION_META)
+		get_tree().remove_meta("kwenta_continue_game")
 		push_error("Unable to start the game: %s" % error_string(error))
 		var recover := create_tween()
 		recover.tween_property(curtain, "modulate:a", 0.0, 0.25)
@@ -35,6 +37,7 @@ func begin() -> void:
 	fade_in.tween_property(curtain, "modulate:a", 0.0, 0.65).set_trans(Tween.TRANS_SINE)
 	await fade_in.finished
 	get_tree().remove_meta(TRANSITION_META)
+	get_tree().remove_meta("kwenta_continue_game")
 	var game := get_tree().current_scene
 	if is_instance_valid(game) and game.has_method("_finish_menu_transition"):
 		game._finish_menu_transition()

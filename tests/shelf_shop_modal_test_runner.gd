@@ -150,10 +150,7 @@ func _test_shop_icon_availability() -> void:
 	if shop != null:
 		shop.call("close")
 	main.call("_begin_shift")
-	_assert(shop_button != null and shop_button.visible, "Shop icon remains visible during the post-dialogue grace period")
-	main.set("shop_grace_remaining_seconds", 0.0)
-	main.call("_refresh_shop_button")
-	_assert(shop_button != null and not shop_button.visible, "Shop icon hides after the post-dialogue grace period")
+	_assert(shop_button != null and not shop_button.visible, "Shop icon hides when the shift starts")
 	main.call("_open_shelf_shop")
 	_assert(shop != null and not shop.visible, "shop cannot open during an active shift")
 	main.queue_free()
@@ -164,12 +161,11 @@ func _test_shop_grace_period() -> void:
 	await process_frame
 	var campaign = main.get("campaign")
 	campaign.day = 2
-	main.set("shop_available", false)
+	main.set("shop_available", true)
+	main.set("shift_in_progress", false)
+	_assert(bool(main.call("_is_shop_available")), "Shop is available before opening")
 	main.set("shift_in_progress", true)
-	main.set("shop_grace_remaining_seconds", 60.0)
-	_assert(bool(main.call("_is_shop_available")), "Shop remains available for its 60-second post-dialogue grace period")
-	main.set("shop_grace_remaining_seconds", 0.0)
-	_assert(not bool(main.call("_is_shop_available")), "Shop grace closes after 60 seconds")
+	_assert(not bool(main.call("_is_shop_available")), "Shop is unavailable once the shift starts")
 	main.queue_free()
 
 func _assert(condition: bool, message: String) -> void:

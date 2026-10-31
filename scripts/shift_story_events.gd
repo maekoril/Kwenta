@@ -1,6 +1,8 @@
 class_name ShiftStoryEvents
 extends Node
 
+signal story_visitor_tapped
+
 # Plays the story moments that happen DURING a shift, driven by the story JSON:
 #
 #   "shift_events": scripted customers ("customer") and kalaro interruptions ("interruption"),
@@ -15,12 +17,21 @@ extends Node
 
 signal remark_requested(customer_instance_id: String, text: String)
 signal popup_state_changed(active: bool)   # true while a popup is up: main.gd makes the shop inert
+signal story_prop_requested(prop_name: String)
+signal customer_story_prompt_requested(customer_instance_id: String)
+signal customer_story_arrival_finished(customer_instance_id: String)
+signal visitor_portrait_requested(visitor: String, button: Button)
+signal visitor_portrait_hidden
+signal visitor_entrance_finished
+signal visitor_tutorial_completed
 
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
+const STORY_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
+const STORY_EVENT_MARKER = preload("res://scripts/story_event_marker.gd")
 const MAX_EVENT_MINUTE := 570   # nothing new starts in the last half hour of the shift
 
 const DEFAULT_GO_BEATS: Array = [
-	{"speaker": "Narrator", "portrait": "", "text": "Tumakbo si Tonyo palabas saglit... at nainip ang mga naghihintay na customer."},
+	{"speaker": "Narrator", "portrait": "", "text": "Tumakbo si Tonyo palabas saglit, saka bumalik sa tindahan."},
 ]
 
 var story: StoryProgression
@@ -37,10 +48,13 @@ var _current: Dictionary = {}
 var _queue: Array[Dictionary] = []              # popups waiting for their turn
 var _beats: Array[Dictionary] = []              # reaction lines waiting to be shown
 var _timed: Array[Dictionary] = []              # events waiting for their minute
+var _waiting_scene: Dictionary = {}
 var _haggle_entries: Dictionary = {}            # customer_id -> merged haggle entry
 var _payment_beats_seen: Dictionary = {}
 var _hover_text: Dictionary = {}                # customer_id -> remark shown when they start paying
 var _mixup_entry: Dictionary = {}
+var _visitor_layer: CanvasLayer
+var _visitor_tutorial_seen := false
 
 
 func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: DialogueBubble, atlas: Texture2D) -> void:
@@ -57,6 +71,7 @@ func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: Dial
 	shift.mixup_requested.connect(_on_mixup_requested)
 	shift.payment_started.connect(_on_payment_started)
 	shift.story_customer_arrived.connect(_on_story_customer_arrived)
+	shift.customers_changed.connect(_on_customers_changed)
 
 
 func _disconnect_shift() -> void:
@@ -72,6 +87,8 @@ func _disconnect_shift() -> void:
 		shift.payment_started.disconnect(_on_payment_started)
 	if shift.story_customer_arrived.is_connected(_on_story_customer_arrived):
 		shift.story_customer_arrived.disconnect(_on_story_customer_arrived)
+	if shift.customers_changed.is_connected(_on_customers_changed):
+		shift.customers_changed.disconnect(_on_customers_changed)
 
 
 # True while a story popup is on screen. main.gd ignores bubble taps while this is true.
@@ -89,11 +106,13 @@ func begin_shift(day: int) -> void:
 	_queue.clear()
 	_beats.clear()
 	_timed.clear()
+	_waiting_scene.clear()
 	_haggle_entries.clear()
 	_payment_beats_seen.clear()
 	_hover_text.clear()
 	_mixup_entry = {}
 	shift.reset_story_state()
+	shift.reserved_story_ids.clear()
 	for entry in story.get_day_haggles(day):
 		var customer_id := str(entry.get("customer", ""))
 		if customer_id.is_empty():
@@ -115,6 +134,9 @@ func begin_shift(day: int) -> void:
 		shift.mixup_remaining = int(_mixup_entry.get("count", 0))
 		shift.mixup_every = int(_mixup_entry.get("every", 3))
 	for event in story.get_day_shift_events(day):
+		var reserved := str(event.get("visitor", ""))
+		if not reserved.is_empty() and not shift.reserved_story_ids.has(reserved):
+			shift.reserved_story_ids.append(reserved)
 		if str(event.get("type", "")) == "customer" and int(event.get("at_minute", 0)) <= 0:
 			_run_customer_event(event)   # waiting at the door when the shift starts
 		else:
@@ -126,6 +148,10 @@ func begin_shift(day: int) -> void:
 
 # Call when the shift ends.
 func end_shift() -> void:
+	_hide_story_visitor()
+	_waiting_scene.clear()
+	shift.story_waiting_for_clear = false
+	shift.reserved_story_ids.clear()
 	_in_shift = false
 	_queue.clear()
 	_beats.clear()
@@ -135,6 +161,10 @@ func end_shift() -> void:
 
 # Debug "skip day": drop everything so a popup can't stall the fast-forward.
 func suppress() -> void:
+	_hide_story_visitor()
+	_waiting_scene.clear()
+	shift.story_waiting_for_clear = false
+	shift.reserved_story_ids.clear()
 	if OS.is_debug_build():
 		print("[story] SKIP DAY pressed: this shift's story events are cancelled")
 	_suppressed = true
@@ -154,13 +184,21 @@ func suppress() -> void:
 # ------------------------------------------------------------ timed events
 
 func _on_game_minutes(minute: int) -> void:
-	if not _in_shift or _suppressed:
+	if not _in_shift or _suppressed or shift.is_closing:
 		return
 	while not _timed.is_empty():
 		var event: Dictionary = _timed[0]
 		if int(event.get("at_minute", 0)) > minute:
 			return
 		var kind := str(event.get("type", ""))
+		if kind == "scene" and bool(event.get("wait_for_clear", false)):
+			if not _waiting_scene.is_empty():
+				return
+			_timed.pop_front()
+			_waiting_scene = event
+			shift.story_waiting_for_clear = true
+			_try_start_waiting_scene.call_deferred()
+			return
 		if kind == "interruption":
 			if minute > MAX_EVENT_MINUTE:
 				_timed.pop_front()      # too late in the shift: skip it
@@ -176,6 +214,20 @@ func _on_game_minutes(minute: int) -> void:
 		elif kind == "scene" and minute <= MAX_EVENT_MINUTE:
 			_queue_popup({"kind": "scene", "event": event})
 
+func _on_customers_changed() -> void:
+	if not _waiting_scene.is_empty():
+		_try_start_waiting_scene.call_deferred()
+
+func _try_start_waiting_scene() -> void:
+	if _waiting_scene.is_empty() or not _in_shift or _suppressed or _active or not shift.is_running:
+		return
+	if not shift.get_active_customers().is_empty():
+		return
+	var event := _waiting_scene
+	_waiting_scene = {}
+	shift.story_waiting_for_clear = false
+	_queue_popup({"kind": "scene", "event": event})
+
 
 func _run_customer_event(event: Dictionary) -> void:
 	var order: Dictionary = event.get("order", {})
@@ -185,9 +237,23 @@ func _run_customer_event(event: Dictionary) -> void:
 
 # ------------------------------------------------------------ shift signals
 
-func _on_story_customer_arrived(_customer_instance_id: String, beats: Array) -> void:
+func _on_story_customer_arrived(customer_instance_id: String, beats: Array) -> void:
 	if _in_shift and not _suppressed:
-		_queue_popup({"kind": "arrival", "beats": beats})
+		var customer := _find_story_customer(customer_instance_id)
+		var kind := "customer_visitor" if customer != null and customer.story_arrival_pending else "arrival"
+		_queue_popup({"kind": kind, "id": customer_instance_id, "beats": beats})
+
+func _find_story_customer(instance_id: String) -> CustomerState:
+	for customer in shift.get_active_customers():
+		if customer.instance_id == instance_id:
+			return customer
+	return null
+
+func tap_customer_story(instance_id: String) -> void:
+	if _mode != "customer_visitor" or str(_current.get("id", "")) != instance_id:
+		return
+	_mark_visitor_tutorial_seen()
+	_play_beats(_current.get("beats", []))
 
 func _on_haggle_requested(customer_instance_id: String, ask: int) -> void:
 	if not _in_shift or _suppressed:
@@ -241,20 +307,96 @@ func _start_next() -> void:
 	match str(_current.get("kind", "")):
 		"arrival":
 			_play_beats(_current.get("beats", []))
+		"customer_visitor":
+			_mode = "customer_visitor"
+			customer_story_prompt_requested.emit(str(_current.get("id", "")))
 		"scene":
-			var event: Dictionary = _current.get("event", {})
-			var flag := str(event.get("seen_flag", ""))
-			if not flag.is_empty():
-				story.choices[flag] = "seen"
-			_play_beats(story.filter_story_beats(event.get("beats", [])))
+			_present_story_visitor()
 		"haggle":
 			_show_haggle()
 		"mixup":
 			_show_mixup()
 		"interruption":
-			_show_interruption()
+			_present_story_visitor()
 		_:
 			_start_next()
+
+func _present_story_visitor() -> void:
+	_mode = "visitor"
+	var event: Dictionary = _current.get("event", {})
+	var visitor := str(event.get("visitor", event.get("portrait", "jun_jun_tara")))
+	_show_story_visitor(visitor)
+
+func present_outro_visitor(visitor: String) -> void:
+	_mode = "outro_visitor"
+	_show_story_visitor(visitor)
+
+func _show_story_visitor(visitor: String) -> void:
+	_visitor_layer = CanvasLayer.new()
+	_visitor_layer.name = "StoryVisitorLayer"
+	_visitor_layer.layer = 45
+	add_child(_visitor_layer)
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_visitor_layer.add_child(root)
+	var button := Button.new()
+	button.name = "StoryVisitorButton"
+	# Match a customer's position in the service window, above the counter.
+	button.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	button.offset_left = 758
+	button.offset_top = 200
+	button.offset_right = 902
+	button.offset_bottom = 488
+	button.flat = true
+	button.disabled = true
+	button.tooltip_text = "Tap to begin the story event"
+	root.add_child(button)
+	visitor_portrait_requested.emit(visitor, button)
+	var mark := STORY_EVENT_MARKER.create_marker()
+	mark.position = Vector2(50, -80)
+	button.add_child(mark)
+	button.pressed.connect(_on_story_visitor_tapped)
+	await visitor_entrance_finished
+	if not is_instance_valid(button) or _mode not in ["visitor", "outro_visitor"]:
+		return
+	button.disabled = false
+	if not _visitor_tutorial_seen:
+		var overlay := STORY_TUTORIAL_OVERLAY.new()
+		overlay.name = "StoryVisitorTutorial"
+		root.add_child(overlay)
+		overlay.show_step("Tap the visitor with ! to start a story event. Time and customer patience are paused.", button.get_global_rect().merge(mark.get_global_rect()), "STORY EVENT")
+
+func _on_story_visitor_tapped() -> void:
+	if _mode != "visitor" and _mode != "outro_visitor":
+		return
+	_mark_visitor_tutorial_seen()
+	if _mode == "outro_visitor":
+		_mode = ""
+		_hide_story_visitor()
+		story_visitor_tapped.emit()
+		return
+	var event: Dictionary = _current.get("event", {})
+	shift.reserved_story_ids.erase(str(event.get("visitor", "")))
+	_hide_story_visitor()
+	if str(_current.get("kind", "")) == "interruption":
+		_show_interruption()
+	else:
+		var flag := str(event.get("seen_flag", ""))
+		if not flag.is_empty():
+			story.choices[flag] = "seen"
+		_play_beats(story.filter_story_beats(event.get("beats", [])))
+
+func _mark_visitor_tutorial_seen() -> void:
+	if not _visitor_tutorial_seen:
+		_visitor_tutorial_seen = true
+		visitor_tutorial_completed.emit()
+
+func _hide_story_visitor() -> void:
+	visitor_portrait_hidden.emit()
+	if is_instance_valid(_visitor_layer):
+		_visitor_layer.queue_free()
+		_visitor_layer = null
 
 
 func _finish() -> void:
@@ -280,6 +422,7 @@ func _release() -> void:
 	if shift != null:
 		shift.frozen = false
 	popup_state_changed.emit(false)
+	_try_start_waiting_scene.call_deferred()
 
 
 func _on_bubble_choice(index: int) -> void:
@@ -311,11 +454,19 @@ func _play_beats(raw_beats: Variant) -> void:
 
 func _next_beat() -> void:
 	if _beats.is_empty():
+		if str(_current.get("kind", "")) == "customer_visitor":
+			var instance_id := str(_current.get("id", ""))
+			var customer := _find_story_customer(instance_id)
+			if customer != null:
+				customer.story_arrival_pending = false
+			customer_story_arrival_finished.emit(instance_id)
 		_mode = ""
 		_start_next()
 		return
 	_mode = "beats"
 	var beat: Dictionary = _beats.pop_front()
+	if beat.has("show_prop"):
+		story_prop_requested.emit(str(beat["show_prop"]))
 	var portrait_id := str(beat.get("portrait", ""))
 	bubble.show_beat(str(beat.get("speaker", "Narrator")), str(beat.get("text", "")), _portrait(portrait_id), portrait_id)
 
@@ -372,8 +523,6 @@ func _show_interruption() -> void:
 func _resolve_interruption(index: int) -> void:
 	var event: Dictionary = _current.get("event", {})
 	if index == 1:
-		# He runs out to play: customers lose patience faster for a while.
-		shift.apply_patience_boost(float(event.get("drain_mult", 2.0)), float(event.get("drain_seconds", 12.0)))
 		_play_beats(event.get("go_beats", DEFAULT_GO_BEATS))
 	else:
 		_play_beats(event.get("stay_beats", []))

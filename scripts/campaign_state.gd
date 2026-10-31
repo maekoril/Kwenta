@@ -67,17 +67,25 @@ func set_stocked_product_ids(product_ids: Array[String]) -> void:
 			stocked_product_ids.append(product_id)
 
 func to_dict() -> Dictionary:
-	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust}
+	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust, "customer_trust": customer_trust.duplicate(true), "unlocked_product_ids": unlocked_product_ids.duplicate(), "purchased_upgrade_ids": purchased_upgrade_ids.duplicate(), "upgrade_investment": upgrade_investment, "product_price_bonuses": product_price_bonuses.duplicate(true)}
 
 func from_dict(data: Dictionary) -> void:
 	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
 	cash = int(data.get("cash", cash))
+	barangay_trust = clampf(float(data.get("barangay_trust", 100.0)), 0.0, 100.0)
+	customer_trust = data.get("customer_trust", {}).duplicate(true)
+	product_price_bonuses = data.get("product_price_bonuses", {}).duplicate(true)
+	upgrade_investment = int(data.get("upgrade_investment", 0))
+	for field in [["unlocked_product_ids", unlocked_product_ids], ["purchased_upgrade_ids", purchased_upgrade_ids]]:
+		if data.has(field[0]):
+			field[1].clear()
+			for value in data[field[0]]:
+				field[1].append(str(value))
 	purchased_store_groups.clear()
 	for group_id in data.get("purchased_store_groups", []):
 		var value := str(group_id)
 		if not value.is_empty() and not purchased_store_groups.has(value):
 			purchased_store_groups.append(value)
-			barangay_trust = float(data.get("barangay_trust", 100.0))
 
 func get_order_data_for_day(requested_day: int) -> OrderData:
 	var result := OrderData.new()
