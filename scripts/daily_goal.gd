@@ -13,19 +13,19 @@ var timed_out := false
 func _init(day: int) -> void:
 	match day:
 		1:
-			_setup(Type.CUSTOMERS_SERVED, "Serve 3 customers", "First Shift sticker", 3)
+			_setup(Type.CUSTOMERS_SERVED, "Serve 3 customers", "First Shift medal", 3)
 		2:
-			_setup(Type.EXACT_CHANGE, "Give 2 exact sukli", "Coin-doodle sticker", 2)
+			_setup(Type.EXACT_CHANGE, "Give 2 exact sukli", "Tamang Sukli medal", 2)
 		3:
-			_setup(Type.MULTI_ITEM_ORDERS, "Finish 3 multi-item orders", "Neat shelf-label detail", 3)
+			_setup(Type.MULTI_ITEM_ORDERS, "Finish 3 multi-item orders", "Maayos na Order medal", 3)
 		4:
-			_setup(Type.NO_TIMEOUTS, "Let no customer leave", "Rainy-day thank-you note", 1)
+			_setup(Type.NO_TIMEOUTS, "Let no customer leave", "Tag-ulan medal", 1)
 		5:
-			_setup(Type.CUSTOMERS_SERVED, "Serve 4 customers", "Suki notebook sticker", 4)
+			_setup(Type.CUSTOMERS_SERVED, "Serve 4 customers", "Suki medal", 4)
 		6:
-			_setup(Type.CUSTOMERS_SERVED, "Serve 10 Fiesta customers", "Fiesta bunting decoration", 10)
+			_setup(Type.CUSTOMERS_SERVED, "Serve 10 Fiesta customers", "Fiesta medal", 10)
 		_:
-			_setup(Type.TRUSTED_REGULARS, "Finish with 3 trusted regulars", "Final notebook decoration", 3)
+			_setup(Type.TRUSTED_REGULARS, "Finish with 3 trusted regulars", "Mga Suki medal", 3)
 
 func _setup(goal_type: int, goal_title: String, goal_reward: String, goal_target: int) -> void:
 	type = goal_type

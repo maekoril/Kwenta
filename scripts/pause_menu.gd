@@ -13,13 +13,25 @@ var _button: Button
 var _pause_visual: TextureRect
 const PAUSE_NORMAL: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_normal.png")
 const PAUSE_HOVER: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_hover.png")
+const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
 var _overlay: Control
+var _menu_confirmation: ConfirmationDialog
+var _settings_menu
 
 func _ready() -> void:
 	layer = 100                                    # above every z_index used in main.gd
 	process_mode = Node.PROCESS_MODE_ALWAYS        # must keep running while the tree is paused
 	_build_button()
 	_build_overlay()
+	_settings_menu = SETTINGS_MENU.new()
+	add_child(_settings_menu)
+	_menu_confirmation = ConfirmationDialog.new()
+	_menu_confirmation.title = "Return to main menu?"
+	_menu_confirmation.dialog_text = "Your current run will be lost. Return to the main menu?"
+	_menu_confirmation.ok_button_text = "MAIN MENU"
+	_menu_confirmation.cancel_button_text = "CANCEL"
+	_menu_confirmation.confirmed.connect(_confirm_main_menu)
+	add_child(_menu_confirmation)
 	set_available(false)
 
 ## Main calls this: true when a shift starts, false when it ends.
@@ -53,6 +65,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Esc (ui_cancel) or P toggles pause.
 	if not _available:
 		return
+	if _settings_menu != null and _settings_menu.overlay.visible:
+		return
 	var is_p: bool = false
 	if event is InputEventKey:
 		is_p = event.pressed and not event.echo and event.keycode == KEY_P
@@ -62,14 +76,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _on_settings_pressed() -> void:
-	# Placeholder for future settings menu logic
 	settings_requested.emit()
-	print("Settings menu requested (no function yet)")
+	_settings_menu.open()
 
 func _on_main_menu_pressed() -> void:
-	# Placeholder for future main menu transition
+	_menu_confirmation.popup_centered()
+
+func _confirm_main_menu() -> void:
+	resume()
 	main_menu_requested.emit()
-	print("Main menu requested (no function yet)")
+	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
 
 # --- UI -----------------------------------------------------------------------------------
 

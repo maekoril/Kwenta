@@ -20,6 +20,7 @@ const CHIP_ICON := Vector2(56.0, 56.0)
 const CARD_FILL := Color("#fbf1da")
 const CARD_EDGE := Color("#8a6a45")
 const GOAL_FILL := Color("#f3d98b")
+const UNEARNED_MEDAL_SHADER: Shader = preload("res://shaders/unearned_medal.gdshader")
 
 var _card: PanelContainer
 var _eyebrow: Label
@@ -170,7 +171,7 @@ func show_briefing(briefing: DayBriefing, viewport_size: Vector2) -> void:
 	_card.modulate.a = 0.0
 	_settle.call_deferred(viewport_size)
 
-func show_summary(title: String, summary: String, viewport_size: Vector2) -> void:
+func show_summary(title: String, summary: String, viewport_size: Vector2, reward_day: int = 0, reward_earned: bool = true) -> void:
 	for section in _briefing_sections:
 		section.visible = false
 	for child in _summary_sections.get_children():
@@ -188,16 +189,37 @@ func show_summary(title: String, summary: String, viewport_size: Vector2) -> voi
 	for section_text in summary.split("\n\n", false):
 		var lines := section_text.split("\n", false, 1)
 		var panel := _card_box()
+		var content_row := HBoxContainer.new()
+		content_row.add_theme_constant_override("separation", 20)
+		panel.add_child(content_row)
 		var box := VBoxContainer.new()
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_theme_constant_override("separation", 8)
-		panel.add_child(box)
+		content_row.add_child(box)
 		box.add_child(KwentaStyle.make_label(lines[0], KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED))
 		if lines.size() > 1:
-			var body := KwentaStyle.make_label(lines[1], KwentaStyle.SIZE_ROW_VALUE, KwentaStyle.INK)
+			var body_size := KwentaStyle.SIZE_ROW_LABEL if lines[0].begins_with("DAILY GOAL") else KwentaStyle.SIZE_ROW_VALUE
+			var body := KwentaStyle.make_label(lines[1], body_size, KwentaStyle.INK)
 			body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			box.add_child(body)
-		if lines[0] == "DAILY GOAL":
+		if lines[0].begins_with("DAILY GOAL"):
 			goal_panel = panel
+			if reward_day >= 1 and reward_day <= 7:
+				var medal := TextureRect.new()
+				medal.name = "DailyGoalMedal"
+				medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % reward_day) as Texture2D
+				medal.custom_minimum_size = Vector2(132, 132)
+				medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				medal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				content_row.add_child(medal)
+				if reward_earned:
+					_animate_medal.call_deferred(medal)
+				else:
+					var grayscale := ShaderMaterial.new()
+					grayscale.shader = UNEARNED_MEDAL_SHADER
+					medal.material = grayscale
 		else:
 			panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			results_row.add_child(panel)
@@ -208,6 +230,18 @@ func show_summary(title: String, summary: String, viewport_size: Vector2) -> voi
 	visible = true
 	_card.modulate.a = 0.0
 	_settle.call_deferred(viewport_size)
+
+func _animate_medal(medal: TextureRect) -> void:
+	await get_tree().process_frame
+	if not is_instance_valid(medal) or not visible:
+		return
+	medal.pivot_offset = medal.size * 0.5
+	medal.scale = Vector2.ONE * 0.4
+	medal.modulate.a = 0.0
+	var pop := create_tween()
+	pop.tween_interval(0.35)
+	pop.tween_property(medal, "modulate:a", 1.0, 0.12)
+	pop.parallel().tween_property(medal, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _settle(viewport_size: Vector2, play_intro: bool = true) -> void:
 	# Let containers recalculate their minimum sizes after switching card contents.

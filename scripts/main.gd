@@ -11,6 +11,7 @@ const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
 const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
+const AUDIO_SETTINGS = preload("res://scripts/audio_settings.gd")
 const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
@@ -155,6 +156,7 @@ var showing_pre_shift_briefing := false
 
 enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE }
 func _ready() -> void:
+	AUDIO_SETTINGS.initialize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_recenter_fixed_hud)
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
@@ -199,8 +201,16 @@ func _ready() -> void:
 	_build_story_events()
 	_rebuild_product_shelf()
 	apply_environment(campaign.day)
+	if get_tree().has_meta("kwenta_menu_story_transition"):
+		prologue_background.visible = true
+		pause_menu.set_available(false)
+	else:
+		_present_prologue()
+		pause_menu.set_available(true)  # Keep the framed Pause control visible during the intro.
+
+func _finish_menu_transition() -> void:
 	_present_prologue()
-	pause_menu.set_available(true)  # Keep the framed Pause control visible during the intro.
+	pause_menu.set_available(true)
 
 func _process(delta: float) -> void:
 	if tutorial_step == TutorialStep.DAY2_CUSTOMER and tutorial_overlay != null and tutorial_overlay.visible:
@@ -1046,7 +1056,46 @@ func _on_customer_served(_customer_id: String, order_units: int) -> void:
 	daily_goal.record_customer_served(order_units)
 	_refresh_daily_goal_hud()
 	if not was_complete and daily_goal.is_complete():
-		_float_text(Vector2(760.0, 270.0), "GOAL COMPLETE!", Color("d9efaa"))
+		_show_daily_goal_achievement()
+
+func _show_daily_goal_achievement() -> void:
+	if daily_goal == null or campaign == null:
+		return
+	var notice := PanelContainer.new()
+	notice.name = "DailyGoalAchievementNotice"
+	notice.z_index = 38
+	notice.position = Vector2(33, 100) + _ui_offset()
+	notice.custom_minimum_size = Vector2(480, 110)
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8e8c6"), Color("80532c"), 16, 10, 10, 4, 5))
+	add_child(notice)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice.add_child(row)
+	var medal := TextureRect.new()
+	medal.name = "AchievementMedal"
+	medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % campaign.day) as Texture2D
+	medal.custom_minimum_size = Vector2(84, 84)
+	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(medal)
+	var text_column := VBoxContainer.new()
+	text_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text_column)
+	text_column.add_child(KwentaStyle.make_label("DAILY GOAL COMPLETE!", 25, Color("82511f")))
+	var goal_text := KwentaStyle.make_label(daily_goal.title, 24, KwentaStyle.INK)
+	goal_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	goal_text.custom_minimum_size.x = 330
+	text_column.add_child(goal_text)
+	notice.modulate.a = 0.0
+	var animation := create_tween()
+	animation.tween_property(notice, "modulate:a", 1.0, 0.18)
+	animation.tween_interval(2.6)
+	animation.tween_property(notice, "modulate:a", 0.0, 0.35)
+	animation.tween_callback(notice.queue_free)
 
 func _rebuild_customer_slots() -> void:
 	if customer_layer == null or shift == null:
@@ -1239,8 +1288,9 @@ func _show_shift_summary() -> void:
 		_refresh_daily_goal_hud()
 	var summary_text_value := "TODAY'S SALES\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d\nCustomers served: %d\nCustomers left: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
 	if daily_goal != null:
-		var goal_status := "COMPLETED · %s" % daily_goal.reward if daily_goal.is_complete() else "Not completed — no penalty"
-		summary_text_value += "\n\nDAILY GOAL\n%s: %s" % [daily_goal.title, goal_status]
+		var goal_heading := "DAILY GOAL COMPLETE!" if daily_goal.is_complete() else "DAILY GOAL"
+		var goal_result: String = str(daily_goal.title) if daily_goal.is_complete() else "%s: Not completed — no penalty" % daily_goal.title
+		summary_text_value += "\n\n%s\n%s" % [goal_heading, goal_result]
 	if shift.change_total > 0:
 		summary_text_value += "\n\nSUKLI\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
 	if shift.change_total > 0:
@@ -1471,7 +1521,9 @@ func _show_pending_shift_summary() -> void:
 	showing_post_shift_summary = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
-	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, size)
+	var reward_day := campaign.day if daily_goal != null else 0
+	var reward_earned: bool = daily_goal != null and daily_goal.is_complete()
+	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, size, reward_day, reward_earned)
 	pending_shift_summary_text = ""
 	pending_shift_summary_title = ""
 
@@ -1941,7 +1993,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		daily_goal.record_exact_change()
 		_refresh_daily_goal_hud()
 		if not was_goal_complete and daily_goal.is_complete():
-			_float_text(Vector2(760.0, 270.0), "GOAL COMPLETE!", Color("d9efaa"))
+			_show_daily_goal_achievement()
 	var at := Vector2(840.0, 200.0)
 	if is_instance_valid(actor):
 		at = actor.global_position - global_position + Vector2(actor.size.x * 0.5 - 90.0, 110.0)

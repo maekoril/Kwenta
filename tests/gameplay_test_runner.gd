@@ -209,7 +209,7 @@ func _test_day_briefing_explains_the_new_idea_and_goal() -> void:
 	_assert(rain_briefing.change_lines.has("Rain makes customers less patient"), "rain briefing names the day's new pressure")
 	_assert(rain_briefing.change_lines.has("Shift ends at 6:00 PM"), "briefing names the day's closing time")
 	_assert(rain_briefing.goal_title == "Let no customer leave", "briefing carries the optional daily goal")
-	_assert(rain_briefing.goal_reward == "Rainy-day thank-you note", "briefing carries the daily-goal reward")
+	_assert(rain_briefing.goal_reward == "Tag-ulan medal", "briefing carries the daily-goal reward")
 
 func _test_day_briefing_prioritizes_focus_and_configuration_unlocks() -> void:
 	var starter_product: ProductData = ProductDataScript.new()
