@@ -1611,23 +1611,27 @@ func _show_story_prop(prop_name: String) -> void:
 	if not is_instance_valid(story_illustration):
 		return
 	if prop_name == "berting_counter_closeup":
-		story_illustration.texture = load("res://assets/story/berting_counter_50.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/berting_counter_50.png")
+	elif prop_name == "paolo_coins":
+		_show_gallery_illustration("res://assets/story/day3_paolo_coins_v2.png")
 	elif prop_name == "lina_walking_away":
-		story_illustration.texture = load("res://assets/story/day4_lina_alfa_corner.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_lina_alfa_corner.png")
 	elif prop_name == "friends_shelter":
-		story_illustration.texture = load("res://assets/story/day4_friends_shelter.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_friends_shelter.png")
 	elif prop_name == "alfa_save_corner":
-		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
 		story_illustration.visible = false
 	elif prop_name == "hide_berting_closeup":
 		story_illustration.visible = false
 
+func _show_gallery_illustration(path: String) -> void:
+	story_illustration.texture = load(path) as Texture2D
+	story_illustration.visible = true
+	preload("res://scripts/illustration_catalog.gd").record_seen(story, path)
+
 func _present_prologue() -> void:
+	preload("res://scripts/illustration_catalog.gd").record_seen(story, "res://assets/story/tonyo_bedroom.png")
 	prologue_background.visible = true
 	prologue_fade.visible = false
 	_show_story_beats(story.get_prologue_beats(), "PROLOGUE", "prologue_end")
@@ -1682,17 +1686,15 @@ func _show_current_story_beat() -> void:
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
 		await story_events.story_visitor_tapped
 	if str(beat.get("cutscene", "")) == "box_fall":
-		story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day2_box_fall.png")
+	elif str(beat.get("cutscene", "")) == "day3_project":
+		_show_gallery_illustration("res://assets/story/day3_project_box.png")
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
-		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
-		story_illustration.texture = load("res://assets/story/day5_tonyo_wakes.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day5_tonyo_wakes.png")
 	elif str(beat.get("cutscene", "")) == "day5_phone":
-		story_illustration.texture = load("res://assets/story/day5_tonyo_phone_v2.png") as Texture2D
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day5_tonyo_phone_v2.png")
 	elif str(beat.get("cutscene", "")) == "day5_to_store":
 		bubble.close()
 		prologue_fade.modulate.a = 0.0
@@ -1962,6 +1964,7 @@ func _build_briefing_card() -> void:
 	briefing_card = BRIEFING_CARD.new()
 	briefing_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	briefing_card.start_pressed.connect(_on_briefing_start_pressed)
+	briefing_card.diary_requested.connect(func(): pause_menu.diary_reader.open(story))
 	add_child(briefing_card)
 
 func _on_briefing_start_pressed() -> void:
