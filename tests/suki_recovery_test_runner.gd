@@ -42,5 +42,13 @@ func _initialize() -> void:
 	assert(state.barangay_trust == 72.0)
 	state.advance_day()
 	assert(state.barangay_trust == 72.0)
+	manager.active_customers.clear()
+	var walkout = CustomerState.new("walkout", OrderState.new({"instant_noodles": 1}), 1.0)
+	walkout.instance_id = "walkout_1"
+	manager.active_customers.append(walkout)
+	manager.is_running = true
+	manager.shift_duration_seconds = 1000.0
+	manager.advance_time(1.0)
+	assert(state.barangay_trust == 57.0)
 	print("Suki recovery, cap, and overdue-payment checks passed")
 	quit()

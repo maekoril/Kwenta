@@ -13,6 +13,10 @@ const NEIGHBOR_PORTRAITS := {
 	"neighbor_rosa": preload("res://assets/sprites/customers/neighbor_rosa.png"),
 	"neighbor_nico": preload("res://assets/sprites/customers/neighbor_nico.png"),
 	"neighbor_ramon": preload("res://assets/sprites/customers/neighbor_ramon.png"),
+	"neighbor_lina_impatient": preload("res://assets/sprites/customers/neighbor_lina_impatient.png"),
+	"neighbor_rosa_impatient": preload("res://assets/sprites/customers/neighbor_rosa_impatient.png"),
+	"neighbor_nico_impatient": preload("res://assets/sprites/customers/neighbor_nico_impatient.png"),
+	"neighbor_ramon_impatient": preload("res://assets/sprites/customers/neighbor_ramon_impatient.png"),
 }
 
 const CUSTOMER_REGIONS := {
@@ -98,7 +102,7 @@ static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) ->
 # Sprite switching for impatient customers. A character has an impatient sprite when
 # CUSTOMER_REGIONS contains "<customer_id>_impatient" (e.g. "aling_nena_impatient").
 static func has_impatient_portrait(customer_id: String) -> bool:
-	return CUSTOMER_REGIONS.has(customer_id + "_impatient")
+	return CUSTOMER_REGIONS.has(customer_id + "_impatient") or NEIGHBOR_PORTRAITS.has(customer_id + "_impatient")
 
 static func customer_mood_portrait(customer_id: String, portrait_atlas: Texture2D, impatient: bool) -> AtlasTexture:
 	if impatient and has_impatient_portrait(customer_id):

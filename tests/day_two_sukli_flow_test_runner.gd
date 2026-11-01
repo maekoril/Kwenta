@@ -66,12 +66,21 @@ func check_flow(previous: String, accept: bool) -> void:
 	main._process(5.0)
 	assert(customer.patience_remaining == before)
 	await create_timer(0.5).timeout
+	assert(main.tutorial_step == main.TutorialStep.DAY2_RULES and main.shift.frozen)
+	assert(main.tutorial_overlay.instruction.text.contains("TAMA") and main.tutorial_overlay.instruction.text.contains("KULANG") and main.tutorial_overlay.instruction.text.contains("SOBRA"))
+	assert(main.tutorial_overlay.sukli_preview.visible)
+	assert(main.tutorial_overlay.sukli_preview.change_due == customer.payment.change_due())
+	assert(main.cash_tray.get_selected_total() == 0 and customer.patience_remaining == before)
+	main.tutorial_overlay.next_button.pressed.emit()
+	assert(not main.tutorial_overlay.sukli_preview.visible)
 	assert(main.tutorial_overlay.visible and main.tutorial_sukli_ready)
 	main.cash_tray.close()
 	await create_timer(0.35).timeout
 	assert(main.tutorial_step == main.TutorialStep.DAY2_CUSTOMER and main.tutorial_overlay.visible)
 	actor.payment_tapped.emit(customer.instance_id)
 	await create_timer(0.5).timeout
+	assert(main.tutorial_step == main.TutorialStep.DAY2_RULES)
+	main.tutorial_overlay.next_button.pressed.emit()
 	assert(main.tutorial_step == main.TutorialStep.DAY2_MONEY and main.tutorial_overlay.visible)
 	while main.cash_tray.get_selected_total() < customer.payment.change_due():
 		var remaining = customer.payment.change_due() - main.cash_tray.get_selected_total()

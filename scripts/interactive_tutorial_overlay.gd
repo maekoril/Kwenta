@@ -22,6 +22,7 @@ var arrow_to := Vector2.ZERO
 var arrow_target_rect := Rect2()
 var arrow_visible := false
 var glow_time := 0.0
+var sukli_preview: Control
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -57,6 +58,10 @@ func _ready() -> void:
 	instruction.add_theme_color_override("font_color", KwentaStyle.INK)
 	instruction.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(instruction)
+	sukli_preview = preload("res://scripts/sukli_outcome_preview.gd").new()
+	sukli_preview.name = "SukliOutcomePreview"
+	sukli_preview.visible = false
+	content.add_child(sukli_preview)
 	action_row = HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", 16)
 	content.add_child(action_row)
@@ -80,6 +85,7 @@ func _ready() -> void:
 	action_row.add_child(next_button)
 
 func show_step(message: String, target_rect: Rect2, step_title: String = "GUIDE") -> void:
+	sukli_preview.hide()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false
 	skip_button.visible = false
@@ -105,6 +111,13 @@ func show_info_step(message: String, target_rect: Rect2, step_title: String, is_
 func show_skip() -> void:
 	skip_button.visible = true
 	action_row.visible = true
+	_position_coachmark()
+	_reposition_after_layout()
+
+func show_sukli_examples(tender: int, total: int, target_rect: Rect2) -> void:
+	show_info_step("₱%d bayad − ₱%d bili = ₱%d sukli\nTAMA, KULANG, o SOBRA?" % [tender, total, tender - total], target_rect, "SUKLI · PREVIEW ONLY", true)
+	sukli_preview.configure(tender - total)
+	sukli_preview.show()
 	_position_coachmark()
 	_reposition_after_layout()
 
@@ -150,6 +163,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func clear_step() -> void:
+	sukli_preview.hide()
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false

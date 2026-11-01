@@ -1,5 +1,8 @@
 extends Control
 
+static var _opening_shown := false
+const OPENING_SPLASH = preload("res://scripts/opening_splash.gd")
+
 const GAME_SCENE := "res://scenes/main.tscn"
 const BACKGROUND_PATH := "res://assets/sprites/ui/main_menu/notebook_desk.png"
 const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
@@ -24,6 +27,10 @@ func _ready() -> void:
 	add_child(settings_menu)
 	resized.connect(_layout_menu)
 	_layout_menu()
+	if not _opening_shown:
+		_opening_shown = true
+		var opening := OPENING_SPLASH.new()
+		add_child(opening)
 
 func _build_menu() -> void:
 	var backdrop := ColorRect.new()

@@ -13,8 +13,8 @@ config_version=5
 config/name="Kwenta"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-boot_splash/bg_color=Color(0.9607843, 0.9019608, 0.78431374, 1)
-boot_splash/image="uid://crgen3eu2dxad"
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/show_image=false
 config/icon="uid://b37o3ye8oqtg8"
 
 [display]

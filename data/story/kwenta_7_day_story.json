@@ -501,7 +501,48 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "May listahan din pala ng iba pang paninda. Kung may ipon ako, puwede akong pumili mamaya."
+					"text": "Tatawagan ko lang siya, tapos magkakaroon na ako ng maraming paninda? Ano 'to, magic?"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Dinayal ni Tonyo ang numerong nasa kuwaderno. Ring... ring...",
+					"phone_ring": true
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Hello how may help you in beautiful morning today?"
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Whatever you order, I bring fast!"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Kuya, 'wag ka na mag-English, okay lang!"
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Hahaha, sorry! Sa trabaho kasi, ganyan kami sumagot. Teka, bakit ikaw ang tumawag? Nasaan si Cora?"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Si Inay po, kasama ni Lola. Ako muna ang nagbabantay ng tindahan."
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Ah, ikaw pala si Tonyo! Sige, nasa kuwaderno ni Inay ang listahan. Pumili ka lang kung may gusto kang idagdag; ihahatid ko bago kayo magbukas."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Sige po, Kuya. Tingnan ko muna kung ano ang kaya ng ipon ko!"
 				}
 			],
 			"outro": [
