@@ -31,6 +31,16 @@ func _build_menu() -> void:
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
+	# Fill extra-wide or narrow screens behind the complete, uniformly scaled menu.
+	var edge_background := TextureRect.new()
+	edge_background.name = "MenuEdgeBackground"
+	edge_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	edge_background.texture = load(BACKGROUND_PATH) as Texture2D
+	edge_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	edge_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	edge_background.modulate = Color(0.42, 0.42, 0.42, 1.0)
+	edge_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(edge_background)
 	menu_canvas = Control.new()
 	menu_canvas.name = "NotebookMenuCanvas"
 	menu_canvas.size = DESIGN_SIZE
@@ -97,7 +107,7 @@ func _select_menu_item(button: Button, action: Callable) -> void:
 func _layout_menu() -> void:
 	if menu_canvas == null:
 		return
-	var factor := minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y)
+	var factor := maxf(0.001, minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y))
 	menu_canvas.scale = Vector2.ONE * factor
 	menu_canvas.position = (size - DESIGN_SIZE * factor) * 0.5
 

@@ -34,12 +34,12 @@ func _ready() -> void:
 	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_page.add_child(paper)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
+	column.add_theme_constant_override("separation", 6)
 	_page.add_child(column)
 	var eyebrow := KwentaStyle.make_label("KUWADERNO NI INAY", 24, KwentaStyle.INK_MUTED)
 	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(eyebrow)
-	var heading := _handwritten("Listahan ng Paninda", 66)
+	var heading := _paper_label("Listahan ng Paninda", 58)
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	var rule := ColorRect.new()
@@ -47,13 +47,13 @@ func _ready() -> void:
 	rule.custom_minimum_size.y = 3.0
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(rule)
-	_product_list = _handwritten("", 40)
+	_product_list = _paper_label("", 42)
 	_product_list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_product_list)
-	var message := _handwritten("Anak, iiwan ko muna itong kahon dito. Aalis na ako para bumili ng gamot ni Lola. Pakihanay ang Patos, Zesty at Kapeko. Kung may ipon, puwede kang magdagdag mula sa listahan.\n— Inay", 38)
+	var message := _paper_label("Anak, iiwan ko muna itong kahon dito. Aalis na ako para bumili ng gamot ni Lola. Pakihanay ang Patos, Zesty at Kapeko. Kung may ipon, puwede kang magdagdag mula sa listahan.\n— Inay", 40)
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(message)
-	var signature := _handwritten("", 46)
+	var signature := _paper_label("", 38)
 	signature.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	column.add_child(signature)
 	var spacer := Control.new()
@@ -70,8 +70,8 @@ func _ready() -> void:
 	button.pressed.connect(_dismiss)
 	footer.add_child(button)
 
-func _handwritten(value: String, font_size: int) -> Label:
-	var label := KwentaStyle.make_label(value, font_size, Color("344965"))
+func _paper_label(value: String, font_size: int) -> Label:
+	var label := KwentaStyle.make_label(value, font_size, KwentaStyle.INK)
 	label.add_theme_font_override("font", HANDWRITING)
 	# Give wrapped text a real width before the first container layout pass.
 	label.custom_minimum_size.x = 850.0
@@ -95,15 +95,16 @@ func present() -> void:
 	_intro.tween_property(_page, "modulate:a", 1.0, 0.16)
 
 func _page_fit() -> float:
-	return minf(1.0, minf((size.x - 80.0) / PAGE_SIZE.x, (size.y - 80.0) / PAGE_SIZE.y))
+	var actual_size := _page.size if is_instance_valid(_page) else PAGE_SIZE
+	return maxf(0.1, minf(1.0, minf((size.x - 80.0) / actual_size.x, (size.y - 80.0) / actual_size.y)))
 
 func _layout_page() -> void:
 	if not is_instance_valid(_page) or size == Vector2.ZERO:
 		return
 	_page.reset_size()
 	_page.size = PAGE_SIZE
-	_page.position = ((size - PAGE_SIZE) * 0.5).round()
-	_page.pivot_offset = PAGE_SIZE * 0.5
+	_page.position = ((size - _page.size) * 0.5).round()
+	_page.pivot_offset = _page.size * 0.5
 	if visible:
 		if _intro != null and _intro.is_valid():
 			_intro.kill()

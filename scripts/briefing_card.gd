@@ -21,6 +21,7 @@ const CARD_FILL := Color("#fbf1da")
 const CARD_EDGE := Color("#8a6a45")
 const GOAL_FILL := Color("#f3d98b")
 const UNEARNED_MEDAL_SHADER: Shader = preload("res://shaders/unearned_medal.gdshader")
+const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 
 var _card: PanelContainer
 var _eyebrow: Label
@@ -105,7 +106,7 @@ func _build() -> void:
 	# --- row 3: goal ticket ---
 	var goal := PanelContainer.new()
 	goal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	goal.add_theme_stylebox_override("panel", KwentaStyle.box(GOAL_FILL, KwentaStyle.INK, 22.0, 10.0, 10, 4, 5))
+	goal.add_theme_stylebox_override("panel", _paper_inset(12.0, 6.0))
 	var goal_row := HBoxContainer.new()
 	goal_row.add_theme_constant_override("separation", 20)
 	goal.add_child(goal_row)
@@ -113,7 +114,9 @@ func _build() -> void:
 	goal_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	goal_text.add_theme_constant_override("separation", 0)
 	goal_text.add_child(KwentaStyle.make_label("OPTIONAL DAILY GOAL", KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED))
-	_goal_title = KwentaStyle.make_label("", KwentaStyle.SIZE_ROW_VALUE, KwentaStyle.INK)
+	_goal_title = KwentaStyle.make_label("", 38, KwentaStyle.INK)
+	_goal_title.add_theme_font_override("font", HANDWRITING)
+	_goal_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	goal_text.add_child(_goal_title)
 	goal_row.add_child(goal_text)
 	var reward_box := VBoxContainer.new()
@@ -122,7 +125,7 @@ func _build() -> void:
 	var reward_caption := KwentaStyle.make_label("REWARD", KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED)
 	reward_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	reward_box.add_child(reward_caption)
-	_goal_reward = KwentaStyle.make_label("", KwentaStyle.SIZE_ROW_LABEL, KwentaStyle.MONEY)
+	_goal_reward = KwentaStyle.make_label("", KwentaStyle.SIZE_ROW_LABEL, KwentaStyle.INK)
 	_goal_reward.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	reward_box.add_child(_goal_reward)
 	goal_row.add_child(reward_box)
@@ -188,7 +191,15 @@ func show_summary(title: String, summary: String, viewport_size: Vector2, reward
 	var goal_panel: PanelContainer
 	for section_text in summary.split("\n\n", false):
 		var lines := section_text.split("\n", false, 1)
-		var panel := _card_box()
+		# Keep the notebook ruling visible behind the results instead of drawing cards.
+		var panel := PanelContainer.new()
+		panel.name = "SummaryPageSection"
+		var inset := StyleBoxEmpty.new()
+		inset.content_margin_left = 12.0
+		inset.content_margin_right = 12.0
+		inset.content_margin_top = 5.0
+		inset.content_margin_bottom = 5.0
+		panel.add_theme_stylebox_override("panel", inset)
 		var content_row := HBoxContainer.new()
 		content_row.add_theme_constant_override("separation", 20)
 		panel.add_child(content_row)
@@ -196,10 +207,12 @@ func show_summary(title: String, summary: String, viewport_size: Vector2, reward
 		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_theme_constant_override("separation", 8)
 		content_row.add_child(box)
-		box.add_child(KwentaStyle.make_label(lines[0], KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED))
+		var heading := KwentaStyle.make_label(lines[0], 30, KwentaStyle.INK)
+		box.add_child(heading)
 		if lines.size() > 1:
-			var body_size := KwentaStyle.SIZE_ROW_LABEL if lines[0].begins_with("DAILY GOAL") else KwentaStyle.SIZE_ROW_VALUE
+			var body_size := 46 if lines[0].begins_with("DAILY GOAL") else 50
 			var body := KwentaStyle.make_label(lines[1], body_size, KwentaStyle.INK)
+			body.add_theme_font_override("font", HANDWRITING)
 			body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			box.add_child(body)
 		if lines[0].begins_with("DAILY GOAL"):
@@ -290,7 +303,7 @@ func _fill_shelf(briefing: DayBriefing) -> void:
 func _chip(product: ProductData) -> Control:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_theme_stylebox_override("panel", KwentaStyle.box(KwentaStyle.PAPER_DARK, KwentaStyle.INK_MUTED, 12.0, 6.0, 8, 3, 3))
+	chip.add_theme_stylebox_override("panel", _paper_inset(8.0, 3.0))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	chip.add_child(row)
@@ -302,7 +315,8 @@ func _chip(product: ProductData) -> Control:
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
-	var name_label := KwentaStyle.make_label(product.display_name, KwentaStyle.SIZE_ROW_LABEL, KwentaStyle.INK)
+	var name_label := KwentaStyle.make_label(product.display_name, 34, KwentaStyle.INK)
+	name_label.add_theme_font_override("font", HANDWRITING)
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(name_label)
 	return chip
@@ -314,7 +328,8 @@ func _info_card(tag_text: String) -> PanelContainer:
 	box.add_theme_constant_override("separation", 8)
 	panel.add_child(box)
 	box.add_child(KwentaStyle.make_label(tag_text, KwentaStyle.SIZE_CAPTION, KwentaStyle.INK_MUTED))
-	var body := KwentaStyle.make_label("", KwentaStyle.SIZE_ROW_VALUE, KwentaStyle.INK)
+	var body := KwentaStyle.make_label("", 40, KwentaStyle.INK)
+	body.add_theme_font_override("font", HANDWRITING)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(INFO_BODY_WIDTH, 96.0)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -325,8 +340,16 @@ func _info_card(tag_text: String) -> PanelContainer:
 func _card_box() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", KwentaStyle.box(CARD_FILL, CARD_EDGE, 22.0, 14.0, 10, 3, 4))
+	panel.add_theme_stylebox_override("panel", _paper_inset(12.0, 8.0))
 	return panel
+
+func _paper_inset(horizontal: float, vertical: float) -> StyleBoxEmpty:
+	var inset := StyleBoxEmpty.new()
+	inset.content_margin_left = horizontal
+	inset.content_margin_right = horizontal
+	inset.content_margin_top = vertical
+	inset.content_margin_bottom = vertical
+	return inset
 
 func _centered(font_size: int, color: Color) -> Label:
 	var label := KwentaStyle.make_label("", font_size, color)

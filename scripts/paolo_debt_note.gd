@@ -1,7 +1,8 @@
 extends Control
 
-# A brief story illustration, not an interactive debt ledger.
 const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
+
+# A brief story illustration, not an interactive debt ledger.
 const PAGE_SIZE := Vector2(900.0, 440.0)
 var page: PanelContainer
 
@@ -35,8 +36,8 @@ func _ready() -> void:
 	var caption := KwentaStyle.make_label("KUWADERNO · UTANG", 26, KwentaStyle.INK_MUTED)
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(caption)
-	for entry in [["Paolo", 68], ["Feeta  ·  ₱15", 48], ["Bayad  ·  ₱12", 48], ["Utang  ·  ₱3", 60]]:
-		var line := KwentaStyle.make_label(entry[0], entry[1], Color("344965"))
+	for entry in [["Paolo", 68], ["Feeta  ·  ₱15", 52], ["Bayad  ·  ₱12", 52], ["Utang  ·  ₱3", 60]]:
+		var line := KwentaStyle.make_label(entry[0], entry[1], KwentaStyle.INK)
 		line.add_theme_font_override("font", HANDWRITING)
 		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(line)

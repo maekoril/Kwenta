@@ -192,10 +192,22 @@ func _ready() -> void:
 			story.choices["day2_overpayment"] = money_choice
 			if money_choice == "keep":
 				story.choices["day2_money_separate"] = "yes"
-		if campaign.day == 3 and int(debug_launch_data.get("moment", 0)) in [6, 7, 8]:
+		if (campaign.day == 3 and int(debug_launch_data.get("moment", 0)) in [6, 7, 8]) or campaign.day > 3:
 			var friends_choice := str(debug_launch_data.get("day3_friends", "none"))
 			if friends_choice in ["later", "stay"]:
 				story.choices["day3_friends"] = friends_choice
+		if (campaign.day == 3 and int(debug_launch_data.get("moment", 0)) == 8) or campaign.day > 3:
+			var paolo_choice := str(debug_launch_data.get("day3_candy", "none"))
+			if paolo_choice in ["credit", "free", "no"]:
+				story.choices["day3_candy"] = paolo_choice
+		if (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) == 8) or campaign.day > 4:
+			var rain_choice := str(debug_launch_data.get("day4_rain", "none"))
+			if rain_choice in ["join", "stay", "shelter"]:
+				story.choices["day4_rain"] = rain_choice
+		# Quick playtests start with earlier days completed, but never alter the real save.
+		# Reconstruct their diary pages from the scenario choices, not invented goal results.
+		for completed_day in range(1, campaign.day):
+			story.write_diary_entry(completed_day)
 		if bool(debug_launch_data.get("skip_tutorials", true)):
 			completed_tutorials = {"day1_hud": true, "day1_drag": true, "day2_shop": true, "day2_sukli": true, "story_event": true}
 			day_two_sukli_tutorial_complete = true
@@ -250,6 +262,7 @@ func _ready() -> void:
 	# Skip Day is intentionally hidden; keep the debug helper for developers only.
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
+	pause_menu.story_progression = story
 	pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
 	# Compact button dimensions for the Option 5 bar.
 	pause_menu.get_child(0).get_child(0).size = Vector2(89.0, 74.0)
@@ -300,13 +313,25 @@ func _launch_debug_start() -> void:
 	if not debug_session or not OS.is_debug_build():
 		return
 	var moment := int(debug_launch_data.get("moment", 0))
+	if moment == 11 and campaign.day == 1:
+		_present_prologue()
+		return
+	if moment == 13 and campaign.day == 2:
+		var intro := story.get_day_intro_beats(2)
+		var box_index := 0
+		for index in range(intro.size()):
+			if str(intro[index].get("cutscene", "")) == "box_fall":
+				box_index = index
+				break
+		_show_story_beats(intro.slice(box_index), "DAY 2", "start_shift")
+		return
 	if moment == 0:
 		_present_day_intro()
 		return
 	if moment == 1:
 		_show_pre_shift_briefing()
 		return
-	if moment == 2:
+	if moment in [2, 14]:
 		_begin_shift()
 		return
 	# Direct scene previews start a real shift, but skip its opening and customers.
@@ -322,11 +347,11 @@ func _launch_debug_start() -> void:
 	shift.start_shift()
 	shift.active_customers.clear()
 	shift.customers_changed.emit()
-	if moment == 8:
+	if moment in [8, 12]:
 		story_events.suppress()
 		shift.finish_shift()
 		return
-	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo"}.get(moment, "") as String
+	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked"}.get(moment, "") as String
 	var matching: Array[Dictionary] = []
 	for event in story_events._timed:
 		if str(event.get("visitor", "")) == visitor:
@@ -1447,18 +1472,18 @@ func _show_shift_summary() -> void:
 	if daily_goal != null:
 		daily_goal.finalize(campaign.count_trusted_regulars())
 		_refresh_daily_goal_hud()
-	var summary_text_value := "TODAY'S SALES\nBenta ngayong araw: ₱%d\nKabuuang pera: ₱%d\nCustomers served: %d\nCustomers left: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
+	var summary_text_value := "TODAY'S SALES\nBenta ngayon: ₱%d\nPera sa kaha: ₱%d\nCustomers served: %d\nCustomers na umalis: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
 	if daily_goal != null:
 		var goal_heading := "DAILY GOAL COMPLETE!" if daily_goal.is_complete() else "DAILY GOAL"
 		var goal_result: String = str(daily_goal.title) if daily_goal.is_complete() else "%s: Not completed — no penalty" % daily_goal.title
 		summary_text_value += "\n\n%s\n%s" % [goal_heading, goal_result]
 	if shift.change_total > 0:
-		summary_text_value += "\n\nSUKLI\nTamang sukli: %d / %d\nPinakamahabang tuloy-tuloy na tama: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
+		summary_text_value += "\n\nSUKLI\nTamang sukli: %d / %d\nPinakamahabang streak: %d" % [shift.change_correct, shift.change_total, shift.best_change_streak]
 	if shift.change_total > 0:
 		var avg_satisfaction := int(shift.total_satisfaction_score / shift.change_total)
-		summary_text_value += "\nCustomer Satisfaction: %d%%" % avg_satisfaction
+		summary_text_value += "\nAverage satisfaction sa sukli: %d%%" % avg_satisfaction
 		if shift.total_tips_earned > 0:
-			summary_text_value += "\nTips sa mabilis na sukli: ₱%d" % shift.total_tips_earned
+			summary_text_value += "\nTips na nakuha: ₱%d" % shift.total_tips_earned
 	pending_shift_summary_text = summary_text_value
 	pending_shift_summary_title = "DAY %d COMPLETE" % campaign.day
 	if campaign.day == 2:
@@ -1493,15 +1518,23 @@ func _on_summary_button_pressed() -> void:
 		_show_current_story_beat()
 
 func _build_prologue_background() -> void:
+	var prologue_backdrop := ColorRect.new()
+	prologue_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	prologue_backdrop.color = Color("21150f")
+	prologue_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prologue_backdrop.z_index = 38
+	prologue_backdrop.visible = false
+	add_child(prologue_backdrop)
 	prologue_background = TextureRect.new()
 	prologue_background.texture = load("res://assets/story/tonyo_bedroom.png") as Texture2D
 	prologue_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	prologue_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_background.z_index = 38
 	prologue_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prologue_background.visible = false
 	add_child(prologue_background)
+	prologue_background.visibility_changed.connect(func(): prologue_backdrop.visible = prologue_background.visible)
 	prologue_fade = ColorRect.new()
 	prologue_fade.color = Color.BLACK
 	prologue_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1511,17 +1544,25 @@ func _build_prologue_background() -> void:
 	add_child(prologue_fade)
 
 func _build_day_two_visuals() -> void:
+	var illustration_backdrop := ColorRect.new()
+	illustration_backdrop.name = "StoryIllustrationBackdrop"
+	illustration_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	illustration_backdrop.color = Color("21150f")
+	illustration_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	illustration_backdrop.z_index = 39
+	illustration_backdrop.visible = false
+	add_child(illustration_backdrop)
 	story_illustration = TextureRect.new()
 	story_illustration.name = "DayTwoStoryIllustration"
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	story_illustration.position = _ui_offset()
-	story_illustration.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration.z_index = 39
 	story_illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	story_illustration.visible = false
 	add_child(story_illustration)
+	story_illustration.visibility_changed.connect(func(): illustration_backdrop.visible = story_illustration.visible)
 func _show_story_prop(prop_name: String) -> void:
 	if prop_name == "paolo_debt_note":
 		paolo_debt_note.show_note()
@@ -1533,8 +1574,15 @@ func _show_story_prop(prop_name: String) -> void:
 		return
 	if prop_name == "berting_counter_closeup":
 		story_illustration.texture = load("res://assets/story/berting_counter_50.png") as Texture2D
-		story_illustration.position = _ui_offset()
 		story_illustration.visible = true
+	elif prop_name == "lina_walking_away":
+		story_illustration.texture = load("res://assets/story/day4_lina_returning_outside.png") as Texture2D
+		story_illustration.visible = true
+	elif prop_name == "friends_shelter":
+		story_illustration.texture = load("res://assets/story/day4_friends_shelter.png") as Texture2D
+		story_illustration.visible = true
+	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
+		story_illustration.visible = false
 	elif prop_name == "hide_berting_closeup":
 		story_illustration.visible = false
 
@@ -1587,7 +1635,6 @@ func _show_current_story_beat() -> void:
 		await story_events.story_visitor_tapped
 	if str(beat.get("cutscene", "")) == "box_fall":
 		story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
-		story_illustration.position = _ui_offset()
 		story_illustration.visible = true
 	elif str(beat.get("cutscene", "")) == "end":
 		story_illustration.visible = false
@@ -1605,6 +1652,8 @@ func _show_current_story_beat() -> void:
 		var afternoon_texture := environment_textures.get("evening_path") as Texture2D
 		if afternoon_texture != null:
 			store_layer_renderer.start_environment_crossfade(afternoon_texture, 1.2)
+	if bool(beat.get("light_flicker", false)):
+		_play_brownout_flicker()
 
 
 	# A beat can carry "cash" (e.g. a tip) that is paid out when the beat appears.
@@ -1656,6 +1705,8 @@ func _complete_story_beats() -> void:
 			_show_next_story_choice()
 		"finish_day":
 			_finish_story_day()
+		"diary_complete":
+			_show_pending_shift_summary()
 
 func _show_next_story_choice() -> void:
 	if pending_choice_index >= pending_story_choices.size():
@@ -1698,7 +1749,7 @@ func _select_story_choice(choice_data: Dictionary, option_id: String) -> void:
 		campaign.cash += cash_delta
 		_update_cash(campaign.cash)
 		if not pending_shift_summary_text.is_empty():
-			pending_shift_summary_text = pending_shift_summary_text.replace("Kabuuang pera: ₱%d" % previous_cash, "Kabuuang pera: ₱%d" % campaign.cash)
+			pending_shift_summary_text = pending_shift_summary_text.replace("Pera sa kaha: ₱%d" % previous_cash, "Pera sa kaha: ₱%d" % campaign.cash)
 	story_choice_column.visible = false
 	_clear_story_choice_buttons()
 	var response := story.get_choice_response(choice_data, option_id)
@@ -1717,12 +1768,18 @@ func _clear_story_choice_buttons() -> void:
 
 func _finish_story_day() -> void:
 	if not pending_shift_summary_text.is_empty():
-		_show_pending_shift_summary()
+		var entry := story.write_diary_entry(campaign.day)
+		_show_story_beats([
+			{"speaker": "Narrator", "portrait": "", "text": "Binuksan ni Tonyo ang kuwaderno at isinulat ang nangyari sa araw niya."},
+			{"speaker": "Narrator", "portrait": "", "text": "Sa kuwaderno: “%s”" % entry}
+		], "DAY %d" % campaign.day, "diary_complete")
 		return
 	_advance_story_day()
 
 func _show_pending_shift_summary() -> void:
 	bubble.close()
+	if daily_goal != null:
+		story.choices["diary_goal_day_%d" % campaign.day] = "earned" if daily_goal.is_complete() else "missed"
 	if not debug_session:
 		checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
 		if not checkpoint_ready:
@@ -1825,6 +1882,8 @@ func _on_briefing_start_pressed() -> void:
 
 func _show_pre_shift_briefing() -> void:
 	_ensure_daily_goal()
+	shop_available = campaign.day > 1
+	_refresh_shop_button()
 	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"), new_purchase_groups_today)
 	showing_pre_shift_briefing = true
 	summary_panel.visible = false
@@ -2032,6 +2091,18 @@ func _show_story_visitor_portrait(visitor: String, button: Button) -> void:
 	story_visitor_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	story_visitor_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	customer_layer.add_child(story_visitor_portrait)
+	# The friends arrive together; the story marker stays on Jun-jun.
+	if visitor == "jun_jun_tara" and campaign.day in [1, 3, 4]:
+		for companion in [["mikay", -125.0], ["bogs", 125.0]]:
+			var friend := TextureRect.new()
+			friend.name = "Friend_" + str(companion[0])
+			friend.texture = COUNTER_ART.customer_portrait(str(companion[0]), PORTRAIT_ATLAS)
+			friend.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			friend.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+			friend.position = Vector2(float(companion[1]), 0)
+			friend.size = story_visitor_portrait.size
+			friend.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			story_visitor_portrait.add_child(friend)
 	var target := story_visitor_portrait.position
 	var start_x := -270.0 if visitor_x < 960.0 else 1980.0
 	story_visitor_portrait.position.x = start_x

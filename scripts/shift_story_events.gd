@@ -57,6 +57,7 @@ var _visitor_layer: CanvasLayer
 var _visitor_tutorial_seen := false
 var _scene_choice_done := false
 var _paolo_note_visible := false
+var _scene_illustration_visible := false
 var _scene_options: Array[Dictionary] = []
 
 
@@ -152,6 +153,7 @@ func begin_shift(day: int) -> void:
 # Call when the shift ends.
 func end_shift() -> void:
 	_hide_story_visitor()
+	_hide_scene_illustration()
 	_waiting_scene.clear()
 	shift.story_waiting_for_clear = false
 	shift.reserved_story_ids.clear()
@@ -165,6 +167,7 @@ func end_shift() -> void:
 # Debug "skip day": drop everything so a popup can't stall the fast-forward.
 func suppress() -> void:
 	_hide_story_visitor()
+	_hide_scene_illustration()
 	_waiting_scene.clear()
 	shift.story_waiting_for_clear = false
 	shift.reserved_story_ids.clear()
@@ -418,9 +421,15 @@ func _hide_paolo_note() -> void:
 		_paolo_note_visible = false
 		story_prop_requested.emit("hide_paolo_debt_note")
 
+func _hide_scene_illustration() -> void:
+	if _scene_illustration_visible:
+		_scene_illustration_visible = false
+		story_prop_requested.emit("hide_scene_illustration")
+
 
 func _finish() -> void:
 	_mode = ""
+	_hide_scene_illustration()
 	bubble.close()
 	# Cleared one frame later so main.gd's own bubble handlers (which run for the same
 	# signal) still see the popup as active and ignore it.
@@ -498,6 +507,10 @@ func _next_beat() -> void:
 	var beat: Dictionary = _beats.pop_front()
 	if beat.has("show_prop"):
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
+		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter"]:
+			_scene_illustration_visible = true
+		elif str(beat["show_prop"]) == "hide_scene_illustration":
+			_scene_illustration_visible = false
 		story_prop_requested.emit(str(beat["show_prop"]))
 	var portrait_id := str(beat.get("portrait", ""))
 	bubble.show_beat(str(beat.get("speaker", "Narrator")), str(beat.get("text", "")), _portrait(portrait_id), portrait_id)

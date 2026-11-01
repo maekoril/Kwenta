@@ -150,6 +150,46 @@ func get_choice_response(choice_data: Dictionary, option_id: String) -> Array[Di
 func get_choice(choice_id: String) -> String:
 	return str(choices.get(choice_id, ""))
 
+# Written at the end of the day and saved alongside the choices that shaped it.
+func write_diary_entry(day: int) -> String:
+	var entry := ""
+	match day:
+		1:
+			match get_choice("day1_play"):
+				"play": entry = "Unang araw ko sa tindahan. Mahirap pala, pero nakapaglaro rin ako kasama ang mga kaibigan ko."
+				"stay": entry = "Unang araw ko sa tindahan. Hindi ako nakasama sa laro, pero nabantayan ko ang tindahan gaya ng bilin ni Inay."
+				_: entry = "Unang araw ko sa tindahan. Ang dami ko palang kailangang matutunan."
+		2:
+			match get_choice("day2_overpayment"):
+				"return": entry = "Naiwan ni Mang Berting ang ₱50 niya. Itinabi ko muna para maibalik ko kapag dumaan siya."
+				"keep": entry = "Naiwan ni Mang Berting ang ₱50 niya. Ibinulsa ko muna, pero iniisip ko pa rin kung ano'ng gagawin ko."
+				_: entry = "Isa na namang araw sa tindahan. Unti-unti ko nang natututunan ang pagsesukli."
+		3:
+			match get_choice("day3_candy"):
+				"credit": entry = "Kulang si Paolo ng ₱3 sa Feeta. Pinautang ko muna siya at isinulat ko rito."
+				"free": entry = "Kulang si Paolo ng ₱3 sa Feeta, kaya sinagot ko na ang kulang niya."
+				"no": entry = "Kulang ang dala ni Paolo para sa Feeta. Babalik na lang daw siya."
+				_: entry = "Ang dami kong inasikaso ngayon. Hindi ko akalaing magiging abala ako sa tindahan."
+			match get_choice("day3_friends"):
+				"later": entry += " Sinabi kong susunod ako sa laro, pero hindi na ako nakaabot."
+				"stay": entry += " Hindi muna ako sumama sa laro para mabantayan ang tindahan."
+		4:
+			match get_choice("day4_rain"):
+				"join": entry = "Sumama ako sa laro sa ulan. Pagbalik ko, nakita kong may dumaan palang bibili. Sana bumalik si Aling Lina."
+				"stay": entry = "Inaya akong maglaro sa ulan, pero nagbantay muna ako ng tindahan. Bawi ako sa kanila sa susunod."
+				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Feeta, at nagsalita pa nga si Bogs!"
+				_: entry = "Maulan ngayon. Tinapos ko ang araw sa pagbabantay ng tindahan."
+		5:
+			entry = "Marami na naman akong kailangang isipin sa tindahan. Isinulat ko ang mga nangyari para hindi ko makalimutan."
+		6:
+			entry = "Abala ang araw na ito. Mabuti na lang, natapos ko rin ang pagbabantay."
+		7:
+			entry = "Isang linggo na akong nagbantay ng tindahan. Ang dami kong natutunan at gustong ikuwento kay Inay."
+		_:
+			return ""
+	choices["diary_day_%d" % day] = entry
+	return entry
+
 func reset() -> void:
 	choices.clear()
 

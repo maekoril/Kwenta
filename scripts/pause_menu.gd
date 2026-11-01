@@ -14,15 +14,20 @@ var _pause_visual: TextureRect
 const PAUSE_NORMAL: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_normal.png")
 const PAUSE_HOVER: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_hover.png")
 const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
+const DIARY_READER = preload("res://scripts/diary_reader.gd")
 var _overlay: Control
 var _menu_confirmation: ConfirmationDialog
 var _settings_menu
+var diary_reader
+var story_progression
 
 func _ready() -> void:
 	layer = 100                                    # above every z_index used in main.gd
 	process_mode = Node.PROCESS_MODE_ALWAYS        # must keep running while the tree is paused
 	_build_button()
 	_build_overlay()
+	diary_reader = DIARY_READER.new()
+	add_child(diary_reader)
 	_settings_menu = SETTINGS_MENU.new()
 	add_child(_settings_menu)
 	_menu_confirmation = ConfirmationDialog.new()
@@ -56,6 +61,8 @@ func pause() -> void:
 	pause_toggled.emit(true)
 
 func resume() -> void:
+	if diary_reader != null:
+		diary_reader.close()
 	get_tree().paused = false
 	_overlay.visible = false
 	_button.visible = _available
@@ -66,6 +73,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _available:
 		return
 	if _settings_menu != null and _settings_menu.overlay.visible:
+		return
+	if diary_reader != null and diary_reader.visible:
+		if event.is_action_pressed("ui_cancel"):
+			diary_reader.close()
+			get_viewport().set_input_as_handled()
 		return
 	var is_p: bool = false
 	if event is InputEventKey:
@@ -175,6 +187,14 @@ func _build_overlay() -> void:
 	KwentaStyle.style_button(resume_button, KwentaStyle.GOLD, KwentaStyle.SIZE_BUTTON)
 	resume_button.pressed.connect(resume)
 	column.add_child(resume_button)
+
+	var diary_button := Button.new()
+	diary_button.name = "DiaryButton"
+	diary_button.text = "KUWADERNO"
+	diary_button.custom_minimum_size = Vector2(360, 80)
+	KwentaStyle.style_button(diary_button, KwentaStyle.PAPER_DARK, KwentaStyle.SIZE_BUTTON)
+	diary_button.pressed.connect(func(): diary_reader.open(story_progression))
+	column.add_child(diary_button)
 
 	var settings_button := Button.new()
 	settings_button.text = "SETTINGS"

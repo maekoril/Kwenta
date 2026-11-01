@@ -62,10 +62,10 @@ func _day_name(day: int) -> String:
 
 func _change_lines(day: int) -> Array[String]:
 	match day:
-		1: return ["Drag products to serve each order.", "Shift ends at 12:00 PM"]
-		2: return ["Give the correct sukli after each sale.", "Shift ends at 5:00 PM"]
-		3: return ["Practice orders with different products as customers overlap.", "Shift ends at 6:00 PM"]
-		4: return ["Rain makes customers less patient", "Shift ends at 6:00 PM"]
-		5: return ["Regulars matter during the rush.", "Shift ends at 8:00 PM"]
-		6: return ["Fiesta rush: more customers at once.", "A brownout arrives mid-shift"]
-		_: return ["Final day: customers will not lose trust.", "Shift ends at 8:00 PM"]
+		1: return ["I-drag ang paninda papunta sa customer.", "Magsasara ng 12:00 PM"]
+		2: return ["Ibigay ang tamang sukli pagkatapos bumili.", "Magsasara ng 5:00 PM"]
+		3: return ["Asikasuhin ang orders na may iba't ibang paninda.", "Magsasara ng 6:00 PM"]
+		4: return ["Mas mabilis mawalan ng pasensya ang customers ngayon.", "Magsasara ng 6:00 PM"]
+		5: return ["Alagaan ang mga suki kahit maraming bumibili.", "Magsasara ng 8:00 PM"]
+		6: return ["Fiesta rush! Mas maraming customers ang darating.", "Magkakaroon ng brownout sa shift"]
+		_: return ["Huling araw: hindi bababa ang customer trust.", "Magsasara ng 8:00 PM"]
