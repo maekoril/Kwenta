@@ -13,6 +13,7 @@ signal barangay_trust_changed(new_value: float) # BAGO
 signal game_over_triggered() # BAGO
 signal customer_served(customer_id: String, product_types: int)
 signal story_customer_arrived(customer_instance_id: String, beats: Array)
+signal story_customer_sale_completed(customer_instance_id: String, event: Dictionary)
 signal haggle_requested(customer_instance_id: String, ask: int)
 signal mixup_requested(customer_instance_id: String, product_id: String)
 signal payment_started(customer_instance_id: String)
@@ -36,6 +37,7 @@ var is_running: bool = false
 var did_emit_completion: bool = false
 var is_closing: bool = false
 var shift_earnings: int = 0
+var debt_payments_received: int = 0
 var customers_served: int = 0
 var customers_timed_out: int = 0
 var active_customer_limit_override: int = 0
@@ -98,6 +100,7 @@ func start_shift() -> void:
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
 	shift_earnings = 0
+	debt_payments_received = 0
 	customers_served = 0
 	customers_timed_out = 0
 	change_total = 0
@@ -382,7 +385,7 @@ func apply_patience_boost(mult: float, seconds: float) -> void:
 	drain_boost_seconds = maxf(drain_boost_seconds, seconds)
 
 # Queues a scripted customer. Items the store isn't stocking are dropped from the order.
-func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay: bool = false, arrival_beats: Array = [], tendered: int = 0) -> bool:
+func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay: bool = false, arrival_beats: Array = [], tendered: int = 0, story_visitor: bool = false, after_sale: Dictionary = {}, before_sale: Dictionary = {}) -> bool:
 	var available := campaign_state.get_available_product_ids()
 	var order := {}
 	for product_id in requested:
@@ -396,7 +399,7 @@ func queue_story_customer(customer_id: String, requested: Dictionary, exact_pay:
 		order = OrderFactory.make_order(campaign_state.get_order_data_for_day(campaign_state.day), available, rng).requested
 		if order.is_empty():
 			return false
-	story_queue.append({"id": customer_id, "order": order, "exact_pay": exact_pay, "arrival_beats": arrival_beats, "tendered": tendered})
+	story_queue.append({"id": customer_id, "order": order, "exact_pay": exact_pay, "arrival_beats": arrival_beats, "tendered": tendered, "story_visitor": story_visitor, "after_sale": after_sale, "before_sale": before_sale})
 	return true
 
 func get_active_customers() -> Array[CustomerState]:
@@ -425,7 +428,10 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 	customer.finish_as_paid()
 	customer_served.emit(customer.customer_id, product_types)
-	active_customers.erase(customer)
+	if not customer.story_after_sale.is_empty():
+		story_customer_sale_completed.emit(customer.instance_id, customer.story_after_sale)
+	else:
+		active_customers.erase(customer)
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
 	cash_changed.emit(campaign_state.cash)
@@ -433,6 +439,12 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	if is_running and is_closing and active_customers.is_empty() and not story_waiting_for_clear:
 		finish_shift()
 
+func finish_story_customer(instance_id: String) -> void:
+	for customer in active_customers.duplicate():
+		if customer.instance_id == instance_id and not customer.active:
+			active_customers.erase(customer)
+			customers_changed.emit()
+			break
 func _payment_patience_seconds() -> float:
 	var base: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.config.customer_patience_seconds
 	# The final day sets a huge override so nobody ever leaves; keep it that way during payment too.
@@ -477,7 +489,9 @@ func _spawn_customer() -> void:
 	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.get_customer_patience_seconds()
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
 	customer.tutorial_protected = campaign_state.day == 2 and id == "aling_nena" and not story_entry.is_empty()
-	customer.story_arrival_pending = customer.tutorial_protected and not story_entry.get("arrival_beats", []).is_empty()
+	customer.story_arrival_pending = (customer.tutorial_protected or bool(story_entry.get("story_visitor", false))) and not story_entry.get("arrival_beats", []).is_empty()
+	customer.story_after_sale = story_entry.get("after_sale", {})
+	customer.story_before_sale = story_entry.get("before_sale", {})
 	
 	customer.trust_loss_on_timeout = campaign_state.config.trust_loss_on_timeout
 	customer.exact_pay = bool(story_entry.get("exact_pay", false))

@@ -209,6 +209,7 @@ func _ensure_players() -> void:
 	if _alert_player == null:
 		_alert_player = AudioStreamPlayer.new()
 		_alert_player.name = "AlertPlayer"
+		_alert_player.bus = "SFX"
 		_alert_player.volume_db = -7.0
 		_alert_player.finished.connect(_on_alert_finished)
 		add_child(_alert_player)

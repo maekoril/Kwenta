@@ -57,6 +57,12 @@ func record_choice(choice_id: String, option_id: String) -> bool:
 			var event_choice: Variant = event.get("choice", {})
 			if event_choice is Dictionary and not event_choice.is_empty():
 				day_choices.append(event_choice)
+			var after_sale: Variant = event.get("after_sale", {})
+			if after_sale is Dictionary and after_sale.get("choice", {}) is Dictionary and not after_sale.get("choice", {}).is_empty():
+				day_choices.append(after_sale["choice"])
+			var before_sale: Variant = event.get("before_sale", {})
+			if before_sale is Dictionary and before_sale.get("choice", {}) is Dictionary and not before_sale.get("choice", {}).is_empty():
+				day_choices.append(before_sale["choice"])
 		for choice_data in day_choices:
 			if str(choice_data.get("id", "")) != choice_id:
 				continue
@@ -180,7 +186,10 @@ func write_diary_entry(day: int) -> String:
 				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Feeta, at nagsalita pa nga si Bogs!"
 				_: entry = "Maulan ngayon. Tinapos ko ang araw sa pagbabantay ng tindahan."
 		5:
-			entry = "Marami na naman akong kailangang isipin sa tindahan. Isinulat ko ang mga nangyari para hindi ko makalimutan."
+			match get_choice("day5_debt"):
+				"installments": entry = "Nagbayad si Lola Rosa ng ₱110 sa utang niya. ₱210 na lang ang natitira. Mabuti at napag-usapan namin."
+				"defer": entry = "Sinabi ni Lola Rosa na magbabayad siya ng ₱110, pero sinabi kong itatanong ko muna kay Inay. ₱320 pa rin ang utang niya."
+				_: entry = "May bagong tindahan sa tapat. Gusto ko pa ring alagaan ang mga suki ni Inay."
 		6:
 			entry = "Abala ang araw na ito. Mabuti na lang, natapos ko rin ang pagbabantay."
 		7:

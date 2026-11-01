@@ -57,6 +57,7 @@ var _visitor_layer: CanvasLayer
 var _visitor_tutorial_seen := false
 var _scene_choice_done := false
 var _paolo_note_visible := false
+var _utang_ledger_visible := false
 var _scene_illustration_visible := false
 var _scene_options: Array[Dictionary] = []
 
@@ -75,6 +76,7 @@ func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: Dial
 	shift.mixup_requested.connect(_on_mixup_requested)
 	shift.payment_started.connect(_on_payment_started)
 	shift.story_customer_arrived.connect(_on_story_customer_arrived)
+	shift.story_customer_sale_completed.connect(_on_story_customer_sale_completed)
 	shift.customers_changed.connect(_on_customers_changed)
 
 
@@ -91,6 +93,8 @@ func _disconnect_shift() -> void:
 		shift.payment_started.disconnect(_on_payment_started)
 	if shift.story_customer_arrived.is_connected(_on_story_customer_arrived):
 		shift.story_customer_arrived.disconnect(_on_story_customer_arrived)
+	if shift.story_customer_sale_completed.is_connected(_on_story_customer_sale_completed):
+		shift.story_customer_sale_completed.disconnect(_on_story_customer_sale_completed)
 	if shift.customers_changed.is_connected(_on_customers_changed):
 		shift.customers_changed.disconnect(_on_customers_changed)
 
@@ -166,6 +170,8 @@ func end_shift() -> void:
 
 # Debug "skip day": drop everything so a popup can't stall the fast-forward.
 func suppress() -> void:
+	if str(_current.get("kind", "")) == "post_sale" and shift != null:
+		shift.finish_story_customer(str(_current.get("id", "")))
 	_hide_story_visitor()
 	_hide_scene_illustration()
 	_waiting_scene.clear()
@@ -194,13 +200,22 @@ func _on_game_minutes(minute: int) -> void:
 		return
 	while not _timed.is_empty():
 		var event: Dictionary = _timed[0]
+		# These events are scheduled when their preceding choice finishes.
+		if bool(event.get("follow_after_choice", false)):
+			return
 		if int(event.get("at_minute", 0)) > minute:
 			return
 		var kind := str(event.get("type", ""))
-		if shift.is_closing and not (kind == "scene" and bool(event.get("wait_for_clear", false))):
+		# Some encounters depend on a decision made during this same shift.
+		# Evaluate them now, rather than when the day first starts.
+		var required_choice := str(event.get("requires_choice", ""))
+		if not required_choice.is_empty() and story.get_choice(required_choice) != str(event.get("requires_value", "")):
 			_timed.pop_front()
 			continue
-		if kind == "scene" and bool(event.get("wait_for_clear", false)):
+		if shift.is_closing and not (kind in ["scene", "customer"] and bool(event.get("wait_for_clear", false))):
+			_timed.pop_front()
+			continue
+		if kind in ["scene", "customer"] and bool(event.get("wait_for_clear", false)):
 			if not _waiting_scene.is_empty():
 				return
 			_timed.pop_front()
@@ -239,13 +254,25 @@ func _try_start_waiting_scene() -> void:
 	if str(event.get("visitor", "")) == "mang_berting" and not story.get_choice("day2_cash_legacy").is_empty():
 		story.choices["day2_cash_legacy"] = "available" if shift.campaign_state.cash >= 50 else "spent"
 	shift.story_waiting_for_clear = false
-	_queue_popup({"kind": "scene", "event": event})
+	if str(event.get("type", "")) == "customer":
+		_run_customer_event(event)
+		shift._spawn_customer()
+	else:
+		_queue_popup({"kind": "scene", "event": event})
 
 
 func _run_customer_event(event: Dictionary) -> void:
 	var order: Dictionary = event.get("order", {})
 	var arrival_beats := story.filter_story_beats(event.get("arrival_beats", []))
-	shift.queue_story_customer(str(event.get("customer", "")), order, bool(event.get("exact_pay", false)), arrival_beats, int(event.get("tendered", 0)))
+	if bool(event.get("skip_haggle", false)):
+		shift.haggled_ids[str(event.get("customer", ""))] = true
+	shift.queue_story_customer(str(event.get("customer", "")), order, bool(event.get("exact_pay", false)), arrival_beats, int(event.get("tendered", 0)), bool(event.get("story_visitor", false)), event.get("after_sale", {}), event.get("before_sale", {}))
+
+func _on_story_customer_sale_completed(instance_id: String, event: Dictionary) -> void:
+	if _in_shift and not _suppressed:
+		_queue_popup({"kind": "post_sale", "id": instance_id, "event": event})
+	else:
+		shift.finish_story_customer.call_deferred(instance_id)
 
 
 # ------------------------------------------------------------ shift signals
@@ -254,7 +281,7 @@ func _on_story_customer_arrived(customer_instance_id: String, beats: Array) -> v
 	if _in_shift and not _suppressed:
 		var customer := _find_story_customer(customer_instance_id)
 		var kind := "customer_visitor" if customer != null and customer.story_arrival_pending else "arrival"
-		_queue_popup({"kind": kind, "id": customer_instance_id, "beats": beats})
+		_queue_popup({"kind": kind, "id": customer_instance_id, "beats": beats, "event": customer.story_before_sale if customer != null else {}})
 
 func _find_story_customer(instance_id: String) -> CustomerState:
 	for customer in shift.get_active_customers():
@@ -324,6 +351,8 @@ func _start_next() -> void:
 		"customer_visitor":
 			_mode = "customer_visitor"
 			customer_story_prompt_requested.emit(str(_current.get("id", "")))
+		"post_sale":
+			_play_beats(story.filter_story_beats(_current.get("event", {}).get("beats", [])))
 		"scene":
 			_present_story_visitor()
 		"haggle":
@@ -422,6 +451,9 @@ func _hide_paolo_note() -> void:
 		story_prop_requested.emit("hide_paolo_debt_note")
 
 func _hide_scene_illustration() -> void:
+	if _utang_ledger_visible:
+		_utang_ledger_visible = false
+		story_prop_requested.emit("hide_utang_ledger")
 	if _scene_illustration_visible:
 		_scene_illustration_visible = false
 		story_prop_requested.emit("hide_scene_illustration")
@@ -453,6 +485,8 @@ func _release() -> void:
 	popup_state_changed.emit(false)
 	if shift != null and shift.is_closing:
 		_on_game_minutes(shift.shift_close_minutes)
+		if shift.get_active_customers().is_empty() and not shift.story_waiting_for_clear:
+			shift.finish_shift()
 	_try_start_waiting_scene.call_deferred()
 
 
@@ -461,7 +495,7 @@ func _on_bubble_choice(index: int) -> void:
 		return
 	_mode = ""
 	match str(_current.get("kind", "")):
-		"scene":
+		"scene", "post_sale", "customer_visitor":
 			_resolve_scene_choice(index)
 		"haggle":
 			_resolve_haggle(index == 0)
@@ -487,27 +521,47 @@ func _play_beats(raw_beats: Variant) -> void:
 
 func _next_beat() -> void:
 	_hide_paolo_note()
+	if _utang_ledger_visible:
+		_utang_ledger_visible = false
+		story_prop_requested.emit("hide_utang_ledger")
 	if _beats.is_empty():
-		if str(_current.get("kind", "")) == "scene" and not _scene_choice_done:
+		if str(_current.get("kind", "")) in ["scene", "post_sale", "customer_visitor"] and not _scene_choice_done:
 			var event: Dictionary = _current.get("event", {})
 			var choice: Dictionary = event.get("choice", {})
 			if not choice.is_empty():
+				if bool(event.get("automatic_choice", false)):
+					_scene_options = story.filter_story_beats(choice.get("options", []))
+					if _scene_options.size() == 1:
+						_resolve_scene_choice(0)
+						return
 				_show_scene_choice(choice)
 				return
+		if str(_current.get("kind", "")) == "scene" and _scene_choice_done:
+			var finished_choice := str(_current.get("event", {}).get("choice", {}).get("id", ""))
+			for followup in _timed.duplicate():
+				if not bool(followup.get("follow_after_choice", false)) or str(followup.get("requires_choice", "")) != finished_choice:
+					continue
+				_timed.erase(followup)
+				if story.get_choice(finished_choice) == str(followup.get("requires_value", "")):
+					_waiting_scene = followup
+					shift.story_waiting_for_clear = true
 		if str(_current.get("kind", "")) == "customer_visitor":
 			var instance_id := str(_current.get("id", ""))
 			var customer := _find_story_customer(instance_id)
 			if customer != null:
 				customer.story_arrival_pending = false
 			customer_story_arrival_finished.emit(instance_id)
+		if str(_current.get("kind", "")) == "post_sale":
+			shift.finish_story_customer(str(_current.get("id", "")))
 		_mode = ""
 		_start_next()
 		return
 	_mode = "beats"
 	var beat: Dictionary = _beats.pop_front()
 	if beat.has("show_prop"):
+		_utang_ledger_visible = str(beat["show_prop"]) == "utang_ledger"
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
-		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter"]:
+		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter", "alfa_save_corner"]:
 			_scene_illustration_visible = true
 		elif str(beat["show_prop"]) == "hide_scene_illustration":
 			_scene_illustration_visible = false
@@ -541,6 +595,8 @@ func _resolve_scene_choice(index: int) -> void:
 		amount += int(option.get("cash_delta_legacy", 0))
 	if amount != 0:
 		shift.campaign_state.cash += amount
+		if bool(choice.get("record_debt_payment", false)):
+			shift.debt_payments_received += amount
 		if bool(choice.get("record_sale", false)):
 			shift.shift_earnings += amount
 			shift.customers_served += 1

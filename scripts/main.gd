@@ -15,6 +15,7 @@ const AUDIO_SETTINGS = preload("res://scripts/audio_settings.gd")
 const INTERACTIVE_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
 const STORY_EVENT_MARKER = preload("res://scripts/story_event_marker.gd")
 const PAOLO_DEBT_NOTE = preload("res://scripts/paolo_debt_note.gd")
+const UTANG_LEDGER = preload("res://scripts/utang_ledger.gd")
 const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
@@ -42,7 +43,7 @@ const DAY_FOCUS_HINTS := {
 	2: "Shop before opening. Today, give the correct sukli after each sale.",
 	3: "Practice orders with different products while customers overlap.",
 	4: "Rain makes customers less patient. Serve the shortest bar first.",
-	5: "Keep your regulars happy during the Mini-Save rush.",
+	5: "Keep your regulars happy during the Alfa-Save rush.",
 	6: "Fiesta rush! Up to five customers can wait at once.",
 	7: "Final day: take your time. Customers will not lose trust today.",
 }
@@ -96,6 +97,7 @@ var prologue_background: TextureRect
 var prologue_fade: ColorRect
 var story_illustration: TextureRect
 var paolo_debt_note: Control
+var utang_ledger: Control
 var supplier_note
 var current_choice_data: Dictionary = {}
 var current_choice_ids: Array[String] = []
@@ -204,6 +206,8 @@ func _ready() -> void:
 			var rain_choice := str(debug_launch_data.get("day4_rain", "none"))
 			if rain_choice in ["join", "stay", "shelter"]:
 				story.choices["day4_rain"] = rain_choice
+		if bool(debug_launch_data.get("day4_dodong_seen", false)) and (campaign.day > 4 or (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) in [8, 9])):
+			story.choices["day4_dodong_seen"] = "seen"
 		# Quick playtests start with earlier days completed, but never alter the real save.
 		# Reconstruct their diary pages from the scenario choices, not invented goal results.
 		for completed_day in range(1, campaign.day):
@@ -254,6 +258,9 @@ func _ready() -> void:
 	paolo_debt_note = PAOLO_DEBT_NOTE.new()
 	paolo_debt_note.name = "PaoloDebtNote"
 	add_child(paolo_debt_note)
+	utang_ledger = UTANG_LEDGER.new()
+	utang_ledger.name = "UtangLedger"
+	add_child(utang_ledger)
 	supplier_note = SUPPLIER_NOTE.new()
 	supplier_note.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(supplier_note)
@@ -351,10 +358,10 @@ func _launch_debug_start() -> void:
 		story_events.suppress()
 		shift.finish_shift()
 		return
-	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked"}.get(moment, "") as String
+	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked", 15: "neighbor_rosa"}.get(moment, "") as String
 	var matching: Array[Dictionary] = []
 	for event in story_events._timed:
-		if str(event.get("visitor", "")) == visitor:
+		if str(event.get("visitor", event.get("customer", ""))) == visitor:
 			matching.append(event)
 	if matching.is_empty():
 		push_warning("Debug event is not available with those choices.")
@@ -1309,11 +1316,11 @@ func _rebuild_customer_slots() -> void:
 		if actor == null:
 			actor = CUSTOMER_ACTOR_SCENE.instantiate() as Control
 			actor.size = Vector2(STOREFRONT_LAYOUT.CUSTOMER_WIDTH, STOREFRONT_LAYOUT.CUSTOMER_HEIGHT)
-			actor.call("set_customer", customer, products_by_id)
 			actor.connect("product_dropped", _on_product_dropped)
 			actor.connect("payment_tapped", _on_payment_tapped)
 			actor.connect("became_impatient", _on_customer_became_impatient)
 			actor.connect("calmed_down", _on_customer_calmed_down)
+			actor.call("set_customer", customer, products_by_id)
 			var from_right := randf() < 0.5
 			actor.position = Vector2(1980.0 if from_right else -270.0, STOREFRONT_LAYOUT.CUSTOMER_Y)
 			actor.modulate.a = 0.0
@@ -1458,6 +1465,7 @@ func _update_cash(value: int) -> void:
 		store_layer_renderer.current_cash = value
 
 func _show_shift_summary() -> void:
+	_clear_all_angry_customers()
 	if is_instance_valid(story_illustration):
 		story_illustration.visible = false
 	_hide_store_sign()
@@ -1473,6 +1481,8 @@ func _show_shift_summary() -> void:
 		daily_goal.finalize(campaign.count_trusted_regulars())
 		_refresh_daily_goal_hud()
 	var summary_text_value := "TODAY'S SALES\nBenta ngayon: ₱%d\nPera sa kaha: ₱%d\nCustomers served: %d\nCustomers na umalis: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
+	if shift.debt_payments_received > 0:
+		summary_text_value += "\nBayad sa utang: ₱%d" % shift.debt_payments_received
 	if daily_goal != null:
 		var goal_heading := "DAILY GOAL COMPLETE!" if daily_goal.is_complete() else "DAILY GOAL"
 		var goal_result: String = str(daily_goal.title) if daily_goal.is_complete() else "%s: Not completed — no penalty" % daily_goal.title
@@ -1564,6 +1574,12 @@ func _build_day_two_visuals() -> void:
 	add_child(story_illustration)
 	story_illustration.visibility_changed.connect(func(): illustration_backdrop.visible = story_illustration.visible)
 func _show_story_prop(prop_name: String) -> void:
+	if prop_name == "utang_ledger":
+		utang_ledger.show_note(story.get_choice("day3_candy") == "credit", 210 if story.get_choice("day5_debt") == "installments" else 320)
+		return
+	if prop_name == "hide_utang_ledger":
+		utang_ledger.visible = false
+		return
 	if prop_name == "paolo_debt_note":
 		paolo_debt_note.show_note()
 		return
@@ -1576,10 +1592,13 @@ func _show_story_prop(prop_name: String) -> void:
 		story_illustration.texture = load("res://assets/story/berting_counter_50.png") as Texture2D
 		story_illustration.visible = true
 	elif prop_name == "lina_walking_away":
-		story_illustration.texture = load("res://assets/story/day4_lina_returning_outside.png") as Texture2D
+		story_illustration.texture = load("res://assets/story/day4_lina_alfa_corner.png") as Texture2D
 		story_illustration.visible = true
 	elif prop_name == "friends_shelter":
 		story_illustration.texture = load("res://assets/story/day4_friends_shelter.png") as Texture2D
+		story_illustration.visible = true
+	elif prop_name == "alfa_save_corner":
+		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
 		story_illustration.visible = true
 	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
 		story_illustration.visible = false
@@ -1625,10 +1644,14 @@ func _show_story_beats(beats: Array[Dictionary], title: String, after_action: St
 	_show_current_story_beat()
 
 func _show_current_story_beat() -> void:
+	if is_instance_valid(utang_ledger):
+		utang_ledger.visible = false
 	if story_beat_index >= story_beats.size():
 		_complete_story_beats()
 		return
 	var beat: Dictionary = story_beats[story_beat_index]
+	if str(beat.get("show_prop", "")) == "utang_ledger":
+		utang_ledger.show_note(story.get_choice("day3_candy") == "credit", 210 if story.get_choice("day5_debt") == "installments" else 320)
 	if beat.has("story_visitor") and story_events != null:
 		bubble.close()
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
@@ -1636,6 +1659,27 @@ func _show_current_story_beat() -> void:
 	if str(beat.get("cutscene", "")) == "box_fall":
 		story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 		story_illustration.visible = true
+	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
+		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
+		story_illustration.visible = true
+	elif str(beat.get("cutscene", "")) == "day5_wakes":
+		story_illustration.texture = load("res://assets/story/day5_tonyo_wakes.png") as Texture2D
+		story_illustration.visible = true
+	elif str(beat.get("cutscene", "")) == "day5_phone":
+		story_illustration.texture = load("res://assets/story/day5_tonyo_phone_v2.png") as Texture2D
+		story_illustration.visible = true
+	elif str(beat.get("cutscene", "")) == "day5_to_store":
+		bubble.close()
+		prologue_fade.modulate.a = 0.0
+		prologue_fade.visible = true
+		var fade_out := create_tween()
+		fade_out.tween_property(prologue_fade, "modulate:a", 1.0, 0.4)
+		await fade_out.finished
+		story_illustration.visible = false
+		var fade_in := create_tween()
+		fade_in.tween_property(prologue_fade, "modulate:a", 0.0, 0.4)
+		await fade_in.finished
+		prologue_fade.visible = false
 	elif str(beat.get("cutscene", "")) == "end":
 		story_illustration.visible = false
 	var speaker: String = str(beat.get("speaker", "Narrator"))
@@ -2526,6 +2570,7 @@ func _on_game_over() -> void:
 	_hide_store_sign()
 	if game_over_screen.visible:
 		return      # already showing (two customers can trigger it in the same frame)
+	_clear_all_angry_customers()
 	shift_in_progress = false
 	shift.is_running = false
 	if pause_menu != null:

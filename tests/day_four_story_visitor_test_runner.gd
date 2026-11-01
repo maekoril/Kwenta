@@ -55,9 +55,24 @@ func run() -> void:
 		main.bubble.advanced.emit()
 	await create_timer(0.3).timeout
 	assert(main.story.get_choice("day4_rain") == "stay")
-	assert(not main.shift.frozen and main.shift.is_running)
+	assert(main.shift.is_running)
+	assert(main.shift.reserved_story_ids.has("neighbor_lina"))
+	await process_frame
+	assert(main.story_events._mode == "customer_visitor")
+	var lina: CustomerState = main.shift.active_customers[0]
+	assert(lina.customer_id == "neighbor_lina" and lina.story_arrival_pending)
+	main.story_events.tap_customer_story(lina.instance_id)
+	while main.story_events._mode == "beats":
+		main.bubble.advanced.emit()
+	await create_timer(0.3).timeout
+	assert(not lina.story_arrival_pending and main.shift.active_customers.has(lina))
+	var prior_sales: int = main.shift.shift_earnings
+	main.shift.deliver_product(lina.instance_id, "biscuits")
+	if lina.is_paying():
+		main.shift.give_change(lina.instance_id, lina.payment.change_due())
+	assert(not main.shift.active_customers.has(lina) and main.shift.shift_earnings > prior_sales)
 	for attempt in range(100):
-		assert(main.shift._choose_customer_id() not in ["kuya_dodong", "jun_jun"])
+		assert(main.shift._choose_customer_id() not in ["kuya_dodong", "jun_jun", "neighbor_lina"])
 	assert(main.story.get_day_choices(4).is_empty())
 	assert(main.story.get_day_shift_events(5).any(func(event): return event.get("visitor") == "kuya_dodong"))
 	var day4_event: Dictionary = main.story.get_day_shift_events(4).filter(func(event): return event.get("visitor") == "jun_jun_tara")[0]
@@ -79,6 +94,7 @@ func run() -> void:
 	var join_event: Dictionary = main.story.get_day_shift_events(4).filter(func(event): return event.get("visitor") == "jun_jun_tara")[0]
 	var join_beats: Array = main.story.get_choice_response(join_event.choice, "join")
 	assert(join_beats.any(func(beat): return beat.get("speaker") == "Aling Lina"))
+	assert(join_beats.any(func(beat): return beat.get("show_prop") == "alfa_save_corner"))
 	assert(not join_beats.any(func(beat): return str(beat.get("text", "")).contains("order ni Aling Nena")))
 	assert(main.story.get_day_shift_events(5).any(func(event): return event.get("visitor") == "neighbor_lina"))
 	assert(main.story.get_day_haggles(5).all(func(entry): return not str(entry.get("text", "")).contains("Basa lahat")))
@@ -125,6 +141,8 @@ func run() -> void:
 	await create_timer(0.3).timeout
 	assert(main.story.get_choice("day4_rain") == "shelter")
 	assert(shelter_saw_illustration and not main.story_illustration.visible)
+	assert(not main.shift.active_customers.any(func(customer): return customer.customer_id == "neighbor_lina"))
+	assert(not main.story_events._timed.any(func(event): return event.get("follow_after_choice", false)))
 	assert(main.campaign.cash == shelter_cash and not main.shift.frozen)
 	main.story_events.begin_shift(4)
 	main.story_events._timed = main.story_events._timed.filter(func(event): return event.get("visitor") != "kuya_dodong_soaked")
@@ -159,10 +177,10 @@ func run() -> void:
 		while main.story_events._mode == "beats":
 			main.bubble.advanced.emit()
 		main.bubble.choice_made.emit(0)
-		while main.story_events._mode == "beats" and not main.story_illustration.visible:
+		while main.story_events._mode == "beats" and (not main.story_illustration.visible or not main.story_illustration.texture.resource_path.ends_with("day4_lina_alfa_corner.png")):
 			main.bubble.advanced.emit()
 		assert(main.story_illustration.visible)
-		assert(main.story_illustration.texture.resource_path == "res://assets/story/day4_lina_returning_outside.png")
+		assert(main.story_illustration.texture.resource_path == "res://assets/story/day4_lina_alfa_corner.png")
 		if cancel:
 			main.story_events.suppress()
 		else:

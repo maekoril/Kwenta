@@ -215,8 +215,7 @@ func refresh_patience() -> void:
 		_apply_portrait()
 		if impatient:
 			_start_impatience_pulse()
-			if customer.phase == CustomerState.Phase.ORDERING:
-				became_impatient.emit(customer.instance_id)
+			became_impatient.emit(customer.instance_id)
 		else:
 			_stop_impatience_pulse()
 			calmed_down.emit(customer.instance_id)

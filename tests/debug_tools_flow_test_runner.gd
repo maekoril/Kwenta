@@ -170,11 +170,15 @@ func run() -> void:
 	debug.day_select.select(4)
 	debug._on_day_selected(4)
 	assert(debug.day4_select.get_parent().visible)
+	assert(debug.dodong_select.get_parent().visible)
 	debug.day4_select.select(0)
+	debug.dodong_select.select(0)
 	debug._launch()
 	await create_timer(1.0).timeout
 	main = current_scene
 	assert(main.campaign.day == 5 and main.story.get_choice("day4_rain") == "join")
+	assert(main.story.get_choice("day4_dodong_seen") == "seen")
+	assert(main.story.get_day_shift_events(5).any(func(event): return event.get("visitor") == "kuya_dodong"))
 	assert(main.story.get_day_shift_events(5).any(func(event): return event.get("visitor") == "neighbor_lina"))
 	assert(SAVE.load_progress() == before)
 	debug = main.find_child("DebugOpenButton", true, false).get_parent()

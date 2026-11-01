@@ -142,12 +142,13 @@ func _refresh() -> void:
 		goal_label.text = "DAILY GOAL\nWalang naitalang resulta para sa araw na ito."
 
 func _choice_text(day: int) -> String:
-	var keys := {1: "day1_play", 2: "day2_overpayment", 3: "day3_candy", 4: "day4_rain"}
+	var keys := {1: "day1_play", 2: "day2_overpayment", 3: "day3_candy", 4: "day4_rain", 5: "day5_debt"}
 	var descriptions := {
 		"play": "Sumama sa mga kalaro.", "stay": "Nanatili sa tindahan.",
 		"return": "Itinabi ang ₱50 ni Mang Berting.", "keep": "Ibinulsa muna ang ₱50 ni Mang Berting.",
 		"credit": "Pinautang si Paolo ng ₱3.", "free": "Sinagot ang kulang sa bayad ni Paolo.", "no": "Hindi muna ipinabili ang Feeta.",
-		"join": "Sumama sa laro sa ulan.", "shelter": "Pinatuloy ang mga kaibigan para sumilong."
+		"join": "Sumama sa laro sa ulan.", "shelter": "Pinatuloy ang mga kaibigan para sumilong.",
+		"installments": "Tinanggap ang ₱110; ₱210 ang natitira.", "defer": "Itatanong muna kay Inay; ₱320 pa rin ang utang."
 	}
 	var value := str(story.choices.get(keys.get(day, ""), ""))
 	var result := str(descriptions.get(value, "Walang naitalang desisyon."))
