@@ -13,6 +13,8 @@ var friends_select: OptionButton
 var paolo_select: OptionButton
 var day4_select: OptionButton
 var dodong_select: OptionButton
+var debt_select: OptionButton
+var help_select: OptionButton
 var skip_tutorials: CheckBox
 var status: Label
 var _paused_before := false
@@ -41,7 +43,11 @@ func _ready() -> void:
 	add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 13)
-	panel.add_child(column)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(column)
 	var heading := KwentaStyle.make_label("DEBUG · QUICK PLAYTEST", 34, KwentaStyle.INK)
 	column.add_child(heading)
 	var description := KwentaStyle.make_label("Starts a separate test; leaves the current run. Your save is safe.", 22, KwentaStyle.INK_MUTED)
@@ -59,6 +65,9 @@ func _ready() -> void:
 	day4_select.select(3)
 	dodong_select = _add_select(column, "DAY 4 · PAYONG", ["Pinahiram si Kuya Dodong", "Event not seen"])
 	dodong_select.select(1)
+	debt_select = _add_select(column, "DAY 5 · UTANG", ["Lola Rosa paid ₱110", "Payment deferred", "Event not seen"])
+	debt_select.select(2)
+	help_select = _add_select(column, "DAY 6 · FIESTA", ["Asked friends for help", "Worked alone"])
 	column.move_child(scene_select.get_parent(), -1)
 	scene_select.item_selected.connect(_on_scene_selected)
 	_on_day_selected(day_select.selected)
@@ -89,7 +98,7 @@ func _ready() -> void:
 	close.pressed.connect(_toggle)
 	actions.add_child(close)
 	_restore_options()
-	for select in [previous_select, money_select, friends_select, paolo_select, day4_select, dodong_select]:
+	for select in [previous_select, money_select, friends_select, paolo_select, day4_select, dodong_select, debt_select, help_select]:
 		select.item_selected.connect(func(_index): _remember_options())
 	day_select.item_selected.connect(func(_index): _remember_options())
 	scene_select.item_selected.connect(func(_index): _remember_options())
@@ -100,7 +109,7 @@ func _remember_options() -> void:
 		"day": day_select.selected, "moment": scene_select.get_selected_id(),
 		"day1": previous_select.selected, "day2": money_select.selected,
 		"friends": friends_select.selected, "paolo": paolo_select.selected,
-		"day4": day4_select.selected, "dodong": dodong_select.selected, "skip_tutorials": skip_tutorials.button_pressed
+		"day4": day4_select.selected, "dodong": dodong_select.selected, "debt": debt_select.selected, "help": help_select.selected, "skip_tutorials": skip_tutorials.button_pressed
 	}
 	get_tree().set_meta(OPTIONS_META, values)
 	var config := ConfigFile.new()
@@ -126,7 +135,7 @@ func _restore_options() -> void:
 	var moment_index := scene_select.get_item_index(int(values.get("moment", 0)))
 	scene_select.select(moment_index if moment_index >= 0 else 0)
 	_on_scene_selected(scene_select.selected)
-	for pair in [[previous_select, "day1"], [money_select, "day2"], [friends_select, "friends"], [paolo_select, "paolo"], [day4_select, "day4"], [dodong_select, "dodong"]]:
+	for pair in [[previous_select, "day1"], [money_select, "day2"], [friends_select, "friends"], [paolo_select, "paolo"], [day4_select, "day4"], [dodong_select, "dodong"], [debt_select, "debt"], [help_select, "help"]]:
 		var select: OptionButton = pair[0]
 		select.select(clampi(int(values.get(pair[1], select.selected)), 0, select.item_count - 1))
 	skip_tutorials.button_pressed = bool(values.get("skip_tutorials", true))
@@ -171,8 +180,16 @@ func _on_day_selected(index: int) -> void:
 	elif index == 3:
 		scene_select.add_item("Day 4 · Dodong", 10)
 		scene_select.add_item("Day 4 · Jun-jun", 9)
+		scene_select.add_item("Day 4 · Aling Lina", 16)
 	elif index == 4:
+		scene_select.add_item("Day 5 · Dodong returns umbrella", 17)
+		scene_select.add_item("Day 5 · Aling Lina returns", 18)
 		scene_select.add_item("Day 5 · Lola Rosa", 15)
+	elif index == 5:
+		scene_select.add_item("Day 6 · Paolo classmate 1", 19)
+		scene_select.add_item("Day 6 · Paolo classmate 2", 20)
+		scene_select.add_item("Day 6 · Paolo classmate 3", 21)
+		scene_select.add_item("Day 6 · Paolo returns", 22)
 	scene_select.add_item("End of shift", 8)
 	var previous_index := scene_select.get_item_index(previous_moment)
 	scene_select.select(previous_index if previous_index >= 0 else 0)
@@ -184,8 +201,10 @@ func _on_scene_selected(_index: int) -> void:
 	var moment := scene_select.get_selected_id()
 	friends_select.get_parent().visible = (day_select.selected == 2 and moment in [6, 7, 8]) or day_select.selected >= 3
 	paolo_select.get_parent().visible = (day_select.selected == 2 and moment == 8) or day_select.selected >= 3
-	day4_select.get_parent().visible = (day_select.selected == 3 and moment == 8) or day_select.selected >= 4
+	day4_select.get_parent().visible = (day_select.selected == 3 and moment in [8, 16]) or day_select.selected >= 4
 	dodong_select.get_parent().visible = (day_select.selected == 3 and moment in [8, 9]) or day_select.selected >= 4
+	debt_select.get_parent().visible = day_select.selected >= 5
+	help_select.get_parent().visible = (day_select.selected == 5 and moment != 0) or day_select.selected >= 6
 	if is_instance_valid(status):
 		status.text = ""
 
@@ -207,11 +226,23 @@ func _toggle() -> void:
 func _launch() -> void:
 	var day := day_select.selected + 1
 	var moment := scene_select.get_selected_id()
-	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment == 15 and day != 5):
+	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22] and day != 6):
 		status.text = "Choose the matching day for that story event."
 		return
 	if moment == 4 and money_select.selected == 2:
 		status.text = "Choose a ₱50 outcome to preview Berting's Day 3 scene."
+		return
+	if moment == 16 and day4_select.selected != 1:
+		status.text = "Choose Nagbantay for Aling Lina’s Day 4 visit."
+		return
+	if moment == 17 and dodong_select.selected != 0:
+		status.text = "Choose the umbrella loan for Dodong’s return."
+		return
+	if moment == 18 and day4_select.selected != 0:
+		status.text = "Choose Sumama sa laro for Aling Lina’s return."
+		return
+	if (moment in [19, 20, 21] and paolo_select.selected != 1) or (moment == 22 and paolo_select.selected != 2):
+		status.text = "Choose the matching Day 3 Paolo outcome for this event."
 		return
 	_remember_options()
 	var launch_data := {"day": day, "moment": moment, "skip_tutorials": skip_tutorials.button_pressed}
@@ -223,10 +254,14 @@ func _launch() -> void:
 		launch_data["day3_friends"] = ["later", "stay", "none"][friends_select.selected]
 	if (day == 3 and moment == 8) or day > 3:
 		launch_data["day3_candy"] = ["credit", "free", "no", "none"][paolo_select.selected]
-	if (day == 4 and moment == 8) or day > 4:
+	if (day == 4 and moment in [8, 16]) or day > 4:
 		launch_data["day4_rain"] = ["join", "stay", "shelter", "none"][day4_select.selected]
 	if (day == 4 and moment in [8, 9]) or day > 4:
 		launch_data["day4_dodong_seen"] = dodong_select.selected == 0
+	if day > 5:
+		launch_data["day5_debt"] = ["installments", "defer", "none"][debt_select.selected]
+	if (day == 6 and moment != 0) or day > 6:
+		launch_data["day6_help"] = ["ask", "alone"][help_select.selected]
 	get_tree().set_meta(DEBUG_META, launch_data)
 	get_tree().paused = false
 	get_tree().call_deferred("change_scene_to_file", GAME_SCENE)

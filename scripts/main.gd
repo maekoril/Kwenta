@@ -202,12 +202,18 @@ func _ready() -> void:
 			var paolo_choice := str(debug_launch_data.get("day3_candy", "none"))
 			if paolo_choice in ["credit", "free", "no"]:
 				story.choices["day3_candy"] = paolo_choice
-		if (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) == 8) or campaign.day > 4:
+		if (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) in [8, 16]) or campaign.day > 4:
 			var rain_choice := str(debug_launch_data.get("day4_rain", "none"))
 			if rain_choice in ["join", "stay", "shelter"]:
 				story.choices["day4_rain"] = rain_choice
 		if bool(debug_launch_data.get("day4_dodong_seen", false)) and (campaign.day > 4 or (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) in [8, 9])):
 			story.choices["day4_dodong_seen"] = "seen"
+		var debt_choice := str(debug_launch_data.get("day5_debt", "none"))
+		if campaign.day > 5 and debt_choice in ["installments", "defer"]:
+			story.choices["day5_debt"] = debt_choice
+		var help_choice := str(debug_launch_data.get("day6_help", ""))
+		if campaign.day >= 6 and help_choice in ["ask", "alone"]:
+			story.choices["day6_help"] = help_choice
 		# Quick playtests start with earlier days completed, but never alter the real save.
 		# Reconstruct their diary pages from the scenario choices, not invented goal results.
 		for completed_day in range(1, campaign.day):
@@ -358,7 +364,7 @@ func _launch_debug_start() -> void:
 		story_events.suppress()
 		shift.finish_shift()
 		return
-	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked", 15: "neighbor_rosa"}.get(moment, "") as String
+	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked", 15: "neighbor_rosa", 16: "neighbor_lina", 17: "kuya_dodong", 18: "neighbor_lina", 19: "classmate_1", 20: "classmate_2", 21: "classmate_3", 22: "paolo"}.get(moment, "") as String
 	var matching: Array[Dictionary] = []
 	for event in story_events._timed:
 		if str(event.get("visitor", event.get("customer", ""))) == visitor:
@@ -366,6 +372,10 @@ func _launch_debug_start() -> void:
 	if matching.is_empty():
 		push_warning("Debug event is not available with those choices.")
 		return
+	# The Day 4 Lina event normally follows the friends choice immediately.
+	# A direct preview has already seeded that choice, so schedule it normally.
+	if moment == 16:
+		matching[0].erase("follow_after_choice")
 	var minute := int(matching[0].get("at_minute", 0))
 	var remaining: Array[Dictionary] = []
 	for event in story_events._timed:
