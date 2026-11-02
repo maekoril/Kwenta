@@ -136,6 +136,12 @@ func _build_button() -> void:
 func place_button(pos: Vector2) -> void:
 	_button.position = pos
 
+func set_button_size(button_size: Vector2) -> void:
+	_button.size = button_size
+
+func set_button_scale(scale_factor: float) -> void:
+	_button.scale = Vector2.ONE * scale_factor
+
 func _update_pause_visual() -> void:
 	if _pause_visual != null:
 		_pause_visual.texture = PAUSE_HOVER if _button.is_hovered() else PAUSE_NORMAL

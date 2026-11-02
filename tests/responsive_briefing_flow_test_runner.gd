@@ -19,9 +19,25 @@ func run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.bubble.close()
-	for viewport_size in [Vector2(1920, 1080), Vector2(2340, 1080), Vector2(1440, 1080)]:
+	for viewport_size in [Vector2(1920, 1080), Vector2(2340, 1080), Vector2(1440, 1080), Vector2(1280, 720), Vector2(720, 405)]:
 		main.size = viewport_size
+		main._recenter_fixed_hud()
 		await process_frame
+		var day_chip: Control = main.day_label.get_parent().get_parent()
+		var clock_chip: Control = main.clock_label.get_parent().get_parent()
+		var cash_chip: Control = main.cash_label.get_parent().get_parent()
+		var pause_button: Control = main.pause_menu._button
+		var hud_scale: float = main._hud_scale()
+		var margin := maxf(20.0, main.HUD_SAFE_MARGIN * hud_scale)
+		assert(main.goal_panel.position.x >= margin - 0.1)
+		assert(main.goal_panel.position.x + main.goal_panel.size.x * hud_scale < day_chip.position.x)
+		assert(absf((day_chip.position.x + cash_chip.position.x + cash_chip.size.x * hud_scale) * 0.5 - viewport_size.x * 0.5) < 0.1)
+		assert(cash_chip.position.x + cash_chip.size.x * hud_scale < main.trust_tag.position.x)
+		assert(absf(pause_button.position.x + pause_button.size.x * hud_scale - (viewport_size.x - margin)) < 0.1)
+		assert(absf((pause_button.position.x + pause_button.size.x * hud_scale * 0.5) - (main.shop_button.position.x + main.shop_button.size.x * hud_scale * 0.5)) < 0.1)
+		assert(absf((pause_button.position.x + pause_button.size.x * hud_scale * 0.5) - (main.utang_button.position.x + main.utang_button.size.x * hud_scale * 0.5)) < 0.1)
+		assert(main.shop_button.position.y >= pause_button.position.y + pause_button.size.y * hud_scale + main.HUD_RAIL_GAP * hud_scale - 0.1)
+		assert(main.utang_button.position.y >= main.shop_button.position.y + main.shop_button.size.y * hud_scale + main.HUD_RAIL_GAP * hud_scale - 0.1)
 		assert(main.story_illustration.size.is_equal_approx(viewport_size))
 		assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
 		for prop in ["berting_counter_closeup", "lina_walking_away", "friends_shelter"]:

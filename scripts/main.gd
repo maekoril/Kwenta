@@ -17,6 +17,12 @@ const STORY_EVENT_MARKER = preload("res://scripts/story_event_marker.gd")
 const PAOLO_DEBT_NOTE = preload("res://scripts/paolo_debt_note.gd")
 const UTANG_LEDGER = preload("res://scripts/utang_ledger.gd")
 const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
+const HUD_SAFE_MARGIN := 33.0
+const HUD_TOP_Y := 11.0
+const HUD_RAIL_GAP := 14.0
+const PAUSE_BUTTON_SIZE := Vector2(89.0, 74.0)
+const SHOP_BUTTON_SIZE := Vector2(74.0, 74.0)
+const UTANG_BUTTON_SIZE := Vector2(100.0, 58.0)
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
@@ -305,8 +311,8 @@ func _ready() -> void:
 	add_child(utang_ledger)
 	utang_button = Button.new()
 	utang_button.text = "UTANG"
-	utang_button.position = Vector2(1790, 190) + _ui_offset()
-	utang_button.size = Vector2(100, 58)
+	utang_button.position = _utang_button_position()
+	utang_button.size = UTANG_BUTTON_SIZE
 	utang_button.z_index = 55
 	KwentaStyle.style_button(utang_button, KwentaStyle.PAPER_DARK, 22)
 	add_child(utang_button)
@@ -338,9 +344,8 @@ func _ready() -> void:
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
 	pause_menu.story_progression = story
-	pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
-	# Compact button dimensions for the Option 5 bar.
-	pause_menu.get_child(0).get_child(0).size = Vector2(89.0, 74.0)
+	pause_menu.set_button_size(PAUSE_BUTTON_SIZE)
+	_recenter_fixed_hud()
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_build_story_events()
@@ -491,23 +496,23 @@ func _process(delta: float) -> void:
 				child.refresh_patience()
 
 func _build_hud() -> void:
-	# Option 5: a small, intentional top strip, not the oversized Option 2 board.
-	# Exact coordinates are authored against the original 1920 x 1080 game canvas.
+	# Option 5: a compact top strip that keeps the centre stats together while
+	# the objective and trust controls follow the actual viewport edges.
 	var hud := Control.new()
 	gameplay_hud = hud
 	hud.name = "GameplayHUDOption5"
 	hud.z_index = 30
-	hud.position = _ui_offset()
-	hud.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	hud.position = Vector2.ZERO
+	hud.size = size
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
-	const Y := 11.0
+	const Y := HUD_TOP_Y
 	const H := 74.0
 
 	# Left objective chip: icon + LIVE progress + count (no oversized heading).
 	goal_panel = PanelContainer.new()
 	goal_panel.name = "DailyGoalHud"
-	goal_panel.position = Vector2(33.0, Y)
+	goal_panel.position = Vector2(HUD_SAFE_MARGIN, Y)
 	goal_panel.size = Vector2(399.0, H)
 	goal_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	goal_panel.tooltip_text = "Today's objective"
@@ -554,27 +559,74 @@ func _build_hud() -> void:
 	goal_row.add_child(goal_count_label)
 
 	# Three distinct cream chips — day, time, cash — matching the user's Option 5.
-	day_label = _option5_stat(hud, "DayChip", Vector2(672, Y), Vector2(149, H), "calendar.png", "D1", 27, KwentaStyle.INK, 35.0)
-	clock_label = _option5_stat(hud, "TimeChip", Vector2(835, Y), Vector2(169, H), "clock.png", "8:00", 27, KwentaStyle.INK, 34.0)
-	cash_label = _option5_stat(hud, "CashChip", Vector2(1018, Y), Vector2(178, H), "peso.png", "150", 27, KwentaStyle.MONEY, 35.0)
+	day_label = _option5_stat(hud, "DayChip", Vector2.ZERO, Vector2(149, H), "calendar.png", "D1", 27, KwentaStyle.INK, 35.0)
+	clock_label = _option5_stat(hud, "TimeChip", Vector2.ZERO, Vector2(169, H), "clock.png", "8:00", 27, KwentaStyle.INK, 34.0)
+	cash_label = _option5_stat(hud, "CashChip", Vector2.ZERO, Vector2(178, H), "peso.png", "150", 27, KwentaStyle.MONEY, 35.0)
 
 	# Live suki animation remains controlled by the existing trust update calls.
 	trust_tag = OPTION5_SUKI.new().setup(campaign.barangay_trust, 372.0, 0.0, 3.0, false)
-	trust_tag.position = Vector2(1401.0, Y)
+	trust_tag.position = Vector2.ZERO
 	hud.add_child(trust_tag)
+	_layout_gameplay_hud()
 
 func _recenter_fixed_hud() -> void:
-	if is_instance_valid(gameplay_hud):
-		gameplay_hud.position = _ui_offset()
-	if is_instance_valid(pause_menu):
-		pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
-	if is_instance_valid(shop_button):
-		shop_button.position = _shop_button_position()
+	_layout_gameplay_hud()
+	_layout_right_hud_rail()
 	if is_instance_valid(briefing_card) and briefing_card.visible:
 		briefing_card.call_deferred("_settle", size, false)
 	for child in get_children():
 		if child.name.begins_with("DailyGoalAchievementNotice") and child is Control:
 			child.position = Vector2(33, 100) + _ui_offset()
+
+func _layout_right_hud_rail() -> void:
+	var scale := _hud_scale()
+	if is_instance_valid(pause_menu):
+		pause_menu.set_button_scale(scale)
+		pause_menu.place_button(_pause_button_position())
+	if is_instance_valid(shop_button):
+		shop_button.scale = Vector2.ONE * scale
+		shop_button.position = _shop_button_position()
+	if is_instance_valid(utang_button):
+		utang_button.scale = Vector2.ONE * scale
+		utang_button.position = _utang_button_position()
+
+func _layout_gameplay_hud() -> void:
+	if not is_instance_valid(gameplay_hud):
+		return
+	gameplay_hud.position = Vector2.ZERO
+	gameplay_hud.size = size
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	var center_gap := 14.0
+	var day_panel: Control = null
+	var clock_panel: Control = null
+	var cash_panel: Control = null
+	if is_instance_valid(day_label):
+		day_panel = day_label.get_parent().get_parent() as Control
+	if is_instance_valid(clock_label):
+		clock_panel = clock_label.get_parent().get_parent() as Control
+	if is_instance_valid(cash_label):
+		cash_panel = cash_label.get_parent().get_parent() as Control
+	if day_panel != null and clock_panel != null and cash_panel != null:
+		day_panel.scale = Vector2.ONE * scale
+		clock_panel.scale = Vector2.ONE * scale
+		cash_panel.scale = Vector2.ONE * scale
+		var stats_width := (day_panel.size.x + clock_panel.size.x + cash_panel.size.x + center_gap * 2.0) * scale
+		var stats_x := (size.x - stats_width) * 0.5
+		day_panel.position = Vector2(stats_x, HUD_TOP_Y)
+		clock_panel.position = Vector2(day_panel.position.x + (day_panel.size.x + center_gap) * scale, HUD_TOP_Y)
+		cash_panel.position = Vector2(clock_panel.position.x + (clock_panel.size.x + center_gap) * scale, HUD_TOP_Y)
+	if is_instance_valid(goal_panel):
+		goal_panel.scale = Vector2.ONE * scale
+		goal_panel.position = Vector2(margin, HUD_TOP_Y)
+	if is_instance_valid(trust_tag):
+		trust_tag.scale = Vector2.ONE * scale
+		trust_tag.position = Vector2(size.x - margin - (PAUSE_BUTTON_SIZE.x + HUD_RAIL_GAP + trust_tag.size.x) * scale, HUD_TOP_Y)
+
+func _hud_scale() -> float:
+	# The full Option 5 composition fits at 1800px wide and reduces uniformly
+	# below that, preserving padding and avoiding overlap on smaller devices.
+	return clampf(size.x / 1800.0, 0.4, 1.0)
 
 func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
 	var frame := StyleBoxTexture.new()
@@ -874,7 +926,7 @@ func _build_shop_button() -> void:
 	shop_button = Button.new()
 	shop_button.name = "ShopIconButton"
 	shop_button.position = _shop_button_position()
-	shop_button.size = Vector2(74, 74)
+	shop_button.size = SHOP_BUTTON_SIZE
 	shop_button.z_index = 55
 	shop_button.z_as_relative = false
 	KwentaStyle.style_button(shop_button, KwentaStyle.PAPER_DARK, 28)
@@ -896,8 +948,25 @@ func _build_shop_button() -> void:
 	add_child(shop_button)
 
 func _shop_button_position() -> Vector2:
-	# Align the 74px notebook under the centered 89px pause control.
-	return Vector2(1802.5, 97.0) + _ui_offset()
+	# Keep the notebook centered under Pause in the shared right-side rail.
+	var scale := _hud_scale()
+	var rail_center_x := _right_hud_rail_center_x()
+	return Vector2(rail_center_x - SHOP_BUTTON_SIZE.x * scale * 0.5, HUD_TOP_Y + (PAUSE_BUTTON_SIZE.y + HUD_RAIL_GAP) * scale)
+
+func _utang_button_position() -> Vector2:
+	var scale := _hud_scale()
+	var rail_center_x := _right_hud_rail_center_x()
+	return Vector2(rail_center_x - UTANG_BUTTON_SIZE.x * scale * 0.5, HUD_TOP_Y + (PAUSE_BUTTON_SIZE.y + HUD_RAIL_GAP + SHOP_BUTTON_SIZE.y + HUD_RAIL_GAP) * scale)
+
+func _pause_button_position() -> Vector2:
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	return Vector2(size.x - margin - PAUSE_BUTTON_SIZE.x * scale, HUD_TOP_Y)
+
+func _right_hud_rail_center_x() -> float:
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	return size.x - margin - PAUSE_BUTTON_SIZE.x * scale * 0.5
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
