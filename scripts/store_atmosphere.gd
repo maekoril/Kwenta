@@ -78,6 +78,10 @@ func set_mood(tint: Color, vignette_strength: float = 1.0, seconds: float = 1.0)
 	tween.tween_property(_tint, "color", tint, seconds)
 	tween.tween_property(_vignette, "modulate:a", clampf(vignette_strength, 0.0, 1.0), seconds)
 
+func set_blackout(active: bool) -> void:
+	_glow.visible = not active
+	_dust.visible = not active
+
 func _build_tint() -> void:
 	_tint = ColorRect.new()
 	_tint.color = TINT

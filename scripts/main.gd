@@ -166,6 +166,7 @@ var environment_textures: Dictionary = {}
 var day_six_brownout_triggered := false
 var fiesta_emergency_light: ColorRect
 var fiesta_light_props: Control
+var fiesta_ignition_tween: Tween
 var debug_environment_time_override := -1
 var tutorial_hint: Label
 var tutorial_hint_tween: Tween
@@ -996,22 +997,29 @@ func _build_fiesta_emergency_light() -> void:
 	fiesta_emergency_light.z_index = 21
 	fiesta_emergency_light.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shader := Shader.new()
-	# Shade the complete storefront, including its separate product and customer
-	# layers. Flashlights ease the shadows locally instead of adding a glow.
+	# One lamp illuminates the storefront, products and customers together.
+	# Share its source with the prop so illumination stays anchored to the flame.
 	shader.code = """
 shader_type canvas_item;
 uniform bool lights_arrived = false;
+uniform float ignition : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 lamp_source;
 void fragment() {
-	vec2 p = UV;
-	float flashlight = 1.0 - smoothstep(0.0, 0.42, length((p - vec2(0.18, 0.45)) * vec2(1.0, 1.5)));
-	float candle = 1.0 - smoothstep(0.0, 0.28, length((p - vec2(0.89, 0.43)) * vec2(1.0, 1.5)));
-	float light = lights_arrived ? max(flashlight, candle * 0.7) : 0.0;
-	COLOR = vec4(0.035, 0.045, 0.085, 0.55 - light * 0.16);
+	vec2 p = UV * vec2(1920.0, 1080.0);
+	vec2 delta = p - lamp_source;
+	float distance_from_lamp = length(delta / vec2(880.0, 600.0));
+	float falloff = exp(-distance_from_lamp * 1.35);
+	float core = exp(-dot(delta / vec2(210.0, 230.0), delta / vec2(210.0, 230.0)) * 1.5);
+	float flicker = 1.0 + sin(TIME * 2.1) * 0.012 + sin(TIME * 5.3) * 0.006;
+	float light = lights_arrived ? (falloff * 0.72 + core * 0.16) * flicker * ignition : 0.0;
+	vec3 shadow = mix(vec3(0.018, 0.025, 0.05), vec3(0.24, 0.115, 0.025), light);
+	COLOR = vec4(shadow, 0.76 - light * 0.78);
 }
 """
 	var material := ShaderMaterial.new()
 	material.shader = shader
 	fiesta_emergency_light.material = material
+	material.set_shader_parameter("lamp_source", preload("res://scripts/fiesta_light_props.gd").FLAME_POSITION)
 	fiesta_emergency_light.hide()
 	add_child(fiesta_emergency_light)
 	fiesta_light_props = preload("res://scripts/fiesta_light_props.gd").new()
@@ -1025,16 +1033,28 @@ void fragment() {
 func _on_fiesta_brownout_story_finished() -> void:
 	if environment_day != 6 or not day_six_brownout_triggered:
 		return
-	fiesta_emergency_light.position = _ui_offset()
-	(fiesta_emergency_light.material as ShaderMaterial).set_shader_parameter("lights_arrived", true)
-	fiesta_light_props.position = _ui_offset()
-	fiesta_light_props.show()
 	shift.start_fiesta_brownout_rush()
 
+func _reveal_fiesta_lampara() -> void:
+	if environment_day != 6 or not day_six_brownout_triggered or fiesta_light_props.visible:
+		return
+	fiesta_emergency_light.position = _ui_offset()
+	var material := fiesta_emergency_light.material as ShaderMaterial
+	material.set_shader_parameter("lights_arrived", true)
+	fiesta_light_props.position = _ui_offset()
+	fiesta_light_props.show()
+	fiesta_ignition_tween = create_tween()
+	fiesta_ignition_tween.tween_property(material, "shader_parameter/ignition", 1.0, 0.85).set_trans(Tween.TRANS_SINE)
+
 func apply_environment(day: int) -> void:
+	if fiesta_ignition_tween != null and fiesta_ignition_tween.is_valid():
+		fiesta_ignition_tween.kill()
+	store_layer_renderer.set_blackout(false)
+	atmosphere.set_blackout(false)
 	if is_instance_valid(fiesta_emergency_light):
 		fiesta_emergency_light.hide()
 		(fiesta_emergency_light.material as ShaderMaterial).set_shader_parameter("lights_arrived", false)
+		(fiesta_emergency_light.material as ShaderMaterial).set_shader_parameter("ignition", 0.0)
 	if is_instance_valid(fiesta_light_props):
 		fiesta_light_props.hide()
 	environment_day = day
@@ -1111,6 +1131,8 @@ func trigger_day_six_brownout() -> void:
 	if brownout_texture == null:
 		return
 	day_six_brownout_triggered = true
+	store_layer_renderer.set_blackout(true)
+	atmosphere.set_blackout(true)
 	_play_brownout_flicker()
 	fiesta_emergency_light.position = _ui_offset()
 	fiesta_emergency_light.modulate.a = 0.0
@@ -1737,6 +1759,9 @@ func _is_paolo_debt_recorded() -> bool:
 	return story.get_choice("day3_candy") == "credit" and (campaign.day > 4 or story.get_choice("paolo_debt_recorded") == "yes")
 
 func _show_story_prop(prop_name: String) -> void:
+	if prop_name == "fiesta_lampara":
+		_reveal_fiesta_lampara()
+		return
 	if prop_name == "utang_ledger":
 		utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
 		return

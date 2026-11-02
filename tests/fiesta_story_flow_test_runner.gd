@@ -13,12 +13,21 @@ func run() -> void:
 		assert(main.story_events._current.get("kind") == "narrative")
 		assert(main.shift.frozen and main.shift.is_running)
 		var beats: Array = main.story.filter_story_beats(main.story_events._current.event.beats)
-		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("flashlight")))
-		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("kandila")))
+		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("lampara")))
+		assert(not beats.any(func(beat): return str(beat.get("text", "")).contains("flashlight")))
 		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("Brownout pa rin")))
 		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("Ako na sa mga order")) == (route == "alone"))
-		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("May flashlight ako")) == (route == "ask"))
-		for i in range(beats.size()): main.bubble.advanced.emit()
+		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("kwarto ko")))
+		assert(beats.any(func(beat): return beat.get("speaker") == "Mikay" and str(beat.get("text", "")).contains("pangsindi")))
+		var reveal_index := -1
+		for i in range(beats.size()):
+			if beats[i].get("show_prop", "") == "fiesta_lampara": reveal_index = i
+		assert(reveal_index > 0 and beats[reveal_index - 1].get("speaker") == "Bogs")
+		for i in range(beats.size()):
+			assert(main.fiesta_light_props.visible == (i >= reveal_index))
+			assert(bool((main.fiesta_emergency_light.material as ShaderMaterial).get_shader_parameter("lights_arrived")) == (i >= reveal_index))
+			assert(not main.shift.fiesta_brownout_rush)
+			main.bubble.advanced.emit()
 		await create_timer(0.3).timeout
 		assert(not main.story_events.is_active() and not main.shift.frozen and main.shift.is_running)
 		assert(main.fiesta_emergency_light.visible and main.shift.fiesta_brownout_rush)

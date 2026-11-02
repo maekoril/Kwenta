@@ -22,6 +22,38 @@ void fragment() {
 }
 """
 var slots := {}
+var blackout_active := false
+const BLACKOUT_PRODUCT_SHADER = """
+shader_type canvas_item;
+uniform bool blackout = false;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	if (blackout) {
+		float gray = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+		c.rgb = mix(vec3(gray), c.rgb, 0.72) * 0.70;
+	}
+	COLOR = c;
+}
+"""
+
+func set_blackout(active: bool) -> void:
+	blackout_active = active
+	var root := get_node_or_null("Slots")
+	if root == null: return
+	for child in root.get_children():
+		if child is Sprite2D:
+			child.material = _product_material(str(child.name))
+
+func _product_material(_sprite_name: String) -> ShaderMaterial:
+	
+	if not blackout_active:
+		return null
+	var material := ShaderMaterial.new()
+	var shader := Shader.new()
+	shader.code = BLACKOUT_PRODUCT_SHADER
+	material.shader = shader
+	material.set_shader_parameter("blackout", blackout_active)
+	return material
 var stock := []
 var debug_slots := false
 var current_day := 1
@@ -347,8 +379,9 @@ func _make_slot(root: Control, data: Dictionary) -> void:
 		sprite.name = "%s_product" % data.id
 		sprite.texture = load(str(entry.get("texture_path", "")))
 		sprite.position = (Vector2(raw.x + raw.w * 0.5, raw.y + raw.h * 0.5)) * data.scale
-		sprite.scale = Vector2(data.scale.x, data.scale.y)
+		sprite.scale = Vector2(data.scale.x, data.scale.y) * Vector2(raw.w, raw.h) / sprite.texture.get_size()
 		sprite.z_index = 20
+		sprite.material = _product_material(str(sprite.name))
 		root.add_child(sprite)
 	area.input_event.connect(_slot_input.bind(data.id))
 

@@ -2280,52 +2280,77 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo_flustered",
-							"text": "Ay! Brownout? Paano na ang mga customer?"
-						},
-						{
-							"speaker": "Mikay",
-							"portrait": "mikay_smug",
-							"text": "May flashlight ako sa bag! Sandali, ilawan ko rito.",
-							"when_choice": "day6_help",
-							"when_value": "ask"
-						},
-						{
-							"speaker": "Jun-jun",
-							"portrait": "jun_jun_tara",
-							"text": "May kandila rin dito. Ilalagay ko muna sa ligtas na lugar.",
-							"when_choice": "day6_help",
-							"when_value": "ask"
+							"text": "Ay! Brownout? Sandali, may lampara sa kwarto ko."
 						},
 						{
 							"speaker": "Narrator",
 							"portrait": "",
-							"text": "Dumating sina Jun-jun, Mikay, at Bogs na may dalang mga ilaw.",
-							"when_choice": "day6_help",
-							"when_value": "alone"
-						},
-						{
-							"speaker": "Jun-jun",
-							"portrait": "jun_jun_tara",
-							"text": "Tonyo! Brownout pala. May flashlight si Mikay, at may dala akong kandila!",
+							"text": "Dumating sina Jun-jun, Mikay, at Bogs at nadatnan nilang madilim ang tindahan.",
 							"when_choice": "day6_help",
 							"when_value": "alone"
 						},
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "Salamat! Puwede bang pailaw muna rito? Ako na sa mga order at sukli.",
+							"text": "Buti nandito kayo! Ako na sa mga order at sukli.",
 							"when_choice": "day6_help",
 							"when_value": "alone"
 						},
 						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Jun-jun, pakikuha naman yung lampara sa kwarto ko. Nasa ibabaw ng mesa."
+						},
+						{
+							"speaker": "Jun-jun",
+							"portrait": "jun_jun_tara",
+							"text": "Sige, Tonyo! Kukunin ko."
+						},
+						{
+							"speaker": "Mikay",
+							"portrait": "mikay_smug",
+							"text": "Hahanap naman ako ng posporo para may pangsindi tayo."
+						},
+						{
 							"speaker": "Narrator",
 							"portrait": "",
-							"text": "Sa flashlight ni Mikay at kandila ni Jun-jun, nakapagpatuloy si Tonyo sa pagbabantay. Sarado ang Alfa-Save dahil sa brownout, kaya may mga mamimili na papunta sa kanila."
+							"text": "Pumasok si Jun-jun sa kwarto habang naghanap si Mikay ng pangsindi. Inihanda ni Bogs ang pasamano sa gilid."
+						},
+						{
+							"speaker": "Jun-jun",
+							"portrait": "jun_jun_tara",
+							"text": "Heto na yung lampara!"
+						},
+						{
+							"speaker": "Mikay",
+							"portrait": "mikay_smug",
+							"text": "May posporo na rin. Heto, Bogs."
+						},
+						{
+							"speaker": "Bogs",
+							"portrait": "bogs_small_smile",
+							"text": "Ako na ang magse-setup dito sa gilid. Sandali, sindihan ko muna."
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Inilapag ni Bogs ang lampara sa pasamano at sinindihan ang mitsa. Unti-unting lumiwanag ang tindahan.",
+							"show_prop": "fiesta_lampara"
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Ayan, kita na natin! Salamat, Jun-jun, Mikay, Bogs."
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Sa liwanag ng lampara, nakapagpatuloy si Tonyo sa pagbabantay. Sarado ang Alfa-Save dahil sa brownout, kaya may mga mamimili na papunta sa kanila."
 						},
 						{
 							"speaker": "Aling Nena",
 							"portrait": "aling_nena_happy",
-							"text": "Brownout pa rin, pero salamat sa flashlight at kandila, tuloy ang fiesta!"
+							"text": "Brownout pa rin, pero salamat sa lampara, tuloy ang fiesta!"
 						}
 					]
 				}
