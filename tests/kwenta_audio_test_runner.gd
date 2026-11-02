@@ -11,9 +11,13 @@ func _initialize() -> void:
 	_test_new_ambience_replaces_the_previous_cue()
 	_test_missing_ambience_stops_the_previous_loop()
 	_test_new_music_replaces_the_previous_track()
+	_test_random_ambience_waits_for_the_cooldown()
 	_test_dialogue_loop_stops_explicitly()
 	_test_dialogue_loop_asset_has_audible_phrase_length()
 	_test_sale_clip_is_short_and_immediate()
+	_test_motorcycle_ambience_asset_is_importable()
+	_test_project_defines_audio_buses()
+	_test_new_runtime_audio_assets_resolve()
 	_test_default_cues_resolve()
 	if failures > 0:
 		push_error("%d audio assertion(s) failed." % failures)
@@ -89,6 +93,8 @@ func _test_new_ambience_replaces_the_previous_cue() -> void:
 	audio.register_cue("fiesta", AudioStreamWAV.new())
 	_assert(audio.set_ambience("rain"), "registered rain ambience is accepted")
 	_assert(audio.current_ambience == "rain", "rain becomes the active ambience")
+	var ambience_player := audio.get_node_or_null("AmbiencePlayer") as AudioStreamPlayer
+	_assert(ambience_player != null and ambience_player.volume_db < 0.0, "ambience stays quieter than the background music")
 	_assert(audio.set_ambience("fiesta"), "registered fiesta ambience is accepted")
 	_assert(audio.current_ambience == "fiesta", "fiesta replaces rain as the single active ambience")
 	audio.free()
@@ -120,6 +126,20 @@ func _test_new_music_replaces_the_previous_track() -> void:
 	_assert(audio.current_music == "rain", "rain music replaces the normal track")
 	audio.free()
 
+func _test_random_ambience_waits_for_the_cooldown() -> void:
+	var audio: Variant = _new_audio()
+	if audio == null:
+		return
+	_assert(audio.has_method("set_random_ambience"), "KwentaAudio can schedule a non-looping ambience cue")
+	if not audio.has_method("set_random_ambience"):
+		audio.free()
+		return
+	audio.register_cue("normal_day", AudioStreamWAV.new())
+	_assert(audio.set_random_ambience("normal_day", 40.0), "registered random ambience is accepted")
+	_assert(audio.current_random_ambience == "normal_day", "random ambience records the active cue")
+	_assert(audio.random_ambience_cooldown_seconds >= 40.0, "random ambience never schedules before its cooldown")
+	audio.free()
+
 func _test_dialogue_loop_stops_explicitly() -> void:
 	var audio: Variant = _new_audio()
 	if audio == null:
@@ -147,6 +167,26 @@ func _test_sale_clip_is_short_and_immediate() -> void:
 	if stream != null:
 		_assert(stream.get_length() <= 1.0, "trimmed sale clip does not retain the long delayed source")
 
+func _test_motorcycle_ambience_asset_is_importable() -> void:
+	var stream := load("res://assets/audio/pixabay/ambience/motorcycle.wav") as AudioStream
+	_assert(stream != null, "motorcycle ambience imports as a Godot-compatible WAV")
+
+func _test_project_defines_audio_buses() -> void:
+	var layout := load("res://default_bus_layout.tres")
+	_assert(layout != null, "project ships a persistent Music, SFX, and Ambience bus layout")
+	_assert(AudioServer.get_bus_index("Music") >= 0, "Music bus is available before scene startup")
+	_assert(AudioServer.get_bus_index("SFX") >= 0, "SFX bus is available before scene startup")
+	_assert(AudioServer.get_bus_index("Ambience") >= 0, "Ambience bus is available before scene startup")
+
+func _test_new_runtime_audio_assets_resolve() -> void:
+	for resource_path in [
+		"res://assets/audio/pixabay/music/main_menu.ogg",
+		"res://assets/audio/pixabay/ambience/rain.ogg",
+		"res://assets/audio/pixabay/ambience/normal_day.ogg",
+	]:
+		var stream := load(resource_path) as AudioStream
+		_assert(stream is AudioStreamOggVorbis, "Godot imports runtime audio: %s" % resource_path)
+
 func _test_default_cues_resolve() -> void:
 	var audio: Variant = _new_audio()
 	if audio == null:
@@ -156,10 +196,10 @@ func _test_default_cues_resolve() -> void:
 		audio.free()
 		return
 	audio.register_default_cues()
-	for cue_name in ["pickup", "correct", "reject", "sale", "timeout", "conversation"]:
+	for cue_name in ["pickup", "correct", "reject", "sale", "timeout", "conversation", "menu_start", "rain", "normal_day"]:
 		_assert(audio.has_cue(cue_name), "default cue resolves: %s" % cue_name)
 	audio.register_default_music()
-	for track_name in ["normal", "rain", "intense"]:
+	for track_name in ["normal", "rain", "intense", "main_menu"]:
 		_assert(audio.has_music(track_name), "default music resolves: %s" % track_name)
 	audio.free()
 

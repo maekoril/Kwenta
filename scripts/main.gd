@@ -1330,6 +1330,9 @@ func apply_environment(day: int) -> void:
 	environment_settings = ENVIRONMENT_BY_DAY.get(day, ENVIRONMENT_BY_DAY[1])
 	if audio != null:
 		audio.set_ambience(ambience_for_environment_day(day))
+		# Normal-day ambience begins only once the store is open, not during the
+		# prologue, briefing, or opening-sign animation.
+		audio.set_random_ambience("")
 		audio.set_music(music_for_environment_day(day))
 	_prepare_environment_textures(environment_settings)
 	var settings := _runtime_environment_settings("base_path")
@@ -1869,7 +1872,10 @@ func audio_cues_for_payment(result: int) -> Array[String]:
 	return []
 
 func ambience_for_environment_day(day: int) -> String:
-	return ""
+	return "rain" if day == 4 else ""
+
+func random_ambience_for_environment_day(day: int) -> String:
+	return "normal_day" if day in [1, 2, 3, 5, 7] else ""
 
 func music_for_environment_day(day: int) -> String:
 	if day == 4:
@@ -2482,6 +2488,7 @@ func _after_opening_sign() -> void:
 		story_events.begin_shift(campaign.day)
 	# Day 1 introduces a clickable visitor before any buying customer enters.
 	shift.start_shift(campaign.day != 1 and not (campaign.day == 4 and not bool(completed_tutorials.get("day4_utang", false))))
+	_start_opening_ambience()
 	if campaign.day == 1 and story_events != null:
 		if debug_session and int(debug_launch_data.get("moment", 0)) == 26:
 			story_events._waiting_scene.clear()
@@ -2507,6 +2514,13 @@ func _after_opening_sign() -> void:
 		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_MENU, "Tap the menu to find the utang notebook.", utility_toggle, "UTANG NOTEBOOK")
 	elif campaign.day >= 3:
 		_show_tutorial_hint(str(DAY_FOCUS_HINTS.get(campaign.day, "")))
+
+func _start_opening_ambience() -> void:
+	if audio == null:
+		return
+	var cue_name := random_ambience_for_environment_day(campaign.day)
+	if not cue_name.is_empty():
+		audio.set_ambience(cue_name)
 
 func _begin_day_one_hud_tour() -> void:
 	day_one_hud_tour_index = 0
