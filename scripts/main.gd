@@ -173,13 +173,16 @@ var tutorial_payment_total := 0
 var tutorial_sukli_ready := false
 var tutorial_sukli_generation := 0
 var day_two_sukli_tutorial_complete := false
+var sukli_rules_previous_frozen := false
 var daily_goal
 var daily_goal_day := 0
 var showing_pre_shift_briefing := false
 var resume_briefing_after_shop := false
+var supplier_delivery_was_tutorial := false
+var supplier_story_blocked := false
 var new_purchase_groups_today: Array[String] = []
 
-enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE }
+enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES }
 func _ready() -> void:
 	AUDIO_SETTINGS.initialize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -848,11 +851,17 @@ func _build_shop_button() -> void:
 	shop_button.z_index = 55
 	shop_button.z_as_relative = false
 	KwentaStyle.style_button(shop_button, KwentaStyle.PAPER_DARK, 28)
+	var grayscale_shader := Shader.new()
+	grayscale_shader.code = "shader_type canvas_item; uniform bool grayscale = false; void fragment() { if (grayscale) { float gray = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114)); COLOR.rgb = vec3(gray); } }"
+	var button_material := ShaderMaterial.new()
+	button_material.shader = grayscale_shader
+	shop_button.material = button_material
 	var notebook_icon := SUPPLIER_NOTEBOOK_ICON.new()
 	notebook_icon.name = "SupplierNotebookIcon"
 	notebook_icon.position = Vector2(16, 12)
 	notebook_icon.size = Vector2(42, 50)
 	notebook_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notebook_icon.use_parent_material = true
 	shop_button.add_child(notebook_icon)
 	shop_button.tooltip_text = "Open Inay's supplier list"
 	shop_button.visible = false
@@ -1448,6 +1457,8 @@ func _resolve_product_delivery(customer_id: String, product_id: String) -> bool:
 	if result == OrderState.DeliveryResult.WRONG_PRODUCT or result == CustomerState.DeliveryResult.INACTIVE:
 		if is_instance_valid(actor):
 			actor.call("play_wrong_drop")
+			if result == OrderState.DeliveryResult.WRONG_PRODUCT:
+				_float_text(actor.global_position - global_position + Vector2(15, 110), "HINDI 'YAN!", Color("ffb0a2"))
 		return false
 	if is_instance_valid(actor):
 		actor.call("refresh_display")
@@ -1524,6 +1535,7 @@ func _show_shift_summary() -> void:
 		story_illustration.visible = false
 	_hide_store_sign()
 	shift_in_progress = false
+	_refresh_shop_button()
 	if story_events != null:
 		story_events.end_shift()
 	if pause_menu != null:
@@ -1655,27 +1667,28 @@ func _show_story_prop(prop_name: String) -> void:
 	if not is_instance_valid(story_illustration):
 		return
 	if prop_name == "berting_counter_closeup":
-		story_illustration.texture = load("res://assets/story/berting_counter_50.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/berting_counter_50.png")
+	elif prop_name == "paolo_coins":
+		_show_gallery_illustration("res://assets/story/day3_paolo_coins_v2.png")
 	elif prop_name == "lina_walking_away":
-		story_illustration.texture = load("res://assets/story/day4_lina_alfa_corner.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_lina_alfa_corner.png")
 	elif prop_name == "friends_shelter":
-		story_illustration.texture = load("res://assets/story/day4_friends_shelter.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_friends_shelter.png")
 	elif prop_name == "alfa_save_corner":
-		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
 		story_illustration.visible = false
 	elif prop_name == "hide_berting_closeup":
 		story_illustration.visible = false
 
+func _show_gallery_illustration(path: String) -> void:
+	story_illustration.texture = load(path) as Texture2D
+	_update_story_illustration_fit()
+	story_illustration.visible = true
+	preload("res://scripts/illustration_catalog.gd").record_seen(story, path)
+
 func _present_prologue() -> void:
+	preload("res://scripts/illustration_catalog.gd").record_seen(story, "res://assets/story/tonyo_bedroom.png")
 	prologue_background.visible = true
 	prologue_fade.visible = false
 	_show_story_beats(story.get_prologue_beats(), "PROLOGUE", "prologue_end")
@@ -1699,6 +1712,9 @@ func _present_day_intro() -> void:
 	_show_story_beats(story.get_day_intro_beats(campaign.day), "DAY %d" % campaign.day, "start_shift")
 
 func _show_story_beats(beats: Array[Dictionary], title: String, after_action: String) -> void:
+	if after_action in ["start_shift", "day1_intro"]:
+		supplier_story_blocked = true
+		_refresh_shop_button()
 	story_beats = beats
 	story_beat_index = 0
 	story_after_action = after_action
@@ -1727,21 +1743,15 @@ func _show_current_story_beat() -> void:
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
 		await story_events.story_visitor_tapped
 	if str(beat.get("cutscene", "")) == "box_fall":
-		story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day2_box_fall.png")
+	elif str(beat.get("cutscene", "")) == "day3_project":
+		_show_gallery_illustration("res://assets/story/day3_project_box.png")
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
-		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
-		story_illustration.texture = load("res://assets/story/day5_tonyo_wakes.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day5_tonyo_wakes.png")
 	elif str(beat.get("cutscene", "")) == "day5_phone":
-		story_illustration.texture = load("res://assets/story/day5_tonyo_phone_v2.png") as Texture2D
-		_update_story_illustration_fit()
-		story_illustration.visible = true
+		_show_gallery_illustration("res://assets/story/day5_tonyo_phone_v2.png")
 	elif str(beat.get("cutscene", "")) == "day5_to_store":
 		bubble.close()
 		prologue_fade.modulate.a = 0.0
@@ -1759,6 +1769,12 @@ func _show_current_story_beat() -> void:
 	var speaker: String = str(beat.get("speaker", "Narrator"))
 	var portrait_id: String = str(beat.get("portrait", ""))
 	var text: String = str(beat.get("text", ""))
+	if bool(beat.get("phone_ring", false)):
+		var ring := AudioStreamPlayer.new()
+		ring.stream = load("res://assets/audio/sfx/supplier_phone_ring.wav") as AudioStream
+		add_child(ring)
+		ring.finished.connect(ring.queue_free)
+		ring.play()
 	if bool(beat.get("supplier_note", false)):
 		bubble.close()
 		supplier_note.present()
@@ -1788,11 +1804,20 @@ func _show_current_story_beat() -> void:
 	summary_panel.visible = false
 	var portrait_tex: Texture2D = null
 	if not portrait_id.is_empty():
-		portrait_tex = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+		portrait_tex = load("res://assets/sprites/ui/shop/supplier_delivery.png") as Texture2D if portrait_id == "supplier_ben" else COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
 	bubble.show_beat(speaker, text, portrait_tex, portrait_id)
 
 func _complete_story_beats() -> void:
 	match story_after_action:
+		"supplier_delivery_done":
+			bubble.close()
+			# Purchases roll back to the day checkpoint on restart, so this flag must
+			# be saved with campaign progress rather than independently of the order.
+			completed_tutorials["supplier_first_delivery"] = true
+			shelf_shop.open()
+			if supplier_delivery_was_tutorial:
+				supplier_delivery_was_tutorial = false
+				shelf_shop.show_tutorial_close_hint()
 		"prologue_end":
 			_transition_prologue_to_day_one()
 		"day2_first_customer":
@@ -1809,6 +1834,8 @@ func _complete_story_beats() -> void:
 				pending_choice_index = 0
 				_show_next_story_choice()
 				return
+			supplier_story_blocked = false
+			_refresh_shop_button()
 			if campaign.day == 2 and shop_available:
 				if bool(completed_tutorials.get("day2_shop", false)):
 					resume_briefing_after_shop = true
@@ -1834,6 +1861,8 @@ func _show_next_story_choice() -> void:
 	if pending_choice_index >= pending_story_choices.size():
 		if choices_before_shift:
 			choices_before_shift = false
+			supplier_story_blocked = false
+			_refresh_shop_button()
 			_show_pre_shift_briefing()
 			return
 		var callbacks := story.get_day_callback_beats(campaign.day)
@@ -1996,6 +2025,7 @@ func _build_briefing_card() -> void:
 	briefing_card = BRIEFING_CARD.new()
 	briefing_card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	briefing_card.start_pressed.connect(_on_briefing_start_pressed)
+	briefing_card.diary_requested.connect(func(): pause_menu.diary_reader.open(story))
 	add_child(briefing_card)
 
 func _on_briefing_start_pressed() -> void:
@@ -2081,6 +2111,9 @@ func _show_day_one_hud_tour_step() -> void:
 	tutorial_overlay.show_info_step(messages[day_one_hud_tour_index], _tutorial_rect_for(target), titles[day_one_hud_tour_index], day_one_hud_tour_index == targets.size() - 1)
 
 func _advance_day_one_hud_tour() -> void:
+	if tutorial_step == TutorialStep.DAY2_RULES:
+		_finish_sukli_rules_intro()
+		return
 	if tutorial_step == TutorialStep.DAY1_CLOSING:
 		_clear_tutorial_spotlight()
 		shift.frozen = false
@@ -2097,6 +2130,9 @@ func _advance_day_one_hud_tour() -> void:
 		_show_opening_sign()
 
 func _skip_day_one_tutorial() -> void:
+	if tutorial_step == TutorialStep.DAY2_RULES:
+		_finish_sukli_rules_intro()
+		return
 	if tutorial_step in [TutorialStep.DAY1_HUD, TutorialStep.DAY1_PRODUCT, TutorialStep.DAY1_CUSTOMER]:
 		var skipped_hud := tutorial_step == TutorialStep.DAY1_HUD
 		tutorial_delivery_seen = true
@@ -2164,7 +2200,7 @@ func _begin_day_two_shop_tutorial() -> void:
 	if not is_instance_valid(shop_button):
 		_show_pre_shift_briefing()
 		return
-	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Tap the notebook to check Inay's supplier list. Buying is optional. The list is available until you press OPEN STORE on the briefing.", shop_button, "SUPPLIER LIST")
+	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Tap Inay's notebook to order from Kuya Ben. Buying is optional; order before you press OPEN STORE.", shop_button, "SUPPLIER LIST")
 
 func _on_shelf_shop_closed() -> void:
 	if resume_briefing_after_shop:
@@ -2379,6 +2415,9 @@ func _build_cash_tray() -> void:
 	cash_tray.change_amount_changed.connect(_on_tutorial_change_amount_changed)
 
 func _on_sukli_tray_closed() -> void:
+	if tutorial_step == TutorialStep.DAY2_RULES:
+		shift.frozen = sukli_rules_previous_frozen
+		_clear_tutorial_spotlight()
 	if not cash_tray.is_open() and tutorial_step in [TutorialStep.DAY2_MONEY, TutorialStep.DAY2_GIVE]:
 		var customer_id := tutorial_customer_id
 		_clear_tutorial_spotlight()
@@ -2388,7 +2427,7 @@ func _on_sukli_payment_started(customer_id: String) -> void:
 	if campaign.day != 2 or day_two_sukli_tutorial_complete or customer_id.is_empty():
 		return
 	# Keep the first customer targeted until the guided lesson is complete.
-	if tutorial_step in [TutorialStep.DAY2_CUSTOMER, TutorialStep.DAY2_MONEY, TutorialStep.DAY2_GIVE]:
+	if tutorial_step in [TutorialStep.DAY2_CUSTOMER, TutorialStep.DAY2_RULES, TutorialStep.DAY2_MONEY, TutorialStep.DAY2_GIVE]:
 		return
 	tutorial_customer_id = customer_id
 	tutorial_step = TutorialStep.DAY2_CUSTOMER
@@ -2457,6 +2496,16 @@ func _begin_day_two_sukli_tutorial(customer: CustomerState) -> void:
 	await get_tree().create_timer(0.32).timeout
 	if generation != tutorial_sukli_generation or not cash_tray.is_open() or cash_tray.customer_id != customer_id:
 		return
+	tutorial_step = TutorialStep.DAY2_RULES
+	sukli_rules_previous_frozen = shift.frozen
+	shift.frozen = true
+	tutorial_overlay.show_sukli_examples(tutorial_payment_tender, tutorial_payment_total, _tutorial_rect_for(cash_tray))
+
+func _finish_sukli_rules_intro() -> void:
+	shift.frozen = sukli_rules_previous_frozen
+	if not cash_tray.is_open():
+		_clear_tutorial_spotlight()
+		return
 	tutorial_sukli_ready = true
 	_refresh_day_two_sukli_spotlight(cash_tray.get_selected_total())
 
@@ -2521,7 +2570,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 			cash_tray.show_short()
 			if is_instance_valid(actor):
 				actor.call("play_wrong_drop")
-			_float_text(at, "KULANG!", Color("ff8a7a"))
+			_float_text(at, "KULANG! -4s PATIENCE", Color("ff8a7a"))
 		PaymentState.Result.EXACT:
 			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
@@ -2531,7 +2580,7 @@ func _on_change_given(customer_id: String, amount: int) -> void:
 		PaymentState.Result.OVER:
 			_play_audio_cues(audio_cues_for_payment(result))
 			cash_tray.close()
-			_float_text(at, "SOBRA  -₱%d" % diff if SukliRules.sukli_guide_enabled_for_day(campaign.day) else "SOBRA!", Color("f6d95e"))
+			_float_text(at, "SOBRA! -₱%d KITA" % diff, Color("f6d95e"))
 			if is_instance_valid(actor):
 				actor.call("play_wrong_drop")
 		_:
@@ -2552,14 +2601,15 @@ func _is_waiting_for_change(actor: Control) -> bool:
 
 func _float_text(at: Vector2, text: String, color: Color) -> void:
 	var label := _label(text, 42, color)
+	label.name = "GameplayFeedback"
 	label.z_index = 45
 	label.add_theme_color_override("font_outline_color", Color("2b1a10"))
 	label.add_theme_constant_override("outline_size", 8)
 	label.position = at
 	add_child(label)
 	var tween := create_tween()
-	tween.tween_property(label, "position:y", at.y - 70.0, 0.9)
-	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(0.3)
+	tween.tween_property(label, "position:y", at.y - 70.0, 1.6)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.6).set_delay(1.0)
 	tween.tween_callback(label.queue_free)
 
 func _build_store_layer_renderer() -> void:
@@ -2575,28 +2625,59 @@ func _build_store_layer_renderer() -> void:
 	shelf_shop.closed.connect(_on_shelf_shop_closed)
 
 func _open_shelf_shop() -> void:
-	if shelf_shop == null or not _is_shop_available():
+	if not _is_shop_available():
+		if shift_in_progress and campaign != null and campaign.day > 1:
+			_show_shop_unavailable_notice()
+		return
+	if shelf_shop == null:
 		return
 	shelf_shop.configure(StoreConfig.load_config("res://data/store_config.json"), campaign.purchased_store_groups, campaign.cash)
 	move_child(shelf_shop, get_child_count() - 1)
 	shelf_shop.open()
 	if tutorial_step == TutorialStep.DAY2_SHOP and tutorial_overlay != null:
 		tutorial_overlay.visible = false
+		shelf_shop.show_order_tutorial()
 
 func _is_shop_available() -> bool:
 	if campaign == null or campaign.day <= 1:
 		return false
-	return shop_available and not shift_in_progress
+	return shop_available and not shift_in_progress and not supplier_story_blocked
 
 func _refresh_shop_button() -> void:
 	if shop_button != null:
-		shop_button.visible = _is_shop_available()
+		var available := _is_shop_available()
+		shop_button.visible = campaign != null and campaign.day > 1 and not supplier_story_blocked and (available or shift_in_progress)
+		# Keep the button tappable so it can explain why the shop is locked.
+		shop_button.disabled = false
+		(shop_button.material as ShaderMaterial).set_shader_parameter("grayscale", not available)
 		# ShiftStoryEvents moves the full-screen dialogue bubble to the top of the
 		# tree. Keep this tap target after it, otherwise the bubble consumes taps.
 		if shop_button.visible:
 			move_child(shop_button, get_child_count() - 1)
 
+func _show_shop_unavailable_notice() -> void:
+	var previous := get_node_or_null("ShopUnavailableNotice")
+	if previous != null:
+		previous.free()
+	var notice := PanelContainer.new()
+	notice.name = "ShopUnavailableNotice"
+	notice.z_index = 56
+	notice.z_as_relative = false
+	notice.position = shop_button.position + Vector2(-410, 0)
+	notice.custom_minimum_size = Vector2(395, 74)
+	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8e8c6"), Color("80532c"), 12, 10, 10, 4, 5))
+	add_child(notice)
+	var message := KwentaStyle.make_label("Shop unavailable during your shift.", 23, KwentaStyle.INK)
+	message.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	notice.add_child(message)
+	var animation := notice.create_tween()
+	animation.tween_interval(2.5)
+	animation.tween_property(notice, "modulate:a", 0.0, 0.3)
+	animation.tween_callback(notice.queue_free)
+
 func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
+	var first_delivery := campaign.purchased_store_groups.is_empty() and not bool(completed_tutorials.get("supplier_first_delivery", false))
 	if not campaign.purchase_store_group(group_id, price): return
 	new_purchase_groups_today.append(group_id)
 	_update_cash(campaign.cash)
@@ -2613,7 +2694,23 @@ func _on_shelf_shop_purchase_requested(group_id: String, price: int) -> void:
 			var product: ProductData = products_by_id.get(str(entry.get("game_product_id", "")))
 			if product != null:
 				names.append(product.display_name)
-	shelf_shop.show_purchase_confirmation(names)
+	if not shelf_shop.visible:
+		return
+	supplier_delivery_was_tutorial = tutorial_step == TutorialStep.DAY2_SHOP
+	shelf_shop.hide_order_tutorial()
+	shelf_shop.visible = false
+	var delivery_beats: Array[Dictionary] = []
+	if first_delivery:
+		delivery_beats = [
+			{"speaker": "Kuya Ben", "portrait": "supplier_ben", "text": "Tao po!"},
+			{"speaker": "Tonyo", "portrait": "tonyo", "text": "Sino po sila?"},
+			{"speaker": "Kuya Ben", "portrait": "supplier_ben", "text": "Hello, Tonyo! Ako si Ben. Heto na ang order mo: %s." % ", ".join(names)},
+			{"speaker": "Tonyo", "portrait": "tonyo_flustered", "text": "Hala, magic nga?!"},
+			{"speaker": "Kuya Ben", "portrait": "supplier_ben", "text": "Hahaha! Nasa malapit lang ako. Salamat sa order!"},
+		]
+	else:
+		delivery_beats = [{"speaker": "Kuya Ben", "portrait": "supplier_ben", "text": "Delivered na, Tonyo! Heto ang order mo: %s. Salamat!" % ", ".join(names)}]
+	_show_story_beats(delivery_beats, "DELIVERY", "supplier_delivery_done")
 
 func _on_store_purchase_requested(group_id: String) -> void:
 	var config := StoreConfig.load_config("res://data/store_config.json")
@@ -2663,6 +2760,7 @@ func _on_game_over() -> void:
 		return      # already showing (two customers can trigger it in the same frame)
 	_clear_all_angry_customers()
 	shift_in_progress = false
+	_refresh_shop_button()
 	shift.is_running = false
 	if pause_menu != null:
 		pause_menu.set_available(false)

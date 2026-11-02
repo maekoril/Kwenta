@@ -172,9 +172,9 @@ func write_diary_entry(day: int) -> String:
 				_: entry = "Isa na namang araw sa tindahan. Unti-unti ko nang natututunan ang pagsesukli."
 		3:
 			match get_choice("day3_candy"):
-				"credit": entry = "Kulang si Paolo ng ₱3 sa Feeta. Pinautang ko muna siya at isinulat ko rito."
-				"free": entry = "Kulang si Paolo ng ₱3 sa Feeta, kaya sinagot ko na ang kulang niya."
-				"no": entry = "Kulang ang dala ni Paolo para sa Feeta. Babalik na lang daw siya."
+				"credit": entry = "Kulang si Paolo ng ₱3 sa Coke. Pinautang ko muna siya at isinulat ko rito."
+				"free": entry = "Kulang si Paolo ng ₱3 sa Coke, kaya sinagot ko na ang kulang niya."
+				"no": entry = "Kulang ang dala ni Paolo para sa Coke. Babalik na lang daw siya."
 				_: entry = "Ang dami kong inasikaso ngayon. Hindi ko akalaing magiging abala ako sa tindahan."
 			match get_choice("day3_friends"):
 				"later": entry += " Sinabi kong susunod ako sa laro, pero hindi na ako nakaabot."
@@ -183,7 +183,7 @@ func write_diary_entry(day: int) -> String:
 			match get_choice("day4_rain"):
 				"join": entry = "Sumama ako sa laro sa ulan. Pagbalik ko, nakita kong may dumaan palang bibili. Sana bumalik si Aling Lina."
 				"stay": entry = "Inaya akong maglaro sa ulan, pero nagbantay muna ako ng tindahan. Bawi ako sa kanila sa susunod."
-				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Feeta, at nagsalita pa nga si Bogs!"
+				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Coke, at nagsalita pa nga si Bogs!"
 				_: entry = "Maulan ngayon. Tinapos ko ang araw sa pagbabantay ng tindahan."
 		5:
 			match get_choice("day5_debt"):

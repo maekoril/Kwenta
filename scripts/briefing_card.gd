@@ -10,6 +10,7 @@ extends Control
 # Everything fits without scrolling. Main only calls show_briefing() and listens to start_pressed.
 
 signal start_pressed
+signal diary_requested
 
 const CARD_SIZE := Vector2(1240.0, 900.0)
 const INNER_WIDTH := 1084.0                      # CARD_SIZE.x - left margin 100 - right margin 56
@@ -39,6 +40,7 @@ var _pulse: Tween
 var _intro: Tween
 var _briefing_sections: Array[Control] = []
 var _summary_sections: VBoxContainer
+var _diary_button: Button
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -153,8 +155,16 @@ func _build() -> void:
 	_button.resized.connect(func() -> void: _button.pivot_offset = _button.size * 0.5)
 	_button.pressed.connect(func() -> void: start_pressed.emit())
 	footer.add_child(_button)
+	_diary_button = Button.new()
+	_diary_button.text = "BASAHIN ANG KUWADERNO"
+	_diary_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	KwentaStyle.style_button(_diary_button, KwentaStyle.PAPER_DARK, 24)
+	_diary_button.pressed.connect(func(): diary_requested.emit())
+	_diary_button.visible = false
+	column.add_child(_diary_button)
 
 func show_briefing(briefing: DayBriefing, viewport_size: Vector2) -> void:
+	_diary_button.visible = false
 	for section in _briefing_sections:
 		section.visible = true
 	_summary_sections.visible = false
@@ -175,6 +185,7 @@ func show_briefing(briefing: DayBriefing, viewport_size: Vector2) -> void:
 	_settle.call_deferred(viewport_size)
 
 func show_summary(title: String, summary: String, viewport_size: Vector2, reward_day: int = 0, reward_earned: bool = true) -> void:
+	_diary_button.visible = true
 	for section in _briefing_sections:
 		section.visible = false
 	for child in _summary_sections.get_children():

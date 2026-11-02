@@ -585,7 +585,7 @@ func _next_beat() -> void:
 	if beat.has("show_prop"):
 		_utang_ledger_visible = str(beat["show_prop"]) == "utang_ledger"
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
-		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter", "alfa_save_corner"]:
+		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter", "alfa_save_corner", "paolo_coins"]:
 			_scene_illustration_visible = true
 		elif str(beat["show_prop"]) == "hide_scene_illustration":
 			_scene_illustration_visible = false

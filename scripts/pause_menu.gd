@@ -76,7 +76,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if diary_reader != null and diary_reader.visible:
 		if event.is_action_pressed("ui_cancel"):
-			diary_reader.close()
+			diary_reader.go_back()
 			get_viewport().set_input_as_handled()
 		return
 	var is_p: bool = false
@@ -191,6 +191,7 @@ func _build_overlay() -> void:
 	var diary_button := Button.new()
 	diary_button.name = "DiaryButton"
 	diary_button.text = "KUWADERNO"
+	diary_button.tooltip_text = "Mga kwento, medalya, at larawan"
 	diary_button.custom_minimum_size = Vector2(360, 80)
 	KwentaStyle.style_button(diary_button, KwentaStyle.PAPER_DARK, KwentaStyle.SIZE_BUTTON)
 	diary_button.pressed.connect(func(): diary_reader.open(story_progression))

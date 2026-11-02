@@ -44,6 +44,9 @@ func run() -> void:
 		# A late dialogue signal must also be harmless after gameplay has begun.
 		main.bubble.advanced.emit()
 		assert(main.campaign.day == 6 and main.shift.is_running)
+		if main.story_events.credit_panel != null:
+			main.story_events.credit_panel.approve_button.pressed.emit()
+			await create_timer(0.3).timeout
 		main.shift.advance_time(0.5)
 		assert(main.shift.elapsed_seconds > 0)
 		main._refresh_fiesta_controls()

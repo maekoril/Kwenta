@@ -4,19 +4,26 @@ extends Control
 signal purchase_requested(group_id: String, price: int)
 signal closed
 
-const FRAME_TEXTURE := preload("res://assets/sprites/ui/shop/supplier_shelf_panel_v3.png")
 const BUY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const NEED_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
+const DELIVERY_PORTRAIT := preload("res://assets/sprites/ui/shop/supplier_delivery.png")
 
 const PANEL_SIZE := Vector2(1510, 850)
 const PANEL_POSITION := Vector2(205, 104)
-const ACTION_BUTTON_SIZE := Vector2(160, 36)
+const ACTION_BUTTON_SIZE := Vector2(185, 55)
 const ACTION_BUTTON_POSITIONS := {
-	"hanging_strip": Vector2(570, 348),
-	"water_shelf": Vector2(1060, 348),
-	"condiments": Vector2(570, 548),
-	"oil_shelf": Vector2(1060, 548),
-	"rice_shelf": Vector2(875, 714),
+	"hanging_strip": Vector2(95, 245),
+	"water_shelf": Vector2(770, 245),
+	"condiments": Vector2(95, 425),
+	"oil_shelf": Vector2(770, 425),
+	"rice_shelf": Vector2(95, 605),
+}
+const FIXTURE_COPY := {
+	"hanging_strip": ["Hanging Strip", "Laundry, shampoo, toothpaste"],
+	"water_shelf": ["Water Shelf", "Bottled water"],
+	"condiments": ["Condiment Shelf", "Toyo, patis, suka"],
+	"oil_shelf": ["Oil Shelf", "Cooking oil"],
+	"rice_shelf": ["Rice Shelf", "Rice"],
 }
 const FIXTURES := [
 	"hanging_strip",
@@ -35,6 +42,9 @@ var _fixture_grid: Control
 var _confirmation: PanelContainer
 var _confirmation_label: Label
 var _confirmation_tween: Tween
+var _delivery_portrait: TextureRect
+var _tutorial_hint: Label
+var _tutorial_outline: Panel
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -59,11 +69,14 @@ func open() -> void:
 	_request_fixture_render()
 
 func close() -> void:
+	hide_order_tutorial()
 	visible = false
 	if _confirmation_tween != null and _confirmation_tween.is_valid():
 		_confirmation_tween.kill()
 	if _confirmation != null:
 		_confirmation.visible = false
+	if _delivery_portrait != null:
+		_delivery_portrait.visible = false
 	closed.emit()
 
 func show_purchase_confirmation(product_names: Array[String]) -> void:
@@ -71,13 +84,24 @@ func show_purchase_confirmation(product_names: Array[String]) -> void:
 		return
 	if _confirmation_tween != null and _confirmation_tween.is_valid():
 		_confirmation_tween.kill()
-	_confirmation_label.text = "Now available: %s" % ", ".join(product_names)
+	_confirmation_label.text = "Kuya Ben: Heto na ang order mo!  %s" % ", ".join(product_names)
 	_confirmation.modulate.a = 1.0
 	_confirmation.visible = true
+	_delivery_portrait.position.x = 40
+	_delivery_portrait.modulate.a = 0.0
+	_delivery_portrait.visible = true
 	_confirmation_tween = create_tween()
+	_confirmation_tween.set_parallel(true)
+	_confirmation_tween.tween_property(_delivery_portrait, "position:x", 105.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_confirmation_tween.tween_property(_delivery_portrait, "modulate:a", 1.0, 0.2)
+	_confirmation_tween.set_parallel(false)
 	_confirmation_tween.tween_interval(3.0)
+	_confirmation_tween.set_parallel(true)
 	_confirmation_tween.tween_property(_confirmation, "modulate:a", 0.0, 0.3)
+	_confirmation_tween.tween_property(_delivery_portrait, "modulate:a", 0.0, 0.3)
+	_confirmation_tween.set_parallel(false)
 	_confirmation_tween.tween_callback(_confirmation.hide)
+	_confirmation_tween.tween_callback(_delivery_portrait.hide)
 
 func _build_shell() -> void:
 	var dimmer := ColorRect.new()
@@ -95,28 +119,29 @@ func _build_shell() -> void:
 	_layout_panel()
 	var panel := _panel
 
-	var frame := _texture_rect("PanelArt", FRAME_TEXTURE, Vector2.ZERO, PANEL_SIZE)
-	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(frame)
-
-	# Cover the baked-in fixture copy with an explanation of what the order does.
-	var supplier_note := PanelContainer.new()
-	supplier_note.name = "SupplierExplanation"
-	supplier_note.position = Vector2(419, 153)
-	supplier_note.size = Vector2(674, 37)
-	supplier_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	supplier_note.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8dfb0"), Color("f8dfb0"), 2.0, 1.0, 0, 0, 0))
-	panel.add_child(supplier_note)
-	var explanation := KwentaStyle.make_label("Order once: products stay stocked and customers can request them.", 19, KwentaStyle.INK)
-	explanation.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	explanation.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	supplier_note.add_child(explanation)
+	var page := Panel.new()
+	page.name = "NotebookPage"
+	page.size = PANEL_SIZE
+	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f6e7c8"), Color("704729"), 0, 0, 20, 12, 8))
+	panel.add_child(page)
+	var heading := KwentaStyle.make_label("LISTAHAN NI INAY", 48, KwentaStyle.INK)
+	heading.position = Vector2(95, 40)
+	panel.add_child(heading)
+	var explanation := KwentaStyle.make_label("KUYA BEN  •  SUPPLIER\nPumili ng paninda at tumawag bago magbukas.", 25, KwentaStyle.INK_MUTED)
+	explanation.position = Vector2(98, 110)
+	panel.add_child(explanation)
+	var rule := ColorRect.new()
+	rule.position = Vector2(95, 205)
+	rule.size = Vector2(1320, 3)
+	rule.color = Color("b68b69")
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(rule)
 
 	_cash_label = KwentaStyle.make_label("", 27, Color("24572d"))
 	_cash_label.name = "CashLabel"
-	_cash_label.position = Vector2(1102, 112)
-	_cash_label.size = Vector2(168, 50)
+	_cash_label.position = Vector2(1100, 95)
+	_cash_label.size = Vector2(250, 50)
 	_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_cash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cash_label.add_theme_color_override("font_outline_color", Color("eff7df"))
@@ -124,10 +149,12 @@ func _build_shell() -> void:
 	_cash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_cash_label)
 
-	var close_button := TextureButton.new()
+	var close_button := Button.new()
 	close_button.name = "CloseShop"
-	close_button.position = Vector2(1262, 64)
-	close_button.size = Vector2(140, 130)
+	close_button.position = Vector2(1370, 35)
+	close_button.size = Vector2(85, 70)
+	close_button.text = "X"
+	KwentaStyle.style_button(close_button, KwentaStyle.PAPER_DARK, 32)
 	close_button.focus_mode = Control.FOCUS_NONE
 	close_button.tooltip_text = "Close shop"
 	close_button.pressed.connect(close)
@@ -138,10 +165,29 @@ func _build_shell() -> void:
 	_fixture_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fixture_grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.add_child(_fixture_grid)
+	_tutorial_hint = KwentaStyle.make_label("", 24, Color("265432"))
+	_tutorial_hint.name = "SupplierTutorialHint"
+	_tutorial_hint.position = Vector2(100, 205)
+	_tutorial_hint.size = Vector2(1200, 36)
+	_tutorial_hint.z_index = 5
+	_tutorial_hint.visible = false
+	panel.add_child(_tutorial_hint)
+	_tutorial_outline = Panel.new()
+	_tutorial_outline.name = "SupplierTutorialOutline"
+	_tutorial_outline.z_index = 5
+	_tutorial_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var outline_style := StyleBoxFlat.new()
+	outline_style.bg_color = Color(0, 0, 0, 0)
+	outline_style.border_color = Color("e3a729")
+	outline_style.set_border_width_all(5)
+	outline_style.set_corner_radius_all(8)
+	_tutorial_outline.add_theme_stylebox_override("panel", outline_style)
+	_tutorial_outline.visible = false
+	panel.add_child(_tutorial_outline)
 
 	_confirmation = PanelContainer.new()
 	_confirmation.name = "PurchaseConfirmation"
-	_confirmation.position = Vector2(350, 196)
+	_confirmation.position = Vector2(350, 150)
 	_confirmation.size = Vector2(810, 58)
 	_confirmation.z_index = 2
 	_confirmation.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -152,6 +198,18 @@ func _build_shell() -> void:
 	_confirmation_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_confirmation_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_confirmation.add_child(_confirmation_label)
+
+	_delivery_portrait = TextureRect.new()
+	_delivery_portrait.name = "SupplierDeliveryPortrait"
+	_delivery_portrait.position = Vector2(105, 210)
+	_delivery_portrait.size = Vector2(220, 330)
+	_delivery_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_delivery_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_delivery_portrait.texture = DELIVERY_PORTRAIT
+	_delivery_portrait.z_index = 2
+	_delivery_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_delivery_portrait.visible = false
+	panel.add_child(_delivery_portrait)
 
 func _layout_panel() -> void:
 	if not is_instance_valid(_panel) or size == Vector2.ZERO:
@@ -175,15 +233,69 @@ func _render_fixture_cards() -> void:
 func _request_fixture_render() -> void:
 	call_deferred("_render_fixture_cards")
 
+func show_order_tutorial() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if not visible:
+		return
+	_tutorial_hint.text = "Pumili ng paninda. Tap ORDER para tumawag kay Kuya Ben!"
+	_tutorial_hint.visible = true
+	for group_id in FIXTURES:
+		var card := _fixture_grid.get_node_or_null("FixtureCard_%s" % group_id) as Control
+		var button := card.get_node_or_null("BuyButton") as Button if card != null else null
+		if button != null and not button.disabled:
+			_tutorial_outline.position = card.position + button.position - Vector2(6, 6)
+			_tutorial_outline.size = button.size + Vector2(12, 12)
+			_tutorial_outline.visible = true
+			return
+	_tutorial_hint.text = "Wala pang kayang bilhin? Tap X. Puwede kang umorder sa susunod."
+
+func show_tutorial_close_hint() -> void:
+	_tutorial_hint.text = "Ayos! Puwede pang umorder, o tap X para magpatuloy."
+	_tutorial_hint.visible = true
+	_tutorial_outline.position = Vector2(1364, 29)
+	_tutorial_outline.size = Vector2(97, 82)
+	_tutorial_outline.visible = true
+
+func hide_order_tutorial() -> void:
+	if _tutorial_hint != null:
+		_tutorial_hint.visible = false
+	if _tutorial_outline != null:
+		_tutorial_outline.visible = false
+
 func _make_fixture_card(group_id: String, products: Dictionary) -> Control:
 	var card := Control.new()
-	card.size = ACTION_BUTTON_SIZE
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.size = Vector2(600, 160)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var price := _group_price(group_id, products)
+	var background := Panel.new()
+	background.name = "CardChrome"
+	background.size = card.size
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.add_theme_stylebox_override("panel", KwentaStyle.box(Color("fff5dc"), Color("c9a77c"), 0, 0, 8, 2, 2))
+	card.add_child(background)
+	var preview := TextureRect.new()
+	preview.name = "ProductPreview"
+	preview.position = Vector2(14, 12)
+	preview.size = Vector2(115, 136)
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for entry in products.values():
+		if str(entry.get("purchase_group", "")) == group_id:
+			preview.texture = load(str(entry.get("texture_path", ""))) as Texture2D
+			break
+	card.add_child(preview)
+	var title := KwentaStyle.make_label(FIXTURE_COPY[group_id][0], 28, KwentaStyle.INK)
+	title.position = Vector2(140, 10)
+	card.add_child(title)
+	var description := KwentaStyle.make_label(FIXTURE_COPY[group_id][1], 21, KwentaStyle.INK_MUTED)
+	description.position = Vector2(140, 48)
+	card.add_child(description)
 
 	var buy_button := Button.new()
 	buy_button.name = "BuyButton"
-	buy_button.position = Vector2.ZERO
+	buy_button.position = Vector2(390, 93)
 	buy_button.size = ACTION_BUTTON_SIZE
 	buy_button.focus_mode = Control.FOCUS_NONE
 	buy_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
@@ -197,7 +309,7 @@ func _make_fixture_card(group_id: String, products: Dictionary) -> Control:
 		buy_button.disabled = true
 		button_texture = NEED_BUTTON_TEXTURE
 	else:
-		buy_button.text = "BUY ₱%d" % price
+		buy_button.text = "ORDER ₱%d" % price
 		buy_button.pressed.connect(func() -> void: purchase_requested.emit(group_id, price))
 	_style_buy_button(buy_button, button_texture)
 	card.add_child(buy_button)

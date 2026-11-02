@@ -24,36 +24,30 @@ func _initialize() -> void:
 	var panel := modal.get_node_or_null("SupplierShopPanel") as Control
 	_assert(panel != null and Rect2(Vector2.ZERO, phone_viewport.size).encloses(panel.get_global_rect()), "shop panel stays fully visible on a phone-sized viewport")
 	_assert(panel != null and absf(panel.get_global_rect().get_center().x - phone_viewport.size.x * 0.5) <= 1.0, "shop panel stays horizontally centered on a phone-sized viewport")
-	var panel_art := modal.get_node_or_null("SupplierShopPanel/PanelArt") as TextureRect
-	_assert(panel_art != null and panel_art.texture != null and panel_art.texture.resource_path == "res://assets/sprites/ui/shop/supplier_shelf_panel_v3.png", "shop uses the supplied Supplier Shelf panel as its single background")
-	_assert(panel_art != null and panel != null and panel_art.position == Vector2.ZERO and panel_art.size == panel.size, "composed panel art fills the complete panel bounds")
-	_assert(modal.get_node_or_null("SupplierShopPanel/TitlePlaque") == null and modal.get_node_or_null("SupplierShopPanel/SubtitleStrip") == null and modal.get_node_or_null("SupplierShopPanel/CashTag") == null, "baked panel art replaces separate title, subtitle, and cash chrome")
+	_assert(modal.get_node_or_null("SupplierShopPanel/NotebookPage") != null, "shop displays Inay's notebook")
 	var modal_cash_label := modal.get_node_or_null("SupplierShopPanel/CashLabel") as Label
-	_assert(modal_cash_label != null and modal_cash_label.text == "₱150", "live cash is displayed over the baked cash tag")
+	_assert(modal_cash_label != null and modal_cash_label.text == "₱150", "live cash is displayed")
 	var cards := modal.get_node_or_null("SupplierShopPanel/FixtureGrid") as Control
-	_assert(cards != null and cards.get_child_count() == 5, "shop builds exactly one fixture card per purchase group")
-	_assert(panel != null and not panel is Panel, "outer supplier panel is texture-backed instead of a generic Panel")
-	var expected_button_positions := {
-		"hanging_strip": Vector2(570, 348),
-		"water_shelf": Vector2(1060, 348),
-		"condiments": Vector2(570, 548),
-		"oil_shelf": Vector2(1060, 548),
-		"rice_shelf": Vector2(875, 714),
-	}
-	for group_id in expected_button_positions:
+	_assert(cards != null and cards.get_child_count() == 5, "shop builds five supplier options")
+	modal.show_order_tutorial()
+	await process_frame
+	await process_frame
+	await process_frame
+	var tutorial_outline := modal.get_node_or_null("SupplierShopPanel/SupplierTutorialOutline") as Control
+	_assert(tutorial_outline != null and tutorial_outline.visible, "tutorial highlights an affordable order")
+	modal.hide_order_tutorial()
+	for group_id in ["hanging_strip", "water_shelf", "condiments", "oil_shelf", "rice_shelf"]:
 		var card := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_%s" % group_id) as Control
-		_assert(card != null, "%s fixture card exists" % group_id)
-		_assert(card != null and card.get_node_or_null("CardChrome") == null and card.get_node_or_null("ProductPreview") == null and card.get_node_or_null("FixtureName") == null and card.get_node_or_null("FixtureDescription") == null, "%s only overlays live actions over the baked fixture art" % group_id)
-		_assert(card != null and card.position == expected_button_positions[group_id] and card.size == Vector2(160, 36), "%s action zone is mapped to its baked panel card" % group_id)
-		_assert(panel != null and Rect2(Vector2.ZERO, panel.size).encloses(Rect2(card.position, card.size)), "%s stays inside the wood panel" % group_id)
+		_assert(card != null and card.get_node_or_null("ProductPreview") != null, "%s shows a product preview" % group_id)
+		_assert(panel != null and card != null and Rect2(Vector2.ZERO, panel.size).encloses(Rect2(card.position, card.size)), "%s stays inside the notebook" % group_id)
 
 	var hanging_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_hanging_strip/BuyButton") as Button
 	var water_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_water_shelf/BuyButton") as Button
 	var condiment_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_condiments/BuyButton") as Button
-	_assert(hanging_button != null and not hanging_button.disabled and hanging_button.text == "BUY ₱150", "PHP 150 Hanging Strip is purchasable with PHP 150 cash")
-	_assert(water_button != null and not water_button.disabled and water_button.text == "BUY ₱120", "PHP 120 Water Shelf is purchasable with PHP 150 cash")
+	_assert(hanging_button != null and not hanging_button.disabled and hanging_button.text == "ORDER ₱150", "PHP 150 Hanging Strip is purchasable with PHP 150 cash")
+	_assert(water_button != null and not water_button.disabled and water_button.text == "ORDER ₱120", "PHP 120 Water Shelf is purchasable with PHP 150 cash")
 	_assert(condiment_button != null and condiment_button.disabled and condiment_button.text == "NEED ₱250", "insufficient cash locks Condiment Shelf with the required caption")
-	_assert(hanging_button != null and condiment_button != null and hanging_button.size == Vector2(160, 36) and condiment_button.size == hanging_button.size, "BUY and NEED buttons share the 160x36 action size")
+	_assert(hanging_button != null and condiment_button != null and hanging_button.size == Vector2(185, 55) and condiment_button.size == hanging_button.size, "BUY and NEED buttons share the 160x36 action size")
 	_assert(_button_texture_path(hanging_button) == "res://assets/sprites/ui/sukli/sized/ibigay_button.png", "purchasable fixture uses the ibigay button art")
 	_assert(_button_texture_path(condiment_button) == "res://assets/sprites/ui/sukli/sized/linisin_button.png", "unaffordable fixture uses the linisin button art")
 	if hanging_button != null:
@@ -64,8 +58,8 @@ func _initialize() -> void:
 	await process_frame
 	hanging_button = modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_hanging_strip/BuyButton") as Button
 	_assert(hanging_button != null and hanging_button.disabled and hanging_button.text == "PURCHASED", "owned fixture becomes non-purchasable")
-	var close_button := modal.get_node_or_null("SupplierShopPanel/CloseShop") as TextureButton
-	_assert(close_button != null and close_button.texture_normal == null, "transparent close hit target uses the baked red X")
+	var close_button := modal.get_node_or_null("SupplierShopPanel/CloseShop") as Button
+	_assert(close_button != null and close_button.text == "X", "notebook has a visible close button")
 	if close_button != null:
 		close_button.emit_signal("pressed")
 	_assert(not modal.visible, "close button hides the modal")
@@ -106,9 +100,8 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 	_assert(cash_label != null and cash_label.text == "₱%d" % expected_cash, "%s purchase refreshes the cash tag immediately" % group_id)
 	var refreshed_button := shop.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_%s/BuyButton" % group_id) as Button
 	_assert(refreshed_button != null and refreshed_button.disabled and refreshed_button.text == "PURCHASED", "%s purchase refreshes its button state immediately" % group_id)
-	var confirmation := shop.get_node_or_null("SupplierShopPanel/PurchaseConfirmation") as PanelContainer
-	var confirmation_text := confirmation.get_child(0) as Label if confirmation != null else null
-	_assert(confirmation != null and confirmation.visible and confirmation_text != null, "purchase displays a supplier confirmation")
+	_assert(not shop.visible and main.story_after_action == "supplier_delivery_done" and main.bubble.visible, "purchase starts a tap-through delivery at the storefront")
+	_assert(main.story_beats.size() >= 4 and main.story_beats[0].text == "Tao po!", "first delivery has Ben and Tonyo's introduction")
 	var renderer := main.get("store_layer_renderer") as Control
 	var config: Dictionary = StoreConfigScript.load_config("res://data/store_config.json")
 	for product_id in config.get("products", {}):
@@ -117,8 +110,14 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 			continue
 		_assert(renderer != null and renderer.get_node_or_null("Slots/%s_product" % product_id) != null, "%s product art appears in the storefront after purchase" % product_id)
 		_assert(main.get("product_items_by_id").has(str(entry.get("game_product_id", ""))), "%s becomes draggable after purchase" % product_id)
-		var product: ProductData = main.get("products_by_id").get(str(entry.get("game_product_id", "")))
-		_assert(product != null and confirmation_text != null and confirmation_text.text.contains(product.display_name), "confirmation names each newly stocked product")
+	main._complete_story_beats()
+	_assert(shop.visible and bool(main.completed_tutorials.get("supplier_first_delivery", false)), "finishing delivery returns to the supplier list")
+	if group_id == "water_shelf":
+		campaign.cash = 1000
+		main._on_shelf_shop_purchase_requested("oil_shelf", 200)
+		_assert(main.story_beats.size() == 1 and main.story_beats[0].text.contains("Delivered na"), "later delivery uses a short returning-customer greeting")
+		main._complete_story_beats()
+		_assert(shop.visible, "later delivery returns to the shop")
 	main.queue_free()
 
 func _test_shop_icon_availability() -> void:
@@ -138,6 +137,14 @@ func _test_shop_icon_availability() -> void:
 	main.set("shop_available", true)
 	main.call("_refresh_shop_button")
 	_assert(shop_button != null and shop_button.visible, "Shop icon appears before Day 2 starts")
+	var story_beats: Array[Dictionary] = [{"speaker": "Narrator", "text": "Story in progress"}]
+	main._show_story_beats(story_beats, "DAY 2", "day1_intro")
+	_assert(not shop_button.visible and not main._is_shop_available(), "shop is unavailable during the pre-shift story")
+	main._open_shelf_shop()
+	_assert(not main.shelf_shop.visible and main.story_beats[0].text == "Story in progress", "the shop cannot replace active story dialogue")
+	main.supplier_story_blocked = false
+	main.bubble.close()
+	main._refresh_shop_button()
 	var pause_button := main.pause_menu.get("_button") as Control
 	_assert(shop_button != null and pause_button != null and is_equal_approx(shop_button.position.x + shop_button.size.x * 0.5, pause_button.position.x + pause_button.size.x * 0.5) and shop_button.position.y >= pause_button.position.y + pause_button.size.y, "Shop icon is centered below the pause control")
 	# Story setup moves its dialogue bubble to the top of the tree. The shop must
@@ -150,9 +157,13 @@ func _test_shop_icon_availability() -> void:
 	if shop != null:
 		shop.call("close")
 	main.call("_begin_shift")
-	_assert(shop_button != null and not shop_button.visible, "Shop icon hides when the shift starts")
-	main.call("_open_shelf_shop")
+	_assert(shop_button != null and shop_button.visible and not shop_button.disabled, "Shop icon stays visible and tappable when the shift starts")
+	_assert(bool((shop_button.material as ShaderMaterial).get_shader_parameter("grayscale")), "Disabled shop icon is grayscale")
+	shop_button.emit_signal("pressed")
 	_assert(shop != null and not shop.visible, "shop cannot open during an active shift")
+	_assert(main.get_node_or_null("ShopUnavailableNotice") != null, "tapping the locked shop explains that it is unavailable")
+	main._show_shift_summary()
+	_assert(not shop_button.visible, "locked shop icon disappears when the shift ends")
 	main.queue_free()
 
 func _test_shop_grace_period() -> void:

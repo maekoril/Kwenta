@@ -12,3 +12,6 @@ func _draw() -> void:
 		draw_line(Vector2(17, y), Vector2(28, y), Color("a7734e"), 1.5)
 	for y in [12.0, 21.0, 30.0, 39.0]:
 		draw_line(Vector2(3, y), Vector2(12, y), ink, 3.0)
+	# A small handset badge identifies this notebook as Inay's supplier contacts.
+	draw_circle(Vector2(35, 38), 10, Color("24572d"))
+	draw_arc(Vector2(35, 37), 5, 0.25, 2.25, 12, Color.WHITE, 3.0)

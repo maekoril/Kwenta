@@ -24,6 +24,7 @@ signal payment_started(customer_instance_id: String)
 
 const HAGGLE_REFUSE_TRUST_LOSS := 5.0
 const MIXUP_MISSED_TRUST_LOSS := 15.0
+const WALKOUT_BARANGAY_TRUST_LOSS := 15.0
 const SUKI_RECOVERY_PER_TIMELY_SALE := 2.0
 
 var campaign_state: CampaignState
@@ -193,7 +194,7 @@ func advance_time(delta_seconds: float) -> void:
 			customers_timed_out += 1
 			campaign_state.save_customer_trust(customer.customer_id, customer.trust)
 			# --- BAGO: Bawasan ang global Barangay Trust kapag may walk-out ---
-			campaign_state.barangay_trust = maxf(0.0, campaign_state.barangay_trust - 25.0)
+			campaign_state.barangay_trust = maxf(0.0, campaign_state.barangay_trust - WALKOUT_BARANGAY_TRUST_LOSS)
 			barangay_trust_changed.emit(campaign_state.barangay_trust)
 			
 			if campaign_state.barangay_trust <= 0.0:

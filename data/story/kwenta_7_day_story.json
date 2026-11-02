@@ -501,7 +501,48 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "May listahan din pala ng iba pang paninda. Kung may ipon ako, puwede akong pumili mamaya."
+					"text": "Tatawagan ko lang siya, tapos magkakaroon na ako ng maraming paninda? Ano 'to, magic?"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Dinayal ni Tonyo ang numerong nasa kuwaderno. Ring... ring...",
+					"phone_ring": true
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Hello how may help you in beautiful morning today?"
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Whatever you order, I bring fast!"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Kuya, 'wag ka na mag-English, okay lang!"
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Hahaha, sorry! Sa trabaho kasi, ganyan kami sumagot. Teka, bakit ikaw ang tumawag? Nasaan si Cora?"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Si Inay po, kasama ni Lola. Ako muna ang nagbabantay ng tindahan."
+				},
+				{
+					"speaker": "Kuya Ben",
+					"portrait": "",
+					"text": "Ah, ikaw pala si Tonyo! Sige, nasa kuwaderno ni Inay ang listahan. Pumili ka lang kung may gusto kang idagdag; ihahatid ko bago kayo magbukas."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Sige po, Kuya. Tingnan ko muna kung ano ang kaya ng ipon ko!"
 				}
 			],
 			"outro": [
@@ -925,7 +966,7 @@
 						{
 							"speaker": "Bea",
 							"portrait": "bea",
-							"text": "Tonyo, nasimulan mo na ba 'yung project natin sa school?"
+							"text": "Tonyo, nasimulan mo na ba 'yung miniature ng paborito nating lugar sa bayan para sa arts and crafts?"
 						},
 						{
 							"speaker": "Tonyo",
@@ -963,23 +1004,39 @@
 						{
 							"speaker": "Narrator",
 							"portrait": "",
-							"text": "Dumaan si Paolo sa tindahan at tumingin sa mga biskwit."
+							"text": "Dumaan si Paolo sa tindahan at tumingin sa bote ng Coke."
 						},
 						{
 							"speaker": "Paolo",
 							"portrait": "paolo_sad",
-							"text": "Kuya Tonyo, pabili po sana ng Feeta. Kaso ₱12 lang po ang dala ko."
+							"text": "Kuya Tonyo... magkano po ang isang Coke?"
 						},
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "₱15 ang Feeta, Paolo. Kulang ka ng ₱3."
+							"text": "₱15 ang isa, Paolo."
+						},
+						{
+							"speaker": "Paolo",
+							"portrait": "paolo_sad",
+							"text": "Ah... eh, ano po kasi..."
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Dahan-dahang binuksan ni Paolo ang kamay niya. Binilang niya ulit ang mga baryang dala niya.",
+							"show_prop": "paolo_coins"
+						},
+						{
+							"speaker": "Paolo",
+							"portrait": "paolo_sad",
+							"text": "₱12 lang po pala ang pera ko..."
 						}
 					],
 					"choice": {
 						"id": "day3_candy",
 						"record_sale": true,
-						"prompt": "₱15 ang Feeta. May ₱12 si Paolo. Ano ang gagawin sa kulang na ₱3?",
+						"prompt": "₱15 ang Coke. May ₱12 si Paolo. Ano ang gagawin sa kulang na ₱3?",
 						"options": [
 							{
 								"id": "credit",
@@ -994,7 +1051,7 @@
 									{
 										"speaker": "Narrator",
 										"portrait": "",
-										"text": "Kinuha ni Tonyo ang ₱12, inabot ang Feeta, at isinulat sa kuwaderno: Paolo — utang ₱3.",
+										"text": "Kinuha ni Tonyo ang ₱12, inabot ang Coke, at isinulat sa kuwaderno: Paolo — utang ₱3.",
 										"show_prop": "paolo_debt_note"
 									},
 									{
@@ -1017,7 +1074,7 @@
 									{
 										"speaker": "Narrator",
 										"portrait": "",
-										"text": "Kinuha ni Tonyo ang ₱12 at inabot ang Feeta. Wala nang kailangang bayaran si Paolo."
+										"text": "Kinuha ni Tonyo ang ₱12 at inabot ang Coke. Wala nang kailangang bayaran si Paolo."
 									},
 									{
 										"speaker": "Paolo",
@@ -1099,7 +1156,24 @@
 					"speaker": "Narrator",
 					"portrait": "",
 					"text": "Binuksan ni Tonyo ang kuwaderno at sinimulang kwentahin ang benta sa araw na iyon."
-				}
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Pagkatapos, pumasok si Tonyo sa kanyang kwarto. Mula sa ilalim ng kama, sumilip ang kartong inihanda niya para sa project.",
+					"cutscene": "day3_project"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo_bored",
+					"text": "Miniature ng paborito naming lugar sa bayan... karton pa lang talaga ang meron ako."
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Hindi pa niya alam kung aling lugar ang gagawin niya. Bukas na lang muna niya iisipin."
+				},
+				{"speaker": "Narrator", "portrait": "", "text": "Ipinikit ni Tonyo ang kanyang mga mata.", "cutscene": "end"}
 			],
 			"choices": [],
 			"callbacks": []
@@ -1886,7 +1960,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Ay, Ma, may naisulat din po pala ako diyan. Kinulang si Paolo ng ₱3 noong bumili siya ng Feeta.",
+					"text": "Ay, Ma, may naisulat din po pala ako diyan. Kinulang si Paolo ng ₱3 noong bumili siya ng Coke.",
 					"when_choice": "day3_candy",
 					"when_value": "credit",
 					"show_prop": "utang_ledger"
@@ -2251,7 +2325,7 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "paolo_happy",
-					"text": "Binayaran ni Paolo ang ₱3 na inutang niya para sa Feeta.",
+					"text": "Binayaran ni Paolo ang ₱3 na inutang niya para sa Coke.",
 					"when_choice": "day3_candy",
 					"when_value": "credit",
 					"debt_payment": "paolo_story"

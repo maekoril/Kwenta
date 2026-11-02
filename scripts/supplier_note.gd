@@ -50,7 +50,7 @@ func _ready() -> void:
 	_product_list = _paper_label("", 42)
 	_product_list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_product_list)
-	var message := _paper_label("Anak, iiwan ko muna itong kahon dito. Aalis na ako para bumili ng gamot ni Lola. Pakihanay ang Patos, Zesty at Kapeko. Kung may ipon, puwede kang magdagdag mula sa listahan.\n— Inay", 40)
+	var message := _paper_label("Anak, pakihanay ang Patos, Zesty at Kapeko. Mabilis lang ang proseso: kung may ipon ka, tawagan mo si Kuya Ben at pumili ng paninda sa listahan bago magbukas. Ihahatid niya agad.\nKuya Ben: +63 900 000 0000 (halimbawang numero)\n— Inay", 36)
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(message)
 	var signature := _paper_label("", 38)

@@ -35,6 +35,7 @@ var order_grid: GridContainer
 var bubble_tail: Polygon2D
 var patience_bar: ProgressBar
 var patience_fill: StyleBoxFlat
+var patience_warning: Label
 var portrait_container: Control
 var _drag_hover_tween: Tween
 var _drag_hover_active := false
@@ -114,6 +115,16 @@ func _ready() -> void:
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait_container.add_child(portrait)
+	patience_warning = Label.new()
+	patience_warning.name = "PatienceWarning"
+	patience_warning.position = Vector2(16, 115)
+	patience_warning.add_theme_font_size_override("font_size", 25)
+	patience_warning.add_theme_color_override("font_color", Color("ffb4a7"))
+	patience_warning.add_theme_color_override("font_outline_color", Color("522018"))
+	patience_warning.add_theme_constant_override("outline_size", 5)
+	patience_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	patience_warning.visible = false
+	add_child(patience_warning)
 	name_tag = PanelContainer.new()
 	name_tag.name = "NameTag"
 	# Keep identity information on the visible upper body; the concrete sill
@@ -188,7 +199,7 @@ func _place_bubble(bubble_size: Vector2) -> void:
 	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
 
 func _has_impatient_sprite() -> bool:
-	return customer != null and COUNTER_ART.CUSTOMER_REGIONS.has(customer.customer_id + "_impatient")
+	return customer != null and COUNTER_ART.has_impatient_portrait(customer.customer_id)
 
 func _apply_portrait() -> void:
 	if customer == null or not is_instance_valid(portrait):
@@ -221,14 +232,8 @@ func refresh_patience() -> void:
 			calmed_down.emit(customer.instance_id)
 
 	portrait.modulate = Color.WHITE
-	if patience_ratio > 0.6:
-		patience_fill.bg_color = PATIENCE_GREEN
-	elif patience_ratio >= IMPATIENT_BELOW:
-		patience_fill.bg_color = PATIENCE_YELLOW
-	else:
-		patience_fill.bg_color = PATIENCE_RED
-
-	portrait.modulate = Color.WHITE
+	patience_warning.visible = impatient
+	patience_warning.text = "SUKLI!" if customer.is_overdue_paying() else "!"
 	if patience_ratio > 0.6:
 		patience_fill.bg_color = PATIENCE_GREEN
 	elif patience_ratio >= IMPATIENT_BELOW:

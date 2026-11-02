@@ -11,12 +11,15 @@ func run() -> void:
 		main.bubble.close()
 		main.campaign.day = 3
 		main._rebuild_product_shelf()
-		assert(main.campaign.get_available_product_ids().has("biscuits"))
-		assert(main.campaign.get_product_price(main.products_by_id["biscuits"]) == 15)
+		assert(main.campaign.get_available_product_ids().has("soft_drink"))
+		assert(main.campaign.get_product_price(main.products_by_id["soft_drink"]) == 15)
 		main.story_events.begin_shift(3)
 		main.shift.is_running = true
 		var events: Array = main.story.get_day_shift_events(3)
 		var paolo: Dictionary = events.filter(func(event): return event.get("visitor") == "paolo")[0]
+		assert(paolo.beats.any(func(beat): return beat.get("show_prop") == "paolo_coins"))
+		assert(paolo.choice.prompt.contains("Coke"))
+		assert(main.story.get_day_outro_beats(3).any(func(beat): return beat.get("cutscene") == "day3_project"))
 		var selected_option: Dictionary = paolo.choice.options.filter(func(entry): return entry.id == option)[0]
 		var thanks: Array = selected_option.response.filter(func(beat): return beat.get("speaker") == "Paolo" and str(beat.get("text", "")).contains("Salamat"))
 		assert(not thanks.is_empty() if option != "no" else thanks.is_empty())
@@ -45,5 +48,5 @@ func run() -> void:
 		assert(repayment.size() == (1 if option == "credit" else 0))
 		main.queue_free()
 		await process_frame
-	print("Paolo Feeta price, three choices, cash and repayment checks passed")
+	print("Paolo Coke price, three choices, cash and repayment checks passed")
 	quit()
