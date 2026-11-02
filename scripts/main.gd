@@ -167,13 +167,13 @@ var game_over_screen   # GameOverScreen (game_over_screen.gd)
 var angry_customer_ids: Dictionary = {}
 
 var ENVIRONMENT_BY_DAY: Dictionary = {
-	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
-	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 540, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 540, "night_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	1: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 600, "night_end_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	2: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 600, "night_end_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	3: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 600, "night_end_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 	4: {"base_path": RAIN_STORE_BACKGROUND_PATH, "full_background": true, "evening_path": "", "grade_color": NO_GRADE, "rain_particles": true, "sunbeams": false, "flicker_event": true},
-	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	5: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 600, "night_end_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 	6: {"base_path": FIESTA_BACKGROUND_PATH, "full_background": true, "evening_path": FIESTA_NIGHT_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "brownout_path": FIESTA_BROWNOUT_BACKGROUND_PATH, "brownout_at_game_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": false, "flicker_event": false},
-	7: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
+	7: {"base_path": "", "full_background": false, "evening_path": EVENING_BACKGROUND_PATH, "evening_start_minute": 480, "evening_end_minute": 600, "night_path": NIGHT_BACKGROUND_PATH, "night_start_minute": 600, "night_end_minute": 630, "grade_color": NO_GRADE, "rain_particles": false, "sunbeams": true, "flicker_event": false},
 }
 var flicker_event_day := -1
 var environment_flicker_tween: Tween
@@ -629,6 +629,7 @@ func _build_hud() -> void:
 	_layout_gameplay_hud()
 
 func _recenter_fixed_hud() -> void:
+	_layout_fiesta_blackout()
 	if is_instance_valid(tutorial_hint):
 		tutorial_hint.position = Vector2(360.0, 1004.0) + _ui_offset()
 	_layout_gameplay_hud()
@@ -1258,7 +1259,7 @@ func _build_environment_layers() -> void:
 func _build_fiesta_emergency_light() -> void:
 	fiesta_emergency_light = ColorRect.new()
 	fiesta_emergency_light.name = "FiestaEmergencyLight"
-	fiesta_emergency_light.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	fiesta_emergency_light.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fiesta_emergency_light.z_index = 21
 	fiesta_emergency_light.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shader := Shader.new()
@@ -1269,8 +1270,9 @@ shader_type canvas_item;
 uniform bool lights_arrived = false;
 uniform float ignition : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 lamp_source;
+uniform vec2 viewport_size = vec2(1920.0, 1080.0);
 void fragment() {
-	vec2 p = UV * vec2(1920.0, 1080.0);
+	vec2 p = UV * viewport_size;
 	vec2 delta = p - lamp_source;
 	float distance_from_lamp = length(delta / vec2(880.0, 600.0));
 	float falloff = exp(-distance_from_lamp * 1.35);
@@ -1294,6 +1296,16 @@ void fragment() {
 	fiesta_light_props.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	fiesta_light_props.hide()
 	add_child(fiesta_light_props)
+	_layout_fiesta_blackout()
+
+func _layout_fiesta_blackout() -> void:
+	if is_instance_valid(fiesta_emergency_light):
+		var material := fiesta_emergency_light.material as ShaderMaterial
+		if material != null:
+			material.set_shader_parameter("viewport_size", size)
+			material.set_shader_parameter("lamp_source", preload("res://scripts/fiesta_light_props.gd").FLAME_POSITION + _ui_offset())
+	if is_instance_valid(fiesta_light_props):
+		fiesta_light_props.position = _ui_offset()
 
 func _on_fiesta_brownout_story_finished() -> void:
 	if environment_day != 6 or not day_six_brownout_triggered:
@@ -1303,10 +1315,9 @@ func _on_fiesta_brownout_story_finished() -> void:
 func _reveal_fiesta_lampara() -> void:
 	if environment_day != 6 or not day_six_brownout_triggered or fiesta_light_props.visible:
 		return
-	fiesta_emergency_light.position = _ui_offset()
+	_layout_fiesta_blackout()
 	var material := fiesta_emergency_light.material as ShaderMaterial
 	material.set_shader_parameter("lights_arrived", true)
-	fiesta_light_props.position = _ui_offset()
 	fiesta_light_props.show()
 	fiesta_ignition_tween = create_tween()
 	fiesta_ignition_tween.tween_property(material, "shader_parameter/ignition", 1.0, 0.85).set_trans(Tween.TRANS_SINE)
@@ -1402,7 +1413,7 @@ func trigger_day_six_brownout() -> void:
 	store_layer_renderer.set_blackout(true)
 	atmosphere.set_blackout(true)
 	_play_brownout_flicker()
-	fiesta_emergency_light.position = _ui_offset()
+	_layout_fiesta_blackout()
 	fiesta_emergency_light.modulate.a = 0.0
 	fiesta_emergency_light.show()
 	store_layer_renderer.start_environment_crossfade(brownout_texture, 1.5)
