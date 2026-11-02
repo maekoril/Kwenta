@@ -8,6 +8,17 @@ const CAMPAIGN := preload("res://data/story/summer_campaign.tres")
 const DISPLAY_TINT := Color.WHITE
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
+const NEIGHBOR_PORTRAITS := {
+	"neighbor_lina": preload("res://assets/sprites/customers/neighbor_lina.png"),
+	"neighbor_rosa": preload("res://assets/sprites/customers/neighbor_rosa.png"),
+	"neighbor_nico": preload("res://assets/sprites/customers/neighbor_nico.png"),
+	"neighbor_ramon": preload("res://assets/sprites/customers/neighbor_ramon.png"),
+	"neighbor_lina_impatient": preload("res://assets/sprites/customers/neighbor_lina_impatient.png"),
+	"neighbor_rosa_impatient": preload("res://assets/sprites/customers/neighbor_rosa_impatient.png"),
+	"neighbor_nico_impatient": preload("res://assets/sprites/customers/neighbor_nico_impatient.png"),
+	"neighbor_ramon_impatient": preload("res://assets/sprites/customers/neighbor_ramon_impatient.png"),
+}
+
 const CUSTOMER_REGIONS := {
 	"tonyo": Rect2(0.0, 0.0, 512.0, 512.0),
 	"tonyo_bored": Rect2(0.0, 0.0, 512.0, 512.0),
@@ -38,9 +49,17 @@ const CUSTOMER_REGIONS := {
 	"paolo": Rect2(2048.0, 1536.0, 512.0, 512.0),
 	"paolo_happy": Rect2(2560.0, 1536.0, 512.0, 512.0),
 	"paolo_sad": Rect2(3072.0, 1536.0, 512.0, 512.0),
+	# Paolo's classmates (Day 6) reuse existing faces until they get their own art.
+	"classmate_1": Rect2(2048.0, 1536.0, 512.0, 512.0),
+	"classmate_2": Rect2(512.0, 1536.0, 512.0, 512.0),
+	"classmate_3": Rect2(2560.0, 1536.0, 512.0, 512.0),
 	"kuya_dodong": Rect2(0.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_thoughtful": Rect2(512.0, 2048.0, 512.0, 512.0),
 	"kuya_dodong_soaked": Rect2(1024.0, 2048.0, 512.0, 512.0),
+	"bea_impatient": Rect2(0.0, 2560.0, 512.0, 512.0),
+	"paolo_impatient": Rect2(512.0, 2560.0, 512.0, 512.0),
+	"kuya_dodong_impatient": Rect2(1024.0, 2560.0, 512.0, 512.0),
+	"jun_jun_impatient": Rect2(1536.0, 2560.0, 512.0, 512.0),
 }
 
 static func product_icon(product_id: String, _product_atlas: Texture2D = null) -> Texture2D:
@@ -58,12 +77,37 @@ static func product_fixture_texture(product_id: String) -> Texture2D:
 	return product_display_texture(product_id)
 
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:
+	if NEIGHBOR_PORTRAITS.has(customer_id):
+		var texture: Texture2D = NEIGHBOR_PORTRAITS[customer_id]
+		var neighbor := AtlasTexture.new()
+		neighbor.atlas = texture
+		var texture_size := texture.get_size()
+		var side := minf(texture_size.x, texture_size.y)
+		neighbor.region = Rect2((texture_size.x - side) / 2.0, 0.0, side, side)
+		return neighbor
 	if portrait_atlas == null:
 		return null
 	var portrait := AtlasTexture.new()
 	portrait.atlas = portrait_atlas
-	portrait.region = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
+	var region: Rect2 = CUSTOMER_REGIONS.get(customer_id, CUSTOMER_REGIONS["tonyo"])
+	# Some cells contain a one- or two-pixel strip from the row above. The
+	# following row is transparent; leave it as a filtering buffer as well.
+	var has_top_strip := (region.position.y == 512.0 or (region.position.y == 1536.0 and region.position.x >= 512.0) or (region.position.y == 2048.0 and region.position.x <= 1024.0))
+	if has_top_strip:
+		region.position.y += 3.0
+		region.size.y -= 3.0
+	portrait.region = region
 	return portrait
+
+# Sprite switching for impatient customers. A character has an impatient sprite when
+# CUSTOMER_REGIONS contains "<customer_id>_impatient" (e.g. "aling_nena_impatient").
+static func has_impatient_portrait(customer_id: String) -> bool:
+	return CUSTOMER_REGIONS.has(customer_id + "_impatient") or NEIGHBOR_PORTRAITS.has(customer_id + "_impatient")
+
+static func customer_mood_portrait(customer_id: String, portrait_atlas: Texture2D, impatient: bool) -> AtlasTexture:
+	if impatient and has_impatient_portrait(customer_id):
+		return customer_portrait(customer_id + "_impatient", portrait_atlas)
+	return customer_portrait(customer_id, portrait_atlas)
 
 static func fit_texture_rect(texture_size: Vector2, bounds: Vector2) -> Rect2:
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0 or bounds.x <= 0.0 or bounds.y <= 0.0:

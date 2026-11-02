@@ -5,6 +5,8 @@ const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 
 signal product_released(product_id: String, viewport_position: Vector2, source: Control)
 signal product_drag_started(product_id: String)
+signal product_drag_moved(viewport_position: Vector2)
+signal product_drag_ended
 
 static var _active_drag_owner: Control
 
@@ -143,6 +145,7 @@ func _begin_drag(viewport_position: Vector2, touch_index: int) -> void:
 func _move_drag_preview(viewport_position: Vector2) -> void:
 	if is_instance_valid(_drag_preview):
 		_drag_preview.global_position = viewport_position - _drag_preview.size * 0.5
+		product_drag_moved.emit(viewport_position)
 
 func _release_drag(viewport_position: Vector2) -> void:
 	if not _drag_active:
@@ -150,6 +153,7 @@ func _release_drag(viewport_position: Vector2) -> void:
 	_drag_active = false
 	_drag_touch_index = -1
 	set_process_input(false)
+	product_drag_ended.emit()
 	product_released.emit(product_id, viewport_position, self)
 
 func finish_drag(accepted: bool) -> void:
@@ -192,6 +196,8 @@ func _finish_returned_preview(preview: Control) -> void:
 	_clear_active_drag_owner()
 
 func _exit_tree() -> void:
+	if _drag_active:
+		product_drag_ended.emit()
 	if is_instance_valid(_drag_preview):
 		_drag_preview.queue_free()
 	_clear_active_drag_owner()

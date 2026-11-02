@@ -33,16 +33,37 @@ func get_day_outro_beats(day: int) -> Array[Dictionary]:
 func get_day_callback_beats(day: int) -> Array[Dictionary]:
 	return _filtered_beats(_get_day(day).get("callbacks", []))
 
+# Choices asked after the shift (the original behavior).
 func get_day_choices(day: int) -> Array[Dictionary]:
+	return _day_choice_list(day, "choices")
+
+# Choices asked after the day's intro and BEFORE the shift starts, so they can
+# change how that shift plays (e.g. Day 6 "Tulong").
+func get_day_intro_choices(day: int) -> Array[Dictionary]:
+	return _day_choice_list(day, "intro_choices")
+
+func _day_choice_list(day: int, key: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for choice_value in _get_day(day).get("choices", []):
+	for choice_value in _filtered_beats(_get_day(day).get(key, [])):
 		if choice_value is Dictionary:
 			result.append(choice_value.duplicate(true))
 	return result
 
 func record_choice(choice_id: String, option_id: String) -> bool:
 	for day in range(1, get_campaign_day_count() + 1):
-		for choice_data in get_day_choices(day):
+		var day_choices: Array[Dictionary] = get_day_intro_choices(day)
+		day_choices.append_array(get_day_choices(day))
+		for event in get_day_shift_events(day):
+			var event_choice: Variant = event.get("choice", {})
+			if event_choice is Dictionary and not event_choice.is_empty():
+				day_choices.append(event_choice)
+			var after_sale: Variant = event.get("after_sale", {})
+			if after_sale is Dictionary and after_sale.get("choice", {}) is Dictionary and not after_sale.get("choice", {}).is_empty():
+				day_choices.append(after_sale["choice"])
+			var before_sale: Variant = event.get("before_sale", {})
+			if before_sale is Dictionary and before_sale.get("choice", {}) is Dictionary and not before_sale.get("choice", {}).is_empty():
+				day_choices.append(before_sale["choice"])
+		for choice_data in day_choices:
 			if str(choice_data.get("id", "")) != choice_id:
 				continue
 			for option_value in choice_data.get("options", []):
@@ -50,6 +71,58 @@ func record_choice(choice_id: String, option_id: String) -> bool:
 					choices[choice_id] = option_id
 					return true
 	return false
+
+func record_haggle_choice(choice_id: String, accepted: bool) -> bool:
+	for day in range(1, get_campaign_day_count() + 1):
+		for entry in get_day_haggles(day):
+			if str(entry.get("choice_id", "")) != choice_id:
+				continue
+			var key := "accept_choice_id" if accepted else "refuse_choice_id"
+			var value := str(entry.get(key, ""))
+			if value.is_empty():
+				return false
+			choices[choice_id] = value
+			return true
+	return false
+
+# ---- In-shift story data (played by shift_story_events.gd) ----
+# Every entry can be gated with when_choice / when_value(s), like any beat. Later entries
+# for the same customer override earlier ones.
+#   "shift_events": scripted customers and kalaro interruptions, each with "at_minute"
+#   "haggle":       customers who ask for a discount ("customer", "ask", lines...)
+#   "hover":        a customer who watches the change ("customer", "text", "payment_patience_mult")
+#   "mixups":       helper mix-ups ("count", "every", lines...)
+func get_day_shift_events(day: int) -> Array[Dictionary]:
+	return _filtered_beats(_get_day(day).get("shift_events", []))
+
+func filter_story_beats(beats: Variant) -> Array[Dictionary]:
+	return _filtered_beats(beats)
+
+func get_day_haggles(day: int) -> Array[Dictionary]:
+	return _filtered_beats(_get_day(day).get("haggle", []))
+
+func get_day_hovers(day: int) -> Array[Dictionary]:
+	return _filtered_beats(_get_day(day).get("hover", []))
+
+func get_day_mixups(day: int) -> Array[Dictionary]:
+	return _filtered_beats(_get_day(day).get("mixups", []))
+
+# An option may carry "cash_delta" (e.g. +50 for keeping Mang Berting's overpayment).
+func get_choice_cash_delta(choice_data: Dictionary, option_id: String) -> int:
+	for option_value in choice_data.get("options", []):
+		if option_value is Dictionary and str(option_value.get("id", "")) == option_id:
+			return int(option_value.get("cash_delta", 0))
+	return 0
+
+# A day can list "modifiers" in the story JSON, each gated like any other beat
+# (when_choice / when_value / when_values):
+#   {"when_choice": "day6_help", "when_value": "ask", "patience_mult": 1.25}
+# Every matching entry applies; patience multipliers multiply together.
+func get_day_modifiers(day: int) -> Dictionary:
+	var result := {"patience_mult": 1.0}
+	for entry in _filtered_beats(_get_day(day).get("modifiers", [])):
+		result["patience_mult"] = float(result["patience_mult"]) * float(entry.get("patience_mult", 1.0))
+	return result
 
 # An option's "response" can be either:
 #   - a plain string (one beat, spoken by "response_speaker" / "response_portrait", as before), or
@@ -82,6 +155,49 @@ func get_choice_response(choice_data: Dictionary, option_id: String) -> Array[Di
 
 func get_choice(choice_id: String) -> String:
 	return str(choices.get(choice_id, ""))
+
+# Written at the end of the day and saved alongside the choices that shaped it.
+func write_diary_entry(day: int) -> String:
+	var entry := ""
+	match day:
+		1:
+			match get_choice("day1_play"):
+				"play": entry = "Unang araw ko sa tindahan. Mahirap pala, pero nakapaglaro rin ako kasama ang mga kaibigan ko."
+				"stay": entry = "Unang araw ko sa tindahan. Hindi ako nakasama sa laro, pero nabantayan ko ang tindahan gaya ng bilin ni Inay."
+				_: entry = "Unang araw ko sa tindahan. Ang dami ko palang kailangang matutunan."
+		2:
+			match get_choice("day2_overpayment"):
+				"return": entry = "Naiwan ni Mang Berting ang ₱50 niya. Itinabi ko muna para maibalik ko kapag dumaan siya."
+				"keep": entry = "Naiwan ni Mang Berting ang ₱50 niya. Ibinulsa ko muna, pero iniisip ko pa rin kung ano'ng gagawin ko."
+				_: entry = "Isa na namang araw sa tindahan. Unti-unti ko nang natututunan ang pagsesukli."
+		3:
+			match get_choice("day3_candy"):
+				"credit": entry = "Ang dami kong inasikaso ngayon sa tindahan. Sana wala akong nakalimutan."
+				"free": entry = "Kulang si Paolo ng ₱3 sa Coke, kaya sinagot ko na ang kulang niya."
+				"no": entry = "Kulang ang dala ni Paolo para sa Coke. Babalik na lang daw siya."
+				_: entry = "Ang dami kong inasikaso ngayon. Hindi ko akalaing magiging abala ako sa tindahan."
+			match get_choice("day3_friends"):
+				"later": entry += " Sinabi kong susunod ako sa laro, pero hindi na ako nakaabot."
+				"stay": entry += " Hindi muna ako sumama sa laro para mabantayan ang tindahan."
+		4:
+			match get_choice("day4_rain"):
+				"join": entry = "Sumama ako sa laro sa ulan. Pagbalik ko, nakita kong may dumaan palang bibili. Sana bumalik si Aling Lina."
+				"stay": entry = "Inaya akong maglaro sa ulan, pero nagbantay muna ako ng tindahan. Bawi ako sa kanila sa susunod."
+				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Coke, at nagsalita pa nga si Bogs!"
+				_: entry = "Maulan ngayon. Tinapos ko ang araw sa pagbabantay ng tindahan."
+		5:
+			match get_choice("day5_debt"):
+				"installments": entry = "Nagbayad si Lola Rosa ng ₱110 sa utang niya. ₱210 na lang ang natitira. Mabuti at napag-usapan namin."
+				"defer": entry = "Sinabi ni Lola Rosa na magbabayad siya ng ₱110, pero sinabi kong itatanong ko muna kay Inay. ₱320 pa rin ang utang niya."
+				_: entry = "May bagong tindahan sa tapat. Gusto ko pa ring alagaan ang mga suki ni Inay."
+		6:
+			entry = "Abala ang araw na ito. Mabuti na lang, natapos ko rin ang pagbabantay."
+		7:
+			entry = "Isang linggo na akong nagbantay ng tindahan. Ang dami kong natutunan at gustong ikuwento kay Inay."
+		_:
+			return ""
+	choices["diary_day_%d" % day] = entry
+	return entry
 
 func reset() -> void:
 	choices.clear()
@@ -156,18 +272,19 @@ func _lint_story() -> void:
 		var day: int = int(day_value.get("day", 0))
 		for section in ["intro", "outro", "callbacks"]:
 			_lint_beats(day_value.get(section, []), "day %d %s" % [day, section])
-		for choice_value in day_value.get("choices", []):
-			if not choice_value is Dictionary:
-				continue
-			for option_value in choice_value.get("options", []):
-				if not option_value is Dictionary:
+		for choice_key in ["choices", "intro_choices"]:
+			for choice_value in day_value.get(choice_key, []):
+				if not choice_value is Dictionary:
 					continue
-				var where := "day %d choice %s/%s" % [day, str(choice_value.get("id", "?")), str(option_value.get("id", "?"))]
-				var response: Variant = option_value.get("response", "")
-				if response is Array:
-					_lint_beats(response, where)
-				else:
-					_lint_beat(str(option_value.get("response_speaker", "Tonyo")), str(response), where)
+				for option_value in choice_value.get("options", []):
+					if not option_value is Dictionary:
+						continue
+					var where := "day %d choice %s/%s" % [day, str(choice_value.get("id", "?")), str(option_value.get("id", "?"))]
+					var response: Variant = option_value.get("response", "")
+					if response is Array:
+						_lint_beats(response, where)
+					else:
+						_lint_beat(str(option_value.get("response_speaker", "Tonyo")), str(response), where)
 
 func _lint_beats(raw_beats: Variant, where: String) -> void:
 	if not raw_beats is Array:

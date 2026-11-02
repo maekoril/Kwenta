@@ -2,6 +2,8 @@ extends Control
 
 signal product_dropped(customer_id: String, product_id: String)
 signal payment_tapped(customer_id: String)
+signal became_impatient(customer_id: String)
+signal calmed_down(customer_id: String)
 
 const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
@@ -33,11 +35,20 @@ var order_grid: GridContainer
 var bubble_tail: Polygon2D
 var patience_bar: ProgressBar
 var patience_fill: StyleBoxFlat
+var patience_warning: Label
+var portrait_container: Control
+var _drag_hover_tween: Tween
+var _drag_hover_active := false
 var portrait: TextureRect
 var portrait_shadow: TextureRect
 var name_tag: PanelContainer
 var name_label: Label
 var _drop_hovered: bool = false
+var _shown_impatient: bool = false
+var _impatience_pulse: Tween
+const IMPATIENT_BELOW := 0.3     # patience ratio under which the customer looks impatient
+const IMPATIENT_PULSE_BIG := 1.08     # how much the character grows on each pulse
+const IMPATIENT_PULSE_SMALL := 1.05
 var _bubble_paying: bool = false
 var _pay_pulse: Tween
 
@@ -79,6 +90,11 @@ func _ready() -> void:
 	patience_fill.set_corner_radius_all(3)
 	patience_bar.add_theme_stylebox_override("fill", patience_fill)
 	bubble_content.add_child(patience_bar)
+	portrait_container = Control.new()
+	portrait_container.name = "PortraitDragFeedback"
+	portrait_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	portrait_container.pivot_offset = PORTRAIT_POSITION + Vector2(PORTRAIT_SIZE.x * 0.5, PORTRAIT_SIZE.y)
+	add_child(portrait_container)
 	portrait_shadow = TextureRect.new()
 	portrait_shadow.name = "PortraitShadow"
 	portrait_shadow.position = PORTRAIT_POSITION + Vector2(5.0, 7.0)
@@ -89,7 +105,7 @@ func _ready() -> void:
 	portrait_shadow.modulate = Color(0.02, 0.02, 0.02, 0.52)
 	portrait_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait_shadow.z_index = -1
-	add_child(portrait_shadow)
+	portrait_container.add_child(portrait_shadow)
 	portrait = TextureRect.new()
 	portrait.name = "Portrait"
 	portrait.position = PORTRAIT_POSITION
@@ -98,7 +114,17 @@ func _ready() -> void:
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(portrait)
+	portrait_container.add_child(portrait)
+	patience_warning = Label.new()
+	patience_warning.name = "PatienceWarning"
+	patience_warning.position = Vector2(16, 115)
+	patience_warning.add_theme_font_size_override("font_size", 25)
+	patience_warning.add_theme_color_override("font_color", Color("ffb4a7"))
+	patience_warning.add_theme_color_override("font_outline_color", Color("522018"))
+	patience_warning.add_theme_constant_override("outline_size", 5)
+	patience_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	patience_warning.visible = false
+	add_child(patience_warning)
 	name_tag = PanelContainer.new()
 	name_tag.name = "NameTag"
 	# Keep identity information on the visible upper body; the concrete sill
@@ -136,8 +162,7 @@ func set_facing_right(from_right: bool) -> void:
 func refresh_display() -> void:
 	if customer == null or not is_instance_valid(name_label):
 		return
-	portrait.texture = COUNTER_ART.customer_portrait(customer.customer_id, PORTRAIT_ATLAS)
-	portrait_shadow.texture = portrait.texture
+	_apply_portrait()
 	for child in order_grid.get_children():
 		order_grid.remove_child(child)
 		child.queue_free()
@@ -173,18 +198,76 @@ func _place_bubble(bubble_size: Vector2) -> void:
 	order_bubble.pivot_offset = bubble_size * 0.5
 	bubble_tail.polygon = PackedVector2Array([Vector2(bubble_x, bubble_y + 30), Vector2(bubble_x - 16, bubble_y + 40), Vector2(bubble_x, bubble_y + 50)])
 
+func _has_impatient_sprite() -> bool:
+	return customer != null and COUNTER_ART.has_impatient_portrait(customer.customer_id)
+
+func _apply_portrait() -> void:
+	if customer == null or not is_instance_valid(portrait):
+		return
+	var portrait_id: String = customer.customer_id
+	if _shown_impatient and _has_impatient_sprite():
+		portrait_id += "_impatient"
+	portrait.texture = COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+	portrait_shadow.texture = portrait.texture
+
 func refresh_patience() -> void:
 	if customer == null or not is_instance_valid(patience_bar):
 		return
+
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
 	patience_bar.value = patience_ratio * 100.0
 	_refresh_name_tag()
+
+	# Low patience: switch to the impatient sprite (if this character has one) and pulse
+	# the character like "huy, asan na yung binili ko?!" No more red tint.
+	var impatient: bool = patience_ratio < IMPATIENT_BELOW and customer.active
+	if impatient != _shown_impatient:
+		_shown_impatient = impatient
+		_apply_portrait()
+		if impatient:
+			_start_impatience_pulse()
+			became_impatient.emit(customer.instance_id)
+		else:
+			_stop_impatience_pulse()
+			calmed_down.emit(customer.instance_id)
+
+	portrait.modulate = Color.WHITE
+	patience_warning.visible = impatient
+	patience_warning.text = "SUKLI!" if customer.is_overdue_paying() else "!"
 	if patience_ratio > 0.6:
 		patience_fill.bg_color = PATIENCE_GREEN
-	elif patience_ratio >= 0.3:
+	elif patience_ratio >= IMPATIENT_BELOW:
 		patience_fill.bg_color = PATIENCE_YELLOW
 	else:
 		patience_fill.bg_color = PATIENCE_RED
+
+func _start_impatience_pulse() -> void:
+	_stop_impatience_pulse()
+	if not is_instance_valid(portrait):
+		return
+	# Grow from the feet so the character "puffs up" instead of drifting around.
+	portrait.pivot_offset = Vector2(portrait.size.x * 0.5, portrait.size.y)
+	portrait_shadow.pivot_offset = portrait.pivot_offset
+	_impatience_pulse = create_tween().set_loops()
+	_pulse_step(IMPATIENT_PULSE_BIG, 0.16)      # huy!
+	_pulse_step(1.0, 0.16)
+	_pulse_step(IMPATIENT_PULSE_SMALL, 0.14)    # huy!
+	_pulse_step(1.0, 0.14)
+	_impatience_pulse.tween_interval(0.45)      # short rest, then again
+
+func _pulse_step(target_scale: float, seconds: float) -> void:
+	var target := Vector2(target_scale, target_scale)
+	_impatience_pulse.tween_property(portrait, "scale", target, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_impatience_pulse.parallel().tween_property(portrait_shadow, "scale", target, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _stop_impatience_pulse() -> void:
+	if _impatience_pulse != null and _impatience_pulse.is_valid():
+		_impatience_pulse.kill()
+	_impatience_pulse = null
+	if is_instance_valid(portrait):
+		portrait.scale = Vector2.ONE
+	if is_instance_valid(portrait_shadow):
+		portrait_shadow.scale = Vector2.ONE
 
 func _refresh_name_tag() -> void:
 	if not is_instance_valid(name_tag) or not is_instance_valid(name_label):
@@ -210,6 +293,15 @@ func _minimum_readable_bubble_width() -> float:
 		return minimum_width
 	var name_width := font.get_string_size(_display_name(customer.customer_id), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_TAG_MIN_FONT_SIZE).x
 	return maxf(minimum_width, name_width + ORDER_BUBBLE_PADDING * 2.0)
+func set_drag_hovered(hovered: bool) -> void:
+	if _drag_hover_active == hovered or not is_instance_valid(portrait_container):
+		return
+	_drag_hover_active = hovered
+	if _drag_hover_tween != null and _drag_hover_tween.is_valid():
+		_drag_hover_tween.kill()
+	_drag_hover_tween = create_tween()
+	_drag_hover_tween.tween_property(portrait_container, "scale", Vector2.ONE * (1.08 if hovered else 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
 func contains_drop_point(viewport_position: Vector2) -> bool:
 	return Rect2(global_position + portrait.position, portrait.size).has_point(viewport_position)
 
@@ -217,24 +309,33 @@ func _make_order_item(entry: Dictionary) -> Control:
 	var item := Control.new()
 	item.custom_minimum_size = Vector2(ORDER_ICON_CELL_SIZE, ORDER_ICON_CELL_SIZE)
 	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	var product_id: String = str(entry.product_id)
 	var icon: Control = ORDER_BUBBLE_ICON.new()
 	icon.set("icon_texture", COUNTER_ART.product_icon(product_id, PRODUCT_ATLAS))
 	icon.size = Vector2(ORDER_ICON_CELL_SIZE, ORDER_ICON_CELL_SIZE)
 	icon.modulate = Color("a4a4a4") if entry.completed else Color.WHITE
 	item.add_child(icon)
+
 	var quantity := Label.new()
-	quantity.text = "✓" if entry.completed else ("×%d" % int(entry.remaining) if int(entry.requested) > 1 else "")
-	quantity.add_theme_font_size_override("font_size", 18)
-	quantity.add_theme_color_override("font_color", Color("478c45") if entry.completed else Color("493326"))
-	quantity.position = Vector2(27, 27)
-	quantity.size = Vector2(30, 30)
+	quantity.text = "" if entry.completed else "x%d" % int(entry.remaining)
+	
+	# --- MGA IDINAGDAG PARA LUMITAW ANG NUMBER ---
+	quantity.add_theme_font_size_override("font_size", 22)
+	quantity.add_theme_color_override("font_color", Color("478c45") if entry.completed else Color("000000"))
+	quantity.add_theme_color_override("font_outline_color", Color.WHITE)
+	quantity.add_theme_constant_override("outline_size", 6)
+	
+	# --- INILIPAT SA BOTTOM-RIGHT ---
+	quantity.position = Vector2(44, 50)
+	quantity.size = Vector2(40, 30)
 	quantity.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	quantity.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	quantity.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	quantity.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	item.add_child(quantity)
-	return item
 
+	return item
+	
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
 	var can_accept: bool = customer != null and customer.active and customer.phase == CustomerState.Phase.ORDERING and data is Dictionary and data.has("product_id")
 	if _drop_hovered != can_accept:
@@ -300,7 +401,9 @@ func _display_name(customer_id: String) -> String:
 		"aleng_mila": "Mila", "kuya_ben": "Ben", "ate_liza": "Liza",
 		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina",
 		"aling_nena": "Aling Nena", "mang_berting": "Mang Berting",
-		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun"
+		"bea": "Bea", "paolo": "Paolo", "kuya_dodong": "Kuya Dodong", "jun_jun": "Jun-jun",
+		"neighbor_lina": "Aling Lina", "neighbor_rosa": "Lola Rosa", "neighbor_nico": "Nico", "neighbor_ramon": "Mang Ramon",
+		"classmate_1": "Kaklase", "classmate_2": "Kaklase", "classmate_3": "Kaklase"
 	}
 	return str(names.get(customer_id, customer_id.capitalize()))
 
@@ -318,46 +421,54 @@ func _make_box(fill_color: Color, border_color: Color, border_width: int, paddin
 
 func _build_payment_bubble() -> void:
 	_set_bubble_paying(true)
-	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING, ORDER_BUBBLE_PADDING) * 2.0
+	var holder_size := PAYMENT_BUBBLE_SIZE - Vector2(ORDER_BUBBLE_PADDING * 2.0, ORDER_BUBBLE_PADDING * 2.0 + PATIENCE_BAR_HEIGHT + ORDER_BUBBLE_ROW_GAP)
 	order_grid.columns = 1
 	order_grid.custom_minimum_size = holder_size
+	
 	var holder := Control.new()
 	holder.custom_minimum_size = holder_size
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bill: MoneyIcon = MoneyIcon.new().setup(customer.payment.tendered, 66.0, false)
-	bill.position = Vector2((holder_size.x - bill.size.x) * 0.5, 4.0)
-	holder.add_child(bill)
+	
+	var caption_text := "Sukli ko po?"
+	var cid = customer.customer_id
+	if cid in ["jun", "jun_jun", "mikay", "bea", "paolo", "nina"]:
+		caption_text = "Sukli ko po?"
+	elif cid in ["manong_tomas", "mang_berting", "kuya_ben", "kuya_dodong"]:
+		caption_text = "Sukli ko 'toy?"
+	elif cid in ["aleng_mila", "ate_liza", "aling_nena"]:
+		caption_text = "Sukli ko iho!"
+	else:
+		caption_text = "Sukli ko po?"
+		
 	var caption := Label.new()
-	caption.text = "SUKLI?"
-	caption.add_theme_font_size_override("font_size", 24)
+	caption.text = caption_text
+	caption.add_theme_font_size_override("font_size", 22) # Increased font size
 	caption.add_theme_color_override("font_color", Color("7a4a14"))
-	caption.position = Vector2(0.0, 76.0)
-	caption.size = Vector2(holder_size.x, 30.0)
+	caption.position = Vector2(0.0, (holder_size.y - 24.0) * 0.5) 
+	caption.size = Vector2(holder_size.x, 24.0)
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
 	holder.add_child(caption)
 	order_grid.add_child(holder)
+	
 	_place_bubble(PAYMENT_BUBBLE_SIZE)
-
 func _set_bubble_paying(paying: bool) -> void:
 	if paying == _bubble_paying:
 		return
 	_bubble_paying = paying
-	if paying:
-		name_tag.visible = false
-		patience_bar.visible = false
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("fff0c2"), Color("c9892b"), 4, ORDER_BUBBLE_PADDING, 9))
-		_start_pay_pulse()
-	else:
-		name_tag.visible = true
-		patience_bar.visible = true
-		order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+	name_tag.visible = not paying
+	patience_bar.visible = true
+	order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
+	if not paying:
 		_stop_pay_pulse()
 
 func _start_pay_pulse() -> void:
 	_stop_pay_pulse()
 	_pay_pulse = create_tween().set_loops()
-	_pay_pulse.tween_property(order_bubble, "modulate", Color(1.15, 1.1, 0.9), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# Pinalitan ang yellowish modulate ng neutral brightness pulse (1.08, 1.08, 1.08)
+	_pay_pulse.tween_property(order_bubble, "modulate", Color(1.08, 1.08, 1.08), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_pay_pulse.tween_property(order_bubble, "modulate", Color.WHITE, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _stop_pay_pulse() -> void:

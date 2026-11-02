@@ -131,6 +131,13 @@ static func is_product_rotated(product_id: String) -> bool:
 static func get_customer_x_positions(count: int) -> Array[float]:
 	var positions: Array[float] = []
 	var customer_count: int = mini(count, MAX_CUSTOMERS)
+	if customer_count <= 0:
+		return positions
+	if float(customer_count) * CUSTOMER_WIDTH > WINDOW_RECT.size.x:
+		var step := (WINDOW_RECT.size.x - CUSTOMER_WIDTH) / float(customer_count - 1)
+		for index in range(customer_count):
+			positions.append(WINDOW_RECT.position.x + step * float(index))
+		return positions
 	var gap: float = (WINDOW_RECT.size.x - float(customer_count) * CUSTOMER_WIDTH) / float(customer_count + 1)
 	for index in range(customer_count):
 		positions.append(WINDOW_RECT.position.x + gap * float(index + 1) + CUSTOMER_WIDTH * float(index))

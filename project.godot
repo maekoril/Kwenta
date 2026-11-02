@@ -11,9 +11,11 @@ config_version=5
 [application]
 
 config/name="Kwenta"
-run/main_scene="uid://155xx7s6y6ta"
+run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+boot_splash/bg_color=Color(0, 0, 0, 1)
+boot_splash/show_image=false
+config/icon="uid://b37o3ye8oqtg8"
 
 [display]
 

@@ -1,0 +1,86 @@
+extends SceneTree
+const SAVE = preload("res://scripts/campaign_save.gd")
+const TEST_PATH = "res://tests/diary_reader_save_temp.json"
+func _initialize() -> void:
+	call_deferred("run")
+func run() -> void:
+	SAVE.save_path = TEST_PATH
+	var main = load("res://scenes/main.tscn").instantiate()
+	root.add_child(main)
+	await process_frame
+	var pause = main.pause_menu
+	pause.set_available(true)
+	pause.pause()
+	var reader = pause.diary_reader
+	reader.open(main.story)
+	assert(paused and reader.visible and reader.days.is_empty())
+	main.story.choices["day1_play"] = "play"
+	main.story.write_diary_entry(1)
+	main.story.choices["diary_goal_day_1"] = "earned"
+	main.story.choices["day2_overpayment"] = "return"
+	main.story.write_diary_entry(2)
+	main.story.choices["diary_goal_day_2"] = "missed"
+	reader.open(main.story)
+	assert(reader.days == [1, 2] and reader.heading.text.contains("DAY 2"))
+	assert(reader.medal.material != null and reader.choice_label.text.contains("Itinabi"))
+	reader._flip(-1)
+	assert(reader.heading.text.contains("DAY 1") and reader.medal.material == null)
+	assert(reader.choice_label.text.contains("Sumama"))
+	reader._select_section(1)
+	assert(reader.collection_page.visible and not reader.story_page.visible)
+	assert(reader.medal_day == 1 and reader.collection_count.text.contains("1 sa 7"))
+	reader._select_day(2)
+	assert(reader.medal.material != null)
+	reader._flip(1)
+	assert(reader.medal_day == 3 and reader.medal.texture == null)
+	assert(reader.goal_label.text.contains("Wala pang"))
+	reader._select_day(2)
+	reader._select_section(0)
+	assert(reader.page_index == 1 and reader.story_page.visible)
+	assert(reader.day_buttons[2].disabled)
+	reader._select_day(1)
+	assert(reader.page_index == 0)
+	var catalog = preload("res://scripts/illustration_catalog.gd")
+	main.story.choices["day4_rain"] = "shelter"
+	main.story.write_diary_entry(4)
+	reader._select_section(2)
+	reader._select_day(4)
+	assert(reader.gallery.visible and not reader.medal.visible)
+	assert(reader.gallery.entries.size() == 3)
+	assert(catalog.is_unlocked(main.story, catalog.ENTRIES.filter(func(e): return e.id == "shelter")[0]))
+	assert(not catalog.is_unlocked(main.story, catalog.ENTRIES.filter(func(e): return e.id == "lina")[0]))
+	reader.gallery.selected = 1
+	reader.gallery._refresh()
+	assert(reader.gallery.picture.texture == null and not reader.gallery.enlarge.visible)
+	assert(not reader.gallery.title.text.contains("Lina"))
+	reader.gallery.selected = 2
+	reader.gallery._refresh()
+	reader.gallery.enlarge.pressed.emit()
+	assert(reader.gallery.viewer.visible)
+	reader.go_back()
+	assert(reader.visible and not reader.gallery.viewer.visible and paused)
+	reader._select_day(6)
+	assert(reader.gallery.entries.is_empty() and reader.gallery.picture.texture == null)
+	main._show_gallery_illustration("res://assets/story/day5_tonyo_phone_v2.png")
+	assert(main.story.choices.get("gallery_seen_phone", false))
+	assert(catalog.is_unlocked(main.story, catalog.ENTRIES.filter(func(e): return e.id == "phone")[0]))
+	assert(SAVE.write_checkpoint(main.campaign, main.story, {}))
+	var saved = SAVE.load_progress()
+	assert(saved.choices["diary_goal_day_1"] == "earned" and saved.choices["diary_goal_day_2"] == "missed")
+	assert(saved.choices["gallery_seen_phone"])
+	reader.close()
+	assert(paused)
+	pause.resume()
+	assert(not paused)
+	pause.set_available(false)
+	main.briefing_card.show_summary("DAY 2 COMPLETE", "TODAY'S SALES\nBenta: 20", main.size, 2, false)
+	assert(main.briefing_card._diary_button.visible)
+	main.briefing_card._diary_button.pressed.emit()
+	assert(reader.visible and not paused)
+	reader.close()
+	assert(main.briefing_card.visible and not paused)
+	main.queue_free()
+	await process_frame
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	print("Diary reader, navigation, pause and saved goal results passed")
+	quit()

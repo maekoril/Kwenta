@@ -1,6 +1,9 @@
 class_name CampaignState
 extends RefCounted
 
+var paid_purchases: Dictionary = {}
+var debts: Array = []
+
 var config: CampaignConfig
 var day: int = 1
 var cash: int
@@ -11,6 +14,7 @@ var product_price_bonuses: Dictionary = {}
 var customer_trust: Dictionary = {}
 var purchased_store_groups: Array[String] = []
 var stocked_product_ids: Array[String] = []
+var barangay_trust: float = 100.0 # BAGO: Global trust limit kada araw
 
 func purchase_store_group(group_id: String, price: int) -> bool:
 	if group_id.is_empty() or purchased_store_groups.has(group_id) or cash < price:
@@ -22,6 +26,7 @@ func purchase_store_group(group_id: String, price: int) -> bool:
 func _init(campaign_config: CampaignConfig) -> void:
 	config = campaign_config
 	cash = config.initial_cash
+	add_debt("rosa_old", "neighbor_rosa", 320, 0, 0, {}, true)
 	for product_resource in config.product_catalog:
 		var product: ProductData = product_resource
 		if product.unlock_day == 1:
@@ -66,11 +71,23 @@ func set_stocked_product_ids(product_ids: Array[String]) -> void:
 			stocked_product_ids.append(product_id)
 
 func to_dict() -> Dictionary:
-	return {"day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate()}
+	return {"paid_purchases": paid_purchases.duplicate(true), "debts": debts.duplicate(true), "day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust, "customer_trust": customer_trust.duplicate(true), "unlocked_product_ids": unlocked_product_ids.duplicate(), "purchased_upgrade_ids": purchased_upgrade_ids.duplicate(), "upgrade_investment": upgrade_investment, "product_price_bonuses": product_price_bonuses.duplicate(true)}
 
 func from_dict(data: Dictionary) -> void:
+	paid_purchases = data.get("paid_purchases", {}).duplicate(true)
+	debts = data.get("debts", []).duplicate(true)
+	add_debt("rosa_old", "neighbor_rosa", 320, 0, 0, {}, true)
 	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
 	cash = int(data.get("cash", cash))
+	barangay_trust = clampf(float(data.get("barangay_trust", 100.0)), 0.0, 100.0)
+	customer_trust = data.get("customer_trust", {}).duplicate(true)
+	product_price_bonuses = data.get("product_price_bonuses", {}).duplicate(true)
+	upgrade_investment = int(data.get("upgrade_investment", 0))
+	for field in [["unlocked_product_ids", unlocked_product_ids], ["purchased_upgrade_ids", purchased_upgrade_ids]]:
+		if data.has(field[0]):
+			field[1].clear()
+			for value in data[field[0]]:
+				field[1].append(str(value))
 	purchased_store_groups.clear()
 	for group_id in data.get("purchased_store_groups", []):
 		var value := str(group_id)
@@ -136,3 +153,35 @@ func advance_day() -> void:
 		var product: ProductData = product_resource
 		if product.unlock_day == day and not unlocked_product_ids.has(product.id):
 			unlocked_product_ids.append(product.id)
+
+func record_purchase(customer_id: String, amount: int) -> void:
+	paid_purchases[customer_id] = int(paid_purchases.get(customer_id, 0)) + maxi(0, amount)
+
+func has_debt(customer_id: String) -> bool:
+	for debt in debts:
+		if debt.customer == customer_id and int(debt.balance) > 0:
+			return true
+	return false
+
+func credit_rate(customer_id: String) -> float:
+	var spent := int(paid_purchases.get(customer_id, 0))
+	if spent >= 150: return 0.015
+	if spent >= 100: return 0.03
+	if spent >= 50: return 0.05
+	return 0.07
+
+func add_debt(id: String, customer_id: String, principal: int, interest: int, due: int, items: Dictionary = {}, scripted: bool = false) -> void:
+	for debt in debts:
+		if debt.id == id: return
+	debts.append({"id": id, "customer": customer_id, "principal": principal, "interest": interest, "balance": principal + interest, "borrowed_day": day, "due_day": due, "items": items.duplicate(true), "scripted": scripted})
+
+func repay_debt(id: String, amount: int) -> int:
+	for debt in debts:
+		if debt.id == id:
+			var received := mini(maxi(0, amount), int(debt.balance))
+			debt.balance -= received
+			if received > 0 and int(debt.balance) == 0 and not bool(debt.scripted):
+				record_purchase(str(debt.customer), int(debt.principal))
+			cash += received
+			return received
+	return 0

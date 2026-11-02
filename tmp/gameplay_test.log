@@ -1,0 +1,54 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+ERROR: FAIL: second duplicate completes the order
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_completed_duplicate_order_pays_exactly_once (res://tests/gameplay_test_runner.gd:114)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:30)
+ERROR: FAIL: completed order pays the sum of delivered items
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_completed_duplicate_order_pays_exactly_once (res://tests/gameplay_test_runner.gd:115)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:30)
+ERROR: FAIL: completed customer cannot be paid twice
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_completed_duplicate_order_pays_exactly_once (res://tests/gameplay_test_runner.gd:116)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:30)
+ERROR: FAIL: post-completion delivery cannot add extra payment
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_completed_duplicate_order_pays_exactly_once (res://tests/gameplay_test_runner.gd:117)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:30)
+ERROR: FAIL: one customer stands centered in the window
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_customer_positions_fit_the_storefront (res://tests/gameplay_test_runner.gd:304)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:45)
+ERROR: FAIL: two customers are symmetrically spaced inside the window
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_customer_positions_fit_the_storefront (res://tests/gameplay_test_runner.gd:307)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:45)
+ERROR: FAIL: customer hit area stays inside the window
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_customer_positions_fit_the_storefront (res://tests/gameplay_test_runner.gd:310)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:45)
+ERROR: FAIL: customer hit area stays inside the window
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _assert (res://tests/gameplay_test_runner.gd:409)
+       [1] _test_customer_positions_fit_the_storefront (res://tests/gameplay_test_runner.gd:310)
+       [2] _initialize (res://tests/gameplay_test_runner.gd:45)
+ERROR: 8 gameplay assertion(s) failed.
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _initialize (res://tests/gameplay_test_runner.gd:49)
