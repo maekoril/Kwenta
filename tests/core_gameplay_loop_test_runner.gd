@@ -381,6 +381,8 @@ func _test_main_routes_bubble_drops_to_immediate_cash() -> void:
 	_assert(manager.campaign_state.cash > cash_before, "a completed portrait drop pays the global cash balance immediately")
 	var cash_label := main.get("cash_label") as Label
 	_assert(cash_label.text == "%d" % manager.campaign_state.cash, "the cash HUD updates in the same delivery transaction")
+	var sale_feedback := main.get_node_or_null("SalePriceFeedback") as Label
+	_assert(sale_feedback != null and sale_feedback.text == "+₱%d" % customer.bill_total, "a completed cash sale shows the purchased-items total beside the customer")
 	main.queue_free()
 
 func _test_story_replay_resets_the_campaign() -> void:

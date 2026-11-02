@@ -80,6 +80,10 @@ var shelf_shop: ShelfShopModal
 var fiesta_button: Button
 var fiesta_friends: HBoxContainer
 var shop_button: Button
+var shop_cta_glow: Panel
+var shop_cta_tween: Tween
+var shop_order_cue: Label
+var shop_locked_cue: Control
 var customer_actors: Dictionary = {}
 var customer_story_button: Button
 var customer_story_actor: Control
@@ -586,6 +590,7 @@ func _layout_right_hud_rail() -> void:
 	if is_instance_valid(shop_button):
 		shop_button.scale = Vector2.ONE * scale
 		shop_button.position = _shop_button_position()
+		_refresh_shop_cta_layout()
 	if is_instance_valid(utang_button):
 		utang_button.scale = Vector2.ONE * scale
 		utang_button.position = _utang_button_position()
@@ -923,6 +928,15 @@ func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
 	tutorial_hint_tween.tween_callback(tutorial_hint.hide)
 
 func _build_shop_button() -> void:
+	shop_cta_glow = Panel.new()
+	shop_cta_glow.name = "ShopCtaGlow"
+	shop_cta_glow.size = SHOP_BUTTON_SIZE + Vector2(18.0, 18.0)
+	shop_cta_glow.z_index = 54
+	shop_cta_glow.z_as_relative = false
+	shop_cta_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_cta_glow.add_theme_stylebox_override("panel", KwentaStyle.box(Color(1.0, 0.72, 0.16, 0.20), Color("ffd45b"), 14, 4, 4, 3, 12))
+	shop_cta_glow.hide()
+	add_child(shop_cta_glow)
 	shop_button = Button.new()
 	shop_button.name = "ShopIconButton"
 	shop_button.position = _shop_button_position()
@@ -942,6 +956,25 @@ func _build_shop_button() -> void:
 	notebook_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notebook_icon.use_parent_material = true
 	shop_button.add_child(notebook_icon)
+	shop_order_cue = Label.new()
+	shop_order_cue.name = "ShopOrderCue"
+	shop_order_cue.text = "ORDER"
+	shop_order_cue.position = Vector2(4.0, -16.0)
+	shop_order_cue.size = Vector2(66.0, 15.0)
+	shop_order_cue.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shop_order_cue.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	shop_order_cue.add_theme_font_size_override("font_size", 11)
+	shop_order_cue.add_theme_color_override("font_color", Color("ffd45b"))
+	shop_order_cue.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	shop_order_cue.add_theme_constant_override("outline_size", 4)
+	shop_order_cue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_button.add_child(shop_order_cue)
+	shop_locked_cue = HUD_ICON.new().setup(HUD_ICON.Kind.CLOCK, 19.0, Color("2b1a10"), Color("f2dfb9"))
+	shop_locked_cue.name = "ShopLockedCue"
+	shop_locked_cue.position = Vector2(50.0, 49.0)
+	shop_locked_cue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_locked_cue.hide()
+	shop_button.add_child(shop_locked_cue)
 	shop_button.tooltip_text = "Open Inay's supplier list"
 	shop_button.visible = false
 	shop_button.pressed.connect(_open_shelf_shop)
@@ -1329,6 +1362,7 @@ func _create_shift_manager() -> void:
 	shift.customers_changed.connect(_on_customers_changed)
 	shift.customer_timed_out.connect(_on_customer_timed_out)
 	shift.customer_served.connect(_on_customer_served)
+	shift.cash_sale_completed.connect(_on_cash_sale_completed)
 	shift.payment_started.connect(_on_sukli_payment_started)
 	shift.cash_changed.connect(_update_cash)
 	shift.clock_changed.connect(_update_clock)
@@ -1406,6 +1440,15 @@ func _on_customer_served(_customer_id: String, product_types: int) -> void:
 	_refresh_daily_goal_hud()
 	if not was_complete and daily_goal.is_complete():
 		_show_daily_goal_achievement()
+
+func _on_cash_sale_completed(customer_instance_id: String, goods_total: int) -> void:
+	if goods_total <= 0:
+		return
+	var actor: Control = customer_actors.get(customer_instance_id)
+	if not is_instance_valid(actor):
+		return
+	var at := actor.global_position - global_position + Vector2(actor.size.x - 36.0, 165.0)
+	_float_text(at, "+₱%d" % goods_total, Color("d9efaa"), "SalePriceFeedback")
 
 func _show_daily_goal_achievement() -> void:
 	if daily_goal == null or campaign == null:
@@ -2702,9 +2745,9 @@ func _is_waiting_for_change(actor: Control) -> bool:
 	var customer: CustomerState = actor.get("customer")
 	return customer != null and (customer.is_paying() or customer.parked)
 
-func _float_text(at: Vector2, text: String, color: Color) -> void:
+func _float_text(at: Vector2, text: String, color: Color, node_name: String = "GameplayFeedback") -> void:
 	var label := _label(text, 42, color)
-	label.name = "GameplayFeedback"
+	label.name = node_name
 	label.z_index = 45
 	label.add_theme_color_override("font_outline_color", Color("2b1a10"))
 	label.add_theme_constant_override("outline_size", 8)
@@ -2753,10 +2796,41 @@ func _refresh_shop_button() -> void:
 		# Keep the button tappable so it can explain why the shop is locked.
 		shop_button.disabled = false
 		(shop_button.material as ShaderMaterial).set_shader_parameter("grayscale", not available)
+		_refresh_shop_cta(available)
 		# ShiftStoryEvents moves the full-screen dialogue bubble to the top of the
 		# tree. Keep this tap target after it, otherwise the bubble consumes taps.
 		if shop_button.visible:
 			move_child(shop_button, get_child_count() - 1)
+
+func _refresh_shop_cta(available: bool) -> void:
+	if not is_instance_valid(shop_button):
+		return
+	var cta_visible := available and shop_button.visible
+	if is_instance_valid(shop_order_cue):
+		shop_order_cue.visible = cta_visible
+	if is_instance_valid(shop_locked_cue):
+		shop_locked_cue.visible = shop_button.visible and shift_in_progress and not available
+	shop_button.tooltip_text = "Order supplies before opening" if cta_visible else "Supplier ordering is available before opening"
+	if not is_instance_valid(shop_cta_glow):
+		return
+	shop_cta_glow.visible = cta_visible
+	_refresh_shop_cta_layout()
+	if cta_visible:
+		if shop_cta_tween == null or not shop_cta_tween.is_valid():
+			shop_cta_glow.modulate.a = 0.55
+			shop_cta_tween = create_tween().set_loops()
+			shop_cta_tween.tween_property(shop_cta_glow, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			shop_cta_tween.tween_property(shop_cta_glow, "modulate:a", 0.55, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	elif shop_cta_tween != null and shop_cta_tween.is_valid():
+		shop_cta_tween.kill()
+		shop_cta_tween = null
+
+func _refresh_shop_cta_layout() -> void:
+	if not is_instance_valid(shop_cta_glow) or not is_instance_valid(shop_button):
+		return
+	var scale := _hud_scale()
+	shop_cta_glow.scale = Vector2.ONE * scale
+	shop_cta_glow.position = shop_button.position - Vector2(9.0, 9.0) * scale
 
 func _show_shop_unavailable_notice() -> void:
 	var previous := get_node_or_null("ShopUnavailableNotice")
@@ -2766,12 +2840,12 @@ func _show_shop_unavailable_notice() -> void:
 	notice.name = "ShopUnavailableNotice"
 	notice.z_index = 56
 	notice.z_as_relative = false
-	notice.position = shop_button.position + Vector2(-410, 0)
-	notice.custom_minimum_size = Vector2(395, 74)
+	notice.position = shop_button.position + Vector2(-480, 0)
+	notice.custom_minimum_size = Vector2(465, 74)
 	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notice.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8e8c6"), Color("80532c"), 12, 10, 10, 4, 5))
 	add_child(notice)
-	var message := KwentaStyle.make_label("Shop unavailable during your shift.", 23, KwentaStyle.INK)
+	var message := KwentaStyle.make_label("Supplier orders are available before opening.", 21, KwentaStyle.INK)
 	message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notice.add_child(message)
 	var animation := notice.create_tween()

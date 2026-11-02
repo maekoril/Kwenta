@@ -16,6 +16,7 @@ signal customer_timed_out(customer_instance_id: String)
 signal barangay_trust_changed(new_value: float) # BAGO
 signal game_over_triggered() # BAGO
 signal customer_served(customer_id: String, product_types: int)
+signal cash_sale_completed(customer_instance_id: String, goods_total: int)
 signal story_customer_arrived(customer_instance_id: String, beats: Array)
 signal story_customer_sale_completed(customer_instance_id: String, event: Dictionary)
 signal haggle_requested(customer_instance_id: String, ask: int)
@@ -458,6 +459,7 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	if not customer.credit_approved:
 		campaign_state.record_purchase(customer.customer_id, customer.bill_total)
 		paid_goods_sales += customer.bill_total
+		cash_sale_completed.emit(customer.instance_id, customer.bill_total)
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
 	customers_served += 1
