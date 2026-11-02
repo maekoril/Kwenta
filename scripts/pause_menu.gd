@@ -11,6 +11,7 @@ signal main_menu_requested
 var _available := false
 var _button: Button
 var _pause_visual: TextureRect
+var _custom_pause_icon: Texture2D
 const PAUSE_NORMAL: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_normal.png")
 const PAUSE_HOVER: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_hover.png")
 const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
@@ -142,9 +143,13 @@ func set_button_size(button_size: Vector2) -> void:
 func set_button_scale(scale_factor: float) -> void:
 	_button.scale = Vector2.ONE * scale_factor
 
+func set_button_icon(texture: Texture2D) -> void:
+	_custom_pause_icon = texture
+	_update_pause_visual()
+
 func _update_pause_visual() -> void:
 	if _pause_visual != null:
-		_pause_visual.texture = PAUSE_HOVER if _button.is_hovered() else PAUSE_NORMAL
+		_pause_visual.texture = _custom_pause_icon if _custom_pause_icon != null else (PAUSE_HOVER if _button.is_hovered() else PAUSE_NORMAL)
 
 func _build_overlay() -> void:
 	_overlay = Control.new()
