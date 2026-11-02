@@ -47,10 +47,33 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		assert(main.shift.frozen and not main.utang_tutorial_message.is_empty())
-		main.utang_button.pressed.emit()
+		main.utility_toggle.pressed.emit()
+		main._refresh_utility_drawer()
+		assert(not main.utility_utang.disabled)
+		main.utility_utang.pressed.emit()
 		assert(main.utang_ledger.visible)
 		main.utang_close.pressed.emit()
 		assert(not main.shift.frozen)
+	set_meta("kwenta_debug_launch", {"day": 4, "moment": 2, "skip_tutorials": true})
+	change_scene_to_file("res://scenes/main.tscn")
+	await create_timer(0.5).timeout
+	var opening = current_scene
+	if opening.store_sign_tween != null and opening.store_sign_tween.is_valid(): opening.store_sign_tween.kill()
+	opening._after_opening_sign()
+	assert(opening.tutorial_step == opening.TutorialStep.DAY4_UTANG_MENU)
+	assert(not opening.story_events.is_active() and opening.shift.active_customers.is_empty())
+	opening.utility_toggle.pressed.emit()
+	await create_timer(0.1).timeout
+	assert(opening.tutorial_step == opening.TutorialStep.DAY4_UTANG_ROW)
+	opening.utility_utang.pressed.emit()
+	assert(opening.utang_ledger.visible)
+	opening.utang_close.pressed.emit()
+	opening.shift.story_queue.clear()
+	for attempt in range(20):
+		opening.shift.active_customers.clear()
+		opening.shift._spawn_customer()
+		if opening.shift.credit_requested_today: break
+	assert(opening.story_events._mode == "credit_visitor")
 	set_meta("kwenta_debug_launch", {"day": 5, "moment": 31, "skip_tutorials": true})
 	change_scene_to_file("res://scenes/main.tscn")
 	await create_timer(0.5).timeout
@@ -63,7 +86,10 @@ func run() -> void:
 	await process_frame
 	assert(main.campaign.cash == before + 107)
 	assert(main.shift.frozen and not main.utang_tutorial_message.is_empty())
-	main.utang_button.pressed.emit()
+	main.utility_toggle.pressed.emit()
+	main._refresh_utility_drawer()
+	assert(not main.utility_utang.disabled)
+	main.utility_utang.pressed.emit()
 	assert(main.utang_ledger.visible)
 	print("UTANG TUTORIAL PASS: debug approve, decline, ledger and repayment")
 	quit()

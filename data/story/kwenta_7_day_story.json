@@ -1299,7 +1299,8 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "Sandali po! May payong dito si Inay. Hiramin n'yo muna para hindi na kayo mabasa."
+							"text": "Sandali po! May payong dito si Inay. Hiramin n'yo muna para hindi na kayo mabasa.",
+							"show_prop": "umbrella_handoff"
 						},
 						{
 							"speaker": "Kuya Dodong",
@@ -1309,7 +1310,8 @@
 						{
 							"speaker": "Narrator",
 							"portrait": "",
-							"text": "Iniabot ni Tonyo ang payong. Binuksan ito ni Kuya Dodong at nagpaalam bago umuwi."
+							"text": "Iniabot ni Tonyo ang payong. Binuksan ito ni Kuya Dodong at nagpaalam bago umuwi.",
+							"show_prop": "hide_scene_illustration"
 						},
 						{
 							"speaker": "Tonyo",

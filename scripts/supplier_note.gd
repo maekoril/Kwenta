@@ -10,6 +10,7 @@ var _page: PanelContainer
 var _dim: ColorRect
 var _intro: Tween
 var _product_list: Label
+var _previous_sibling_index := -1
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -78,6 +79,10 @@ func _paper_label(value: String, font_size: int) -> Label:
 	return label
 
 func present() -> void:
+	var parent := get_parent()
+	if parent != null:
+		_previous_sibling_index = get_index()
+		parent.move_child(self, parent.get_child_count() - 1)
 	var config := StoreConfig.load_config("res://data/store_config.json")
 	_product_list.text = "Palawit: sabon, shampoo, toothpaste     PHP %d\nTubig     PHP %d\nToyo, patis, suka     PHP %d\nMantika     PHP %d\nBigas     PHP %d" % [
 		_group_price(config, "hanging_strip"), _group_price(config, "water_shelf"),
@@ -118,4 +123,8 @@ func _group_price(config: Dictionary, group_id: String) -> int:
 
 func _dismiss() -> void:
 	visible = false
+	var parent := get_parent()
+	if parent != null and _previous_sibling_index >= 0:
+		parent.move_child(self, mini(_previous_sibling_index, parent.get_child_count() - 1))
+	_previous_sibling_index = -1
 	closed.emit()
