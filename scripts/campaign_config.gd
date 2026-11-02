@@ -11,7 +11,7 @@ const FULL_SHIFT_GAME_MINUTES := 720 # 8:00 AM through 8:00 PM
 # Full 8 AM–8 PM shift duration. Shorter days scale from this value using their
 # configured closing time, so the campaign remains easy to retune in one place.
 @export var shift_length_seconds: float = 480.0
-@export var shift_close_minutes_by_day: Array[int] = [240, 540, 600, 600, 720, 720, 720]
+@export var shift_close_minutes_by_day: Array[int] = [240, 540, 600, 600, 720, 840, 720]
 @export var customer_spawn_interval: float = 18.0
 @export var customer_spawn_intervals_by_day: Array[float] = [11.0, 16.0, 14.0, 12.0, 9.0, 6.0, 12.0]
 @export var customer_patience_seconds: float = 55.0
@@ -31,6 +31,8 @@ func get_shift_close_minutes(day: int) -> int:
 	return shift_close_minutes_by_day[mini(maxi(day - 1, 0), shift_close_minutes_by_day.size() - 1)]
 
 func get_shift_length_seconds_for_day(day: int) -> float:
+	if day == 6:
+		return shift_length_seconds # Fiesta reaches 10 PM in the usual full-shift play time.
 	return shift_length_seconds * float(get_shift_close_minutes(day)) / float(FULL_SHIFT_GAME_MINUTES)
 
 func get_customer_spawn_interval_for_day(day: int) -> float:

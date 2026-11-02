@@ -2158,7 +2158,7 @@ func _show_pre_shift_briefing() -> void:
 	_refresh_shop_button()
 	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"), new_purchase_groups_today)
 	if campaign.day == 6:
-		briefing.focus = "Pindutin ang mukha ng kalaro, tapos piliin ang customer. Bawat isa: 20 segundo ang pahinga." if story.get_choice("day6_help") == "ask" else "Mag-isa: +20% ng bayad na paninda kapag natapos ang shift."
+		briefing.focus = "Piliin si Mikay o Jun-jun at ang customer. Si Bogs, pindutin lang. May sariling pahinga ang bawat isa." if story.get_choice("day6_help") == "ask" else "Mag-isa: +20% ng bayad na paninda kapag natapos ang shift."
 	showing_pre_shift_briefing = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true

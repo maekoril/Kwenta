@@ -179,7 +179,7 @@ func _test_campaign_unlocks_and_pacing() -> void:
 
 func _test_day_by_day_learning_curve() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
-	var expected_close_minutes: Array[int] = [240, 540, 600, 600, 720, 720, 720]
+	var expected_close_minutes: Array[int] = [240, 540, 600, 600, 720, 840, 720]
 	var expected_durations: Array[float] = [160.0, 360.0, 400.0, 400.0, 480.0, 480.0, 480.0]
 	var expected_caps: Array[int] = [1, 2, 2, 3, 4, 5, 4]
 	for index in expected_close_minutes.size():

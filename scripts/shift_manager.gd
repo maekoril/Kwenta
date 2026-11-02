@@ -613,7 +613,7 @@ func _choose_customer_id() -> String:
 	return ids[0]
 
 func _update_clock() -> void:
-	var game_minutes := int(floor(elapsed_seconds / shift_duration_seconds * float(shift_close_minutes)))
+	var game_minutes := mini(shift_close_minutes, int(floor(elapsed_seconds / shift_duration_seconds * float(shift_close_minutes))))
 	var hour := 8 + floori(float(game_minutes) / 60.0)
 	var minute := game_minutes % 60
 	var display_hour := hour if hour <= 12 else hour - 12

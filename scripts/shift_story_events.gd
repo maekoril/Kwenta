@@ -271,8 +271,13 @@ func _try_start_waiting_scene() -> void:
 		story.choices["day2_cash_legacy"] = "available" if shift.campaign_state.cash >= 50 else "spent"
 	shift.story_waiting_for_clear = false
 	if str(event.get("type", "")) == "customer":
+		var queued_before := shift.story_queue.size()
 		_run_customer_event(event)
-		shift._spawn_customer()
+		if shift.story_queue.size() > queued_before:
+			# The waiting visitor must enter first, even if other story customers are queued.
+			var waiting_customer: Dictionary = shift.story_queue.pop_back()
+			shift.story_queue.push_front(waiting_customer)
+			shift._spawn_customer()
 	else:
 		_queue_popup({"kind": "scene", "event": event})
 
