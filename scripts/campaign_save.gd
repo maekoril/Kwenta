@@ -18,10 +18,10 @@ static func load_progress() -> Dictionary:
 		return {}
 	if int(campaign.get("day", 0)) < 1 or int(campaign.get("day", 0)) > 7:
 		return {}
-	for key in ["customer_trust", "product_price_bonuses"]:
+	for key in ["customer_trust", "product_price_bonuses", "paid_purchases"]:
 		if campaign.has(key) and not campaign[key] is Dictionary:
 			return {}
-	for key in ["unlocked_product_ids", "purchased_upgrade_ids", "purchased_store_groups"]:
+	for key in ["unlocked_product_ids", "purchased_upgrade_ids", "purchased_store_groups", "debts"]:
 		if campaign.has(key) and not campaign[key] is Array:
 			return {}
 	return value

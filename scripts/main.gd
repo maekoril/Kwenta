@@ -71,6 +71,8 @@ var product_items_by_id: Dictionary = {}
 var customer_layer: Control
 var store_layer_renderer: StoreLayerRenderer
 var shelf_shop: ShelfShopModal
+var fiesta_button: Button
+var fiesta_friends: HBoxContainer
 var shop_button: Button
 var customer_actors: Dictionary = {}
 var customer_story_button: Button
@@ -97,12 +99,16 @@ var prologue_background: TextureRect
 var prologue_fade: ColorRect
 var story_illustration: TextureRect
 var paolo_debt_note: Control
+var utang_button: Button
+var utang_close: Button
 var utang_ledger: Control
 var supplier_note
 var current_choice_data: Dictionary = {}
 var current_choice_ids: Array[String] = []
 var ui_refresh_elapsed: float = 0.0
 var campaign_started: bool = false
+var shift_start_credit: Dictionary = {}
+var shift_start_choices: Dictionary = {}
 var shift_start_cash: int = 0
 var shift_start_trust: Dictionary = {}
 var displayed_cash: int = -1
@@ -226,6 +232,13 @@ func _ready() -> void:
 		if not saved.is_empty():
 			campaign.from_dict(saved["campaign"])
 			story.choices = saved["choices"].duplicate(true)
+			if not saved["campaign"].has("debts"):
+				if story.get_choice("day3_candy") == "credit":
+					campaign.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
+				for debt in campaign.debts:
+					if debt.id == "rosa_old" and story.get_choice("day5_debt") == "installments": debt.balance = 210
+					if debt.id == "paolo_story" and campaign.day >= 7: debt.balance = 0
+
 			if campaign.day >= 3 and story.get_choice("day2_overpayment") == "keep" and story.get_choice("day2_money_separate").is_empty():
 				story.choices["day2_cash_legacy"] = "available" if campaign.cash >= 50 else "spent"
 			resumed_campaign = true
@@ -267,11 +280,37 @@ func _ready() -> void:
 	utang_ledger = UTANG_LEDGER.new()
 	utang_ledger.name = "UtangLedger"
 	add_child(utang_ledger)
+	utang_button = Button.new()
+	utang_button.text = "UTANG"
+	utang_button.position = Vector2(1790, 190) + _ui_offset()
+	utang_button.size = Vector2(100, 58)
+	utang_button.z_index = 55
+	KwentaStyle.style_button(utang_button, KwentaStyle.PAPER_DARK, 22)
+	add_child(utang_button)
+	utang_close = Button.new()
+	utang_close.text = "Isara ang kuwaderno"
+	utang_close.position = Vector2(760, 580) + _ui_offset()
+	utang_close.size = Vector2(400, 70)
+	utang_close.z_index = 56
+	KwentaStyle.style_button(utang_close, KwentaStyle.PAPER_DARK, 28)
+	utang_close.hide()
+	add_child(utang_close)
+	utang_button.pressed.connect(func():
+		if shift == null or shift.frozen or not shift.is_running: return
+		shift.frozen = true
+		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
+		utang_close.show())
+	utang_close.pressed.connect(func():
+		utang_ledger.hide()
+		utang_close.hide()
+		shift.frozen = false)
+
 	supplier_note = SUPPLIER_NOTE.new()
 	supplier_note.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(supplier_note)
 	_build_cash_tray()
 	_build_shop_button()
+	_build_fiesta_controls()
 	# Skip Day is intentionally hidden; keep the debug helper for developers only.
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
@@ -404,6 +443,9 @@ func _show_save_warning() -> void:
 	warning.popup_centered()
 
 func _process(delta: float) -> void:
+	_refresh_fiesta_controls()
+	if is_instance_valid(utang_button):
+		utang_button.visible = campaign != null and campaign.day >= 4 and shift != null and shift.is_running and not shift.frozen
 	if is_instance_valid(customer_story_button) and is_instance_valid(customer_story_actor):
 		customer_story_button.position = customer_story_actor.global_position - global_position
 		customer_story_button.modulate.a = customer_story_actor.modulate.a
@@ -1155,6 +1197,8 @@ func _on_bubble_choice(index: int) -> void:
 	_select_story_choice(current_choice_data, current_choice_ids[index])
 
 func _on_bubble_advanced() -> void:
+	if showing_pre_shift_briefing or story_after_action.is_empty():
+		return
 	if story_events != null and story_events.is_active():
 		return
 	story_beat_index += 1
@@ -1491,6 +1535,8 @@ func _show_shift_summary() -> void:
 		daily_goal.finalize(campaign.count_trusted_regulars())
 		_refresh_daily_goal_hud()
 	var summary_text_value := "TODAY'S SALES\nBenta ngayon: ₱%d\nPera sa kaha: ₱%d\nCustomers served: %d\nCustomers na umalis: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
+	if campaign.day == 6 and shift.fiesta_route == "alone":
+		summary_text_value += "\nDagdag ni Inay — 20%%: ₱%d\nBatayan: ₱%d na bayad na paninda (walang tips o singil sa utang)" % [shift.fiesta_bonus, shift.paid_goods_sales]
 	if shift.debt_payments_received > 0:
 		summary_text_value += "\nBayad sa utang: ₱%d" % shift.debt_payments_received
 	if daily_goal != null:
@@ -1575,6 +1621,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration = TextureRect.new()
 	story_illustration.name = "DayTwoStoryIllustration"
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
+	_update_story_illustration_fit()
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1583,9 +1630,18 @@ func _build_day_two_visuals() -> void:
 	story_illustration.visible = false
 	add_child(story_illustration)
 	story_illustration.visibility_changed.connect(func(): illustration_backdrop.visible = story_illustration.visible)
+	_update_story_illustration_fit()
+func _update_story_illustration_fit() -> void:
+	if story_illustration.texture == null:
+		return
+	# These full-screen shots fill landscape phones as well as desktop windows.
+	# Cover preserves proportions; only the outer scenery is cropped.
+	var path := story_illustration.texture.resource_path
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png"] else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+
 func _show_story_prop(prop_name: String) -> void:
 	if prop_name == "utang_ledger":
-		utang_ledger.show_note(story.get_choice("day3_candy") == "credit", 210 if story.get_choice("day5_debt") == "installments" else 320)
+		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
 		return
 	if prop_name == "hide_utang_ledger":
 		utang_ledger.visible = false
@@ -1600,15 +1656,19 @@ func _show_story_prop(prop_name: String) -> void:
 		return
 	if prop_name == "berting_counter_closeup":
 		story_illustration.texture = load("res://assets/story/berting_counter_50.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif prop_name == "lina_walking_away":
 		story_illustration.texture = load("res://assets/story/day4_lina_alfa_corner.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif prop_name == "friends_shelter":
 		story_illustration.texture = load("res://assets/story/day4_friends_shelter.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif prop_name == "alfa_save_corner":
 		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
 		story_illustration.visible = false
@@ -1661,22 +1721,26 @@ func _show_current_story_beat() -> void:
 		return
 	var beat: Dictionary = story_beats[story_beat_index]
 	if str(beat.get("show_prop", "")) == "utang_ledger":
-		utang_ledger.show_note(story.get_choice("day3_candy") == "credit", 210 if story.get_choice("day5_debt") == "installments" else 320)
+		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
 	if beat.has("story_visitor") and story_events != null:
 		bubble.close()
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
 		await story_events.story_visitor_tapped
 	if str(beat.get("cutscene", "")) == "box_fall":
 		story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
 		story_illustration.texture = load("res://assets/story/day4_alfa_save_corner.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
 		story_illustration.texture = load("res://assets/story/day5_tonyo_wakes.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif str(beat.get("cutscene", "")) == "day5_phone":
 		story_illustration.texture = load("res://assets/story/day5_tonyo_phone_v2.png") as Texture2D
+		_update_story_illustration_fit()
 		story_illustration.visible = true
 	elif str(beat.get("cutscene", "")) == "day5_to_store":
 		bubble.close()
@@ -1712,6 +1776,10 @@ func _show_current_story_beat() -> void:
 
 	# A beat can carry "cash" (e.g. a tip) that is paid out when the beat appears.
 	var bonus := int(beat.get("cash", 0))
+	if str(beat.get("debt_payment", "")) == "paolo_story":
+		campaign.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
+		shift.debt_payments_received += campaign.repay_debt("paolo_story", 3)
+		_update_cash(campaign.cash)
 	if bonus != 0:
 		campaign.cash += bonus
 		_update_cash(campaign.cash)
@@ -1935,10 +2003,20 @@ func _on_briefing_start_pressed() -> void:
 	_on_summary_button_pressed()
 
 func _show_pre_shift_briefing() -> void:
+	# Retire the intro/choice dialogue before handing input to the briefing.
+	showing_pre_shift_briefing = true
+	story_after_action = ""
+	story_beats.clear()
+	story_beat_index = 0
+	current_choice_ids.clear()
+	current_choice_data.clear()
+	bubble.close()
 	_ensure_daily_goal()
 	shop_available = campaign.day > 1
 	_refresh_shop_button()
 	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"), new_purchase_groups_today)
+	if campaign.day == 6:
+		briefing.focus = "Mikay: tamang sukli sa napiling customer. Recharge: 20 segundo." if story.get_choice("day6_help") == "ask" else "Mag-isa: +20% ng bayad na paninda kapag natapos ang shift."
 	showing_pre_shift_briefing = true
 	summary_panel.visible = false
 	summary_backdrop.visible = true
@@ -1952,6 +2030,8 @@ func _begin_shift() -> void:
 		pause_menu.set_available(true)
 	if debug_skip_button != null:
 		debug_skip_button.visible = true
+	shift_start_credit = {"debts": campaign.debts.duplicate(true), "paid": campaign.paid_purchases.duplicate(true)}
+	shift_start_choices = story.choices.duplicate(true)
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
 	_ensure_daily_goal()
@@ -1959,6 +2039,7 @@ func _begin_shift() -> void:
 	tutorial_delivery_seen = bool(completed_tutorials.get("day1_drag", false))
 	# Keep the campaign's day-by-day patience curve, then layer story-choice
 	# consequences on top of it.
+	shift.fiesta_route = story.get_choice("day6_help") if campaign.day == 6 else ""
 	var modifiers := story.get_day_modifiers(campaign.day)
 	var patience := campaign.get_customer_patience_seconds() * float(modifiers.get("patience_mult", 1.0))
 	shift.patience_seconds_override = 999999.0 if campaign.day == CAMPAIGN_CONFIG.campaign_day_count else patience
@@ -2623,6 +2704,9 @@ func _retry_current_day() -> void:
 	customer_actors.clear()
 	cash_tray.close()
 	
+	campaign.debts = shift_start_credit.get("debts", []).duplicate(true)
+	campaign.paid_purchases = shift_start_credit.get("paid", {}).duplicate(true)
+	story.choices = shift_start_choices.duplicate(true)
 	campaign.cash = shift_start_cash
 	campaign.customer_trust = shift_start_trust.duplicate(true)
 	campaign.barangay_trust = 100.0
@@ -2638,3 +2722,59 @@ func _retry_current_day() -> void:
 	apply_environment(campaign.day)
 	
 	_present_day_intro()
+
+func _build_fiesta_controls() -> void:
+	fiesta_button = Button.new()
+	fiesta_button.name = "FiestaAbilityButton"
+	fiesta_button.z_index = 56
+	fiesta_button.custom_minimum_size = Vector2(430, 76)
+	KwentaStyle.style_button(fiesta_button, KwentaStyle.GOLD, 26)
+	fiesta_button.add_theme_color_override("font_disabled_color", KwentaStyle.INK)
+	fiesta_button.hide()
+	add_child(fiesta_button)
+	fiesta_button.pressed.connect(func():
+		if cash_tray.is_open() and shift.use_helper_change(cash_tray.customer_id):
+			cash_tray.close()
+			_play_audio_cues(["sale"]))
+	fiesta_friends = HBoxContainer.new()
+	fiesta_friends.name = "FiestaFriends"
+	fiesta_friends.z_index = 31
+	fiesta_friends.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fiesta_friends.hide()
+	add_child(fiesta_friends)
+	for role in [["mikay_smug", "Mikay", "Sukli"], ["jun_jun_tara", "Jun-jun", "Paninda"], ["bogs", "Bogs", "Pila"]]:
+		var column := VBoxContainer.new()
+		column.custom_minimum_size.x = 130
+		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fiesta_friends.add_child(column)
+		var portrait := TextureRect.new()
+		portrait.texture = COUNTER_ART.customer_portrait(role[0], PORTRAIT_ATLAS)
+		portrait.custom_minimum_size = Vector2(95, 100)
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(portrait)
+		var label := KwentaStyle.make_label("%s · %s" % [role[1], role[2]], 20, KwentaStyle.PAPER)
+		label.add_theme_color_override("font_outline_color", KwentaStyle.INK)
+		label.add_theme_constant_override("outline_size", 6)
+		column.add_child(label)
+
+func _refresh_fiesta_controls() -> void:
+	if not is_instance_valid(fiesta_button): return
+	var active := campaign != null and campaign.day == 6 and shift != null and shift.is_running and not shift.frozen and not opening_sign_active
+	fiesta_button.visible = active
+	fiesta_friends.visible = active and shift.fiesta_route == "ask"
+	fiesta_button.position = Vector2(35, 930) + _ui_offset()
+	fiesta_friends.position = Vector2(35, 785) + _ui_offset()
+	if not active: return
+	if shift.fiesta_route == "alone":
+		fiesta_button.disabled = true
+		fiesta_button.text = "Dagdag ni Inay: ₱%d (20%%)" % roundi(shift.paid_goods_sales * 0.2)
+		fiesta_button.tooltip_text = "Sa pagsasara: 20% ng bayad na paninda. Hindi kasama ang tips at singil sa utang."
+	else:
+		fiesta_button.disabled = shift.helper_cooldown > 0 or not cash_tray.is_open()
+		if shift.helper_cooldown > 0:
+			fiesta_button.text = "Mikay · Handa sa %ds" % ceili(shift.helper_cooldown)
+		else:
+			fiesta_button.text = "Tulong sa Sukli · Handa" if cash_tray.is_open() else "Mikay · Piliin ang suklian"
+		fiesta_button.tooltip_text = "Buksan ang suklian ng customer, saka humingi ng tulong. Tamang sukli sa isang customer; 20 segundo bago magamit ulit."

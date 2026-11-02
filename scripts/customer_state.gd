@@ -4,6 +4,10 @@ extends RefCounted
 enum DeliveryResult { INACTIVE = 3 }
 enum Phase { ORDERING, PAYING }
 
+var credit_offer: Dictionary = {}
+var credit_approved := false
+var bill_total := 0
+
 var customer_id: String
 var instance_id: String = ""
 var order: OrderState

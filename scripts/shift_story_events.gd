@@ -39,6 +39,9 @@ var shift: ShiftManager
 var bubble: DialogueBubble
 var portrait_atlas: Texture2D
 
+var _credit_layer: CanvasLayer
+var credit_panel: Control
+
 var _day: int = 0
 var _in_shift: bool = false
 var _suppressed: bool = false
@@ -71,6 +74,8 @@ func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: Dial
 		bubble = bubble_ref
 		bubble.advanced.connect(_on_bubble_advanced)
 		bubble.choice_made.connect(_on_bubble_choice)
+	shift.credit_requested.connect(_on_credit_requested)
+	shift.repayment_requested.connect(_on_repayment_requested)
 	shift.game_minutes_changed.connect(_on_game_minutes)
 	shift.haggle_requested.connect(_on_haggle_requested)
 	shift.mixup_requested.connect(_on_mixup_requested)
@@ -83,6 +88,10 @@ func bind(story_ref: StoryProgression, shift_ref: ShiftManager, bubble_ref: Dial
 func _disconnect_shift() -> void:
 	if shift == null or not is_instance_valid(shift):
 		return
+	if shift.credit_requested.is_connected(_on_credit_requested):
+		shift.credit_requested.disconnect(_on_credit_requested)
+	if shift.repayment_requested.is_connected(_on_repayment_requested):
+		shift.repayment_requested.disconnect(_on_repayment_requested)
 	if shift.game_minutes_changed.is_connected(_on_game_minutes):
 		shift.game_minutes_changed.disconnect(_on_game_minutes)
 	if shift.haggle_requested.is_connected(_on_haggle_requested):
@@ -106,6 +115,7 @@ func is_active() -> bool:
 
 # Call right before shift.start_shift().
 func begin_shift(day: int) -> void:
+	_hide_credit_panel()
 	_day = day
 	_in_shift = true
 	_suppressed = false
@@ -156,6 +166,7 @@ func begin_shift(day: int) -> void:
 
 # Call when the shift ends.
 func end_shift() -> void:
+	_hide_credit_panel()
 	_hide_story_visitor()
 	_hide_scene_illustration()
 	_waiting_scene.clear()
@@ -170,6 +181,7 @@ func end_shift() -> void:
 
 # Debug "skip day": drop everything so a popup can't stall the fast-forward.
 func suppress() -> void:
+	_hide_credit_panel()
 	if str(_current.get("kind", "")) == "post_sale" and shift != null:
 		shift.finish_story_customer(str(_current.get("id", "")))
 	_hide_story_visitor()
@@ -340,12 +352,19 @@ func _queue_popup(popup: Dictionary) -> void:
 
 
 func _start_next() -> void:
+	_hide_credit_panel()
 	if _queue.is_empty():
 		_finish()
 		return
 	_current = _queue.pop_front()
 	_scene_choice_done = false
 	match str(_current.get("kind", "")):
+		"credit":
+			_show_credit()
+		"repayment":
+			_mode = "choice"
+			var debt: Dictionary = _current.debt
+			bubble.ask(str(debt.customer).capitalize(), "Heto ang bayad kong ₱%d. Salamat sa pautang kahapon!" % int(debt.balance), ["Tanggapin ang bayad"], _portrait(str(debt.customer)), str(debt.customer))
 		"arrival":
 			_play_beats(_current.get("beats", []))
 		"customer_visitor":
@@ -495,6 +514,11 @@ func _on_bubble_choice(index: int) -> void:
 		return
 	_mode = ""
 	match str(_current.get("kind", "")):
+		"repayment":
+			var debt: Dictionary = _current.debt
+			shift.debt_payments_received += shift.campaign_state.repay_debt(str(debt.id), int(debt.balance))
+			shift.cash_changed.emit(shift.campaign_state.cash)
+			_start_next()
 		"scene", "post_sale", "customer_visitor":
 			_resolve_scene_choice(index)
 		"haggle":
@@ -590,14 +614,21 @@ func _resolve_scene_choice(index: int) -> void:
 	if not story.record_choice(choice_id, option_id):
 		push_warning("Could not record story choice %s / %s" % [choice_id, option_id])
 		return
+	if choice_id == "day3_candy" and option_id == "credit":
+		shift.campaign_state.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
 	var amount := int(option.get("cash_delta", 0))
 	if story.get_choice("day2_cash_legacy") == "available":
 		amount += int(option.get("cash_delta_legacy", 0))
 	if amount != 0:
-		shift.campaign_state.cash += amount
+		if bool(choice.get("record_debt_payment", false)):
+			shift.campaign_state.add_debt("rosa_old", "neighbor_rosa", 320, 0, 0, {}, true)
+			amount = shift.campaign_state.repay_debt("rosa_old", amount)
+		else:
+			shift.campaign_state.cash += amount
 		if bool(choice.get("record_debt_payment", false)):
 			shift.debt_payments_received += amount
 		if bool(choice.get("record_sale", false)):
+			shift.campaign_state.record_purchase(str(event.get("visitor", "")), amount)
 			shift.shift_earnings += amount
 			shift.customers_served += 1
 			shift.customer_served.emit(str(event.get("visitor", "")), 1)
@@ -691,3 +722,35 @@ func _resolve_mixup(caught: bool) -> void:
 			_play_beats(variants[maxi(0, shift.mixup_seen - 1) % variants.size()])
 	else:
 		_play_beats(_mixup_entry.get("missed", []))
+
+func _on_credit_requested(instance_id: String) -> void:
+	_queue_popup({"kind": "credit", "id": instance_id})
+
+func _on_repayment_requested(debt: Dictionary) -> void:
+	_queue_popup({"kind": "repayment", "debt": debt})
+
+func _show_credit() -> void:
+	var customer := _find_story_customer(str(_current.id))
+	if customer == null:
+		_start_next()
+		return
+	bubble.close()
+	_credit_layer = CanvasLayer.new()
+	_credit_layer.layer = 46
+	add_child(_credit_layer)
+	credit_panel = preload("res://scripts/utang_offer_panel.gd").new()
+	_credit_layer.add_child(credit_panel)
+	credit_panel.present(customer, shift.campaign_state, shift.products_by_id, _portrait(customer.customer_id))
+	_mode = "credit_choice"
+	credit_panel.decided.connect(func(approved: bool):
+		if not _active or _mode != "credit_choice": return
+		_mode = ""
+		shift.resolve_credit(str(_current.id), approved)
+		_start_next())
+
+func _hide_credit_panel() -> void:
+	if is_instance_valid(_credit_layer):
+		if is_instance_valid(credit_panel): credit_panel.hide()
+		_credit_layer.queue_free()
+	_credit_layer = null
+	credit_panel = null

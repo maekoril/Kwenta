@@ -41,7 +41,7 @@ func run() -> void:
 		assert(saw_note == (option == "credit"))
 		assert(not main.paolo_debt_note.visible)
 		var later: Array = main.story.get_day_callback_beats(6)
-		var repayment: Array = later.filter(func(beat): return int(beat.get("cash", 0)) == 3)
+		var repayment: Array = later.filter(func(beat): return str(beat.get("debt_payment", "")) == "paolo_story")
 		assert(repayment.size() == (1 if option == "credit" else 0))
 		main.queue_free()
 		await process_frame

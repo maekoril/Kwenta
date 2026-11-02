@@ -1478,6 +1478,21 @@
 			],
 			"intro": [
 				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Tonyo, mula ngayon puwede kang magpautang nang limitado: isang bagong pautang bawat araw, ₱100 hanggang ₱150. Huwag dagdagan ang may hindi pa bayad."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Mas maliit ang dagdag para sa madalas bumili. Ipakita muna ang kabuuang bayad at itala sa kuwaderno. Bukas ang singilan; puwede mong tanggihan ang pautang."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Hanggang Day 6 lang tayo magpapautang para makasingil sa Day 7. Walang ibabawas sa kaha ngayon, pero wala ring papasok na bayad hanggang bukas."
+				},
+				{
 					"speaker": "Narrator",
 					"portrait": "",
 					"text": "Malakas ang ulan. Mula sa tindahan, natanaw ni Tonyo ang mga kapitbahay na nagmamadaling sumilong."
@@ -1861,12 +1876,12 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Huwag mo nang dagdagan 'yan, ha. Magtanong ka muna sa akin bago magpautang."
+					"text": "Huwag mo nang dagdagan ang lumang utang ni Lola Rosa, ha. Sundin mo ang limitasyon natin kahapon."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Opo, Ma. Magtatanong muna ako... hehe."
+					"text": "Opo, Ma. Isusulat ko ang bawat pautang at kung kailan ang bayad."
 				},
 				{
 					"speaker": "Tonyo",
@@ -2076,59 +2091,7 @@
 					"when_value": "installments"
 				}
 			],
-			"mixups": [
-				{
-					"count": 3.0,
-					"every": 3.0,
-					"prompt": "Mali ang {product} na inabot ni Jun-jun!",
-					"options": [
-						"Palitan ang {product}",
-						"Hayaan na"
-					],
-					"caught_variants": [
-						[
-							{
-								"speaker": "Mikay",
-								"portrait": "mikay_smug",
-								"text": "Sinabi ko na kasi kay Jun-jun, basahin muna ang label!"
-							},
-							{
-								"speaker": "Jun-jun",
-								"portrait": "jun_jun_tara",
-								"text": "Magkamukha kasi sila, Tonyo! Sorry na!"
-							}
-						],
-						[
-							{
-								"speaker": "Jun-jun",
-								"portrait": "jun_jun_tara",
-								"text": "Ay, mali ba 'yon? Pareho lang naman ang kulay!"
-							},
-							{
-								"speaker": "Mikay",
-								"portrait": "mikay_smug",
-								"text": "Hindi pareho! Ako na nga ang nag-aayos ng pila, ako pa ang sisisihin?"
-							}
-						],
-						[
-							{
-								"speaker": "Mikay",
-								"portrait": "mikay_smug",
-								"text": "Hay naku, Jun-jun! Pang-ilang beses na 'to!"
-							}
-						]
-					],
-					"missed": [
-						{
-							"speaker": "Narrator",
-							"portrait": "",
-							"text": "Hindi napansin ni Tonyo ang mali. Nagtampo ang customer at ibinalik ang bayad sa maling produkto."
-						}
-					],
-					"when_choice": "day6_help",
-					"when_value": "ask"
-				}
-			],
+			"mixups": [],
 			"intro": [
 				{
 					"speaker": "Narrator",
@@ -2144,65 +2107,104 @@
 					"speaker": "Narrator",
 					"portrait": "",
 					"text": "Humaba ang pila hanggang sa labas ng tindahan."
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Naalala ni Tonyo ang napag-usapan nila ni Inay bago siya umalis: kung mag-isa niyang matatapos ang pagbabantay sa fiesta, may dagdag na 20% ng bayad na benta para sa ipon niya."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Dagdag sa ipon... pero sa akin din lahat ang order at sukli hanggang magsara."
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Dumaan sina Jun-jun, Mikay, at Bogs sa harap ng tindahan. Napatingin sila sa humahabang pila."
+				},
+				{
+					"speaker": "Jun-jun",
+					"portrait": "jun_jun_tara",
+					"text": "Tonyo! Mukhang kailangan mo ng kasama. Gusto mo bang tumulong kami?"
+				},
+				{
+					"speaker": "Mikay",
+					"portrait": "mikay_smug",
+					"text": "Puwede akong umalalay sa sukli. Tawagin mo lang ako kapag kailangan mo."
 				}
 			],
 			"intro_choices": [
 				{
 					"id": "day6_help",
-					"prompt": "Paano haharapin ni Tonyo ang mahabang pila?",
+					"prompt": "Paano haharapin ni Tonyo ang fiesta rush? Pareho ang dagsa at pasensya ng customers sa dalawang pagpipilian.",
 					"options": [
 						{
 							"id": "ask",
-							"label": "Humingi ng tulong",
+							"label": "Humingi ng tulong · Sukli bawat 20s",
 							"response": [
 								{
-									"speaker": "Narrator",
-									"portrait": "",
-									"text": "Nagbuhat si Jun-jun ng crates, inayos ni Mikay ang pila, at nag-abot si Bogs ng mga produkto."
+									"speaker": "Tonyo",
+									"portrait": "tonyo",
+									"text": "Jun-jun! Puwede ba kayong tumulong? Ako pa rin ang mag-aabot ng paninda."
 								},
 								{
 									"speaker": "Jun-jun",
 									"portrait": "jun_jun_tara",
-									"text": "Utang mo sa amin ang tumbang preso, 'di ba? Heto na kami!",
-									"when_choice": "day1_play",
-									"when_value": "play"
+									"text": "Ako sa mga kahon. Ilalapit ko rito ang mga paninda."
+								},
+								{
+									"speaker": "Bogs",
+									"portrait": "bogs",
+									"text": "Ako sa pila! Sabihin n’yo na ang bibilhin bago lumapit."
 								},
 								{
 									"speaker": "Mikay",
 									"portrait": "mikay_smug",
-									"text": "Sige, tutulong kami. Pero sabihin mo muna: pakiusap.",
-									"when_choice": "day1_play",
-									"when_value": "stay"
+									"text": "Ako sa sukli kapag kailangan mo. Buksan mo ang suklian ng customer, saka pindutin ang Tulong sa Sukli."
+								},
+								{
+									"speaker": "Mikay",
+									"portrait": "mikay_smug",
+									"text": "Isang customer muna, ha! Kailangan ko ng 20 segundo para ayusin ulit ang mga barya."
+								},
+								{
+									"speaker": "Tonyo",
+									"portrait": "tonyo",
+									"text": "Sige. Salamat sa inyo!"
 								}
 							]
 						},
 						{
 							"id": "alone",
-							"label": "Kayanin mag-isa",
-							"response": "Hinarap ni Tonyo nang mag-isa ang fiesta rush. Sa kanya lahat ang benta, pati ang pagod.",
-							"response_speaker": "Narrator",
-							"response_portrait": ""
+							"label": "Kayanin mag-isa · +20% bayad na benta",
+							"response": [
+								{
+									"speaker": "Tonyo",
+									"portrait": "tonyo_determined",
+									"text": "Susubukan kong ako muna sa mga order at sukli hanggang magsara."
+								},
+								{
+									"speaker": "Tonyo",
+									"portrait": "tonyo",
+									"text": "Salamat, Jun-jun. Susubukan ko munang ako. Kita-kita tayo mamaya!"
+								},
+								{
+									"speaker": "Jun-jun",
+									"portrait": "jun_jun_tara",
+									"text": "Sige! Nandito lang kami sa fiesta."
+								},
+								{
+									"speaker": "Narrator",
+									"portrait": "",
+									"text": "Matatanggap ni Tonyo ang 20% dagdag ni Inay kapag natapos ang shift. Makikita ang naiipong bonus habang nagtitinda."
+								}
+							]
 						}
 					]
 				}
 			],
-			"modifiers": [
-				{
-					"when_choice": "day5_debt",
-					"when_value": "forgive",
-					"patience_mult": 1.2
-				},
-				{
-					"when_choice": "day6_help",
-					"when_value": "ask",
-					"patience_mult": 1.25
-				},
-				{
-					"when_choice": "day6_help",
-					"when_value": "alone",
-					"patience_mult": 0.85
-				}
-			],
+			"modifiers": [],
 			"outro": [
 				{
 					"speaker": "Narrator",
@@ -2217,7 +2219,7 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Nagdala ang mga kapitbahay ng lantern, kandila, at flashlight. Sa liwanag ng bayanihan, nairaos ni Tonyo ang pinakamalaking dagsa."
+					"text": "Nagdala ang mga kapitbahay ng lantern, kandila, at flashlight. Dumating din sina Jun-jun, Mikay, at Bogs na may dalang ilaw. Sa liwanag ng bayanihan, nairaos ni Tonyo ang pinakamalaking dagsa."
 				}
 			],
 			"choices": [],
@@ -2252,7 +2254,7 @@
 					"text": "Binayaran ni Paolo ang ₱3 na inutang niya para sa Feeta.",
 					"when_choice": "day3_candy",
 					"when_value": "credit",
-					"cash": 3.0
+					"debt_payment": "paolo_story"
 				},
 				{
 					"speaker": "Narrator",

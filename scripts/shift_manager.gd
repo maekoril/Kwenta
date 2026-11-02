@@ -1,6 +1,10 @@
 class_name ShiftManager
 extends RefCounted
 
+signal credit_requested(customer_instance_id: String)
+signal repayment_requested(debt: Dictionary)
+var credit_requested_today := false
+
 signal customers_changed
 signal cash_changed(value: int)
 signal clock_changed(value: String)
@@ -36,6 +40,13 @@ var customer_sequence: int = 0
 var is_running: bool = false
 var did_emit_completion: bool = false
 var is_closing: bool = false
+var fiesta_route := ""
+var helper_cooldown := 0.0
+var paid_goods_sales := 0
+var fiesta_bonus := 0
+var helper_payment := false
+const HELPER_RECHARGE := 20.0
+
 var shift_earnings: int = 0
 var debt_payments_received: int = 0
 var customers_served: int = 0
@@ -94,11 +105,16 @@ func reset_story_state() -> void:
 
 func start_shift() -> void:
 	frozen = false
+	credit_requested_today = false
 	active_customers.clear()
 	recent_customer_ids.clear()
 	elapsed_seconds = 0.0
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
+	paid_goods_sales = 0
+	fiesta_bonus = 0
+	helper_cooldown = 0.0
+	helper_payment = false
 	shift_earnings = 0
 	debt_payments_received = 0
 	customers_served = 0
@@ -117,6 +133,9 @@ func start_shift() -> void:
 	# 6 PM, then 8 PM). Story events can still freeze time, but never replace it.
 	shift_duration_seconds = maxf(0.01, campaign_state.get_shift_length_seconds())
 	shift_close_minutes = campaign_state.get_shift_close_minutes()
+	for debt in campaign_state.debts:
+		if not debt.scripted and int(debt.balance) > 0 and int(debt.due_day) <= campaign_state.day:
+			repayment_requested.emit(debt.duplicate(true))
 	_spawn_customer()
 	_update_clock()
 
@@ -144,6 +163,7 @@ func _drain_trust_for_overdue_change(delta_seconds: float) -> void:
 func advance_time(delta_seconds: float) -> void:
 	if not is_running or frozen or delta_seconds <= 0.0:
 		return
+	helper_cooldown = maxf(0.0, helper_cooldown - delta_seconds)
 	elapsed_seconds += delta_seconds
 	if not is_closing:
 		if elapsed_seconds >= shift_duration_seconds:
@@ -211,6 +231,7 @@ func advance_time(delta_seconds: float) -> void:
 	_update_clock()
 
 func deliver_product(customer_id: String, product_id: String) -> int:
+	if frozen: return CustomerState.DeliveryResult.INACTIVE
 	for customer in active_customers:
 		if customer.instance_id != customer_id:
 			continue
@@ -263,7 +284,7 @@ func give_change(customer_id: String, amount: int) -> Dictionary:
 			change_streak += 1
 			best_change_streak = maxi(best_change_streak, change_streak)
 			
-			if satisfaction >= 80.0:
+			if satisfaction >= 80.0 and not helper_payment:
 				tip = int(randf_range(2.0, 5.0)) # Random tip 2 to 5 pesos
 				total_tips_earned += tip
 				feedback_changed.emit("Tamang sukli! Ang bilis, may tip na  %d!" % tip)
@@ -308,6 +329,9 @@ func _pick_mixup_product(customer: CustomerState) -> String:
 
 # Next story step after the order is really done: a haggle, or straight to payment.
 func _after_mixup(customer: CustomerState) -> void:
+	if customer.credit_approved:
+		_finish_order(customer)
+		return
 	var ask := int(haggle_asks.get(customer.customer_id, 0))
 	if ask > 0 and not haggled_ids.has(customer.customer_id):
 		haggled_ids[customer.customer_id] = true
@@ -325,6 +349,12 @@ func _finish_order(customer: CustomerState) -> void:
 		if product != null:
 			prices[id] = campaign_state.get_product_price(product)
 	var order_total := maxi(0, customer.order.total_price(prices) - customer.price_discount)
+	customer.bill_total = order_total
+	if customer.credit_approved:
+		campaign_state.add_debt("credit_%d_%s" % [campaign_state.day, customer.customer_id], customer.customer_id, int(customer.credit_offer.principal), int(customer.credit_offer.interest), campaign_state.day + 1, customer.order.requested)
+		_finish_sale(customer, 0)
+		feedback_changed.emit("Naitala sa kuwaderno. Bayad bukas.")
+		return
 	var tendered := order_total
 	if SukliRules.is_enabled(campaign_state.day) and not customer.exact_pay:
 		if customer.tendered_override > order_total:
@@ -410,6 +440,10 @@ func finish_shift() -> void:
 		return
 	did_emit_completion = true
 	is_running = false
+	if campaign_state.day == 6 and fiesta_route == "alone":
+		fiesta_bonus = roundi(paid_goods_sales * 0.2)
+		campaign_state.cash += fiesta_bonus
+		cash_changed.emit(campaign_state.cash)
 	active_customers.clear()
 	customers_changed.emit()
 	shift_completed.emit()
@@ -419,6 +453,9 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	for quantity in customer.order.delivered.values():
 		if int(quantity) > 0:
 			product_types += 1
+	if not customer.credit_approved:
+		campaign_state.record_purchase(customer.customer_id, customer.bill_total)
+		paid_goods_sales += customer.bill_total
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
 	customers_served += 1
@@ -503,9 +540,13 @@ func _spawn_customer() -> void:
 		recent_customer_ids.pop_front()
 
 	campaign_state.save_customer_trust(id, customer.trust)
+	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and rng.randf() < 0.3:
+		_prepare_credit(customer)
 	active_customers.append(customer)
 
 	customers_changed.emit()
+	if not customer.credit_offer.is_empty():
+		credit_requested.emit(customer.instance_id)
 	var arrival_beats: Array = story_entry.get("arrival_beats", [])
 	if not arrival_beats.is_empty():
 		story_customer_arrived.emit(customer.instance_id, arrival_beats)
@@ -555,3 +596,48 @@ func _update_clock() -> void:
 	var display_hour := hour if hour <= 12 else hour - 12
 	clock_changed.emit("%d:%02d %s" % [display_hour, minute, "AM" if hour < 12 else "PM"])
 	game_minutes_changed.emit(game_minutes)
+
+func _prepare_credit(customer: CustomerState) -> void:
+	var requested := {}
+	var total := 0
+	var available := campaign_state.get_available_product_ids()
+	for unit in range(12):
+		var candidates: Array[String] = []
+		for id in available:
+			var price := campaign_state.get_product_price(products_by_id[id])
+			if price > 0 and total + price <= 150:
+				candidates.append(id)
+		if candidates.is_empty(): break
+		var id := candidates[rng.randi_range(0, candidates.size() - 1)]
+		requested[id] = int(requested.get(id, 0)) + 1
+		total += campaign_state.get_product_price(products_by_id[id])
+		if total >= 100: break
+	if total < 100: return
+	credit_requested_today = true
+	customer.order = OrderState.new(requested)
+	customer.credit_offer = {"principal": total, "interest": roundi(total * campaign_state.credit_rate(customer.customer_id))}
+	customer.story_arrival_pending = true
+
+func resolve_credit(instance_id: String, approved: bool) -> void:
+	for customer in active_customers.duplicate():
+		if customer.instance_id != instance_id or customer.credit_offer.is_empty(): continue
+		customer.story_arrival_pending = false
+		customer.credit_approved = approved
+		if not approved:
+			customer.active = false
+			active_customers.erase(customer)
+		customers_changed.emit()
+		return
+
+func use_helper_change(instance_id: String) -> bool:
+	if campaign_state.day != 6 or fiesta_route != "ask" or not is_running or frozen or helper_cooldown > 0.0:
+		return false
+	for customer in active_customers:
+		if customer.instance_id != instance_id or not customer.is_paying(): continue
+		helper_cooldown = HELPER_RECHARGE
+		helper_payment = true
+		give_change(instance_id, customer.payment.change_due())
+		helper_payment = false
+		feedback_changed.emit("Mikay: Heto ang tamang sukli! Sandali, aayusin ko muna ang mga barya.")
+		return true
+	return false
