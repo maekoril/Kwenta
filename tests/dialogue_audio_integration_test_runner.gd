@@ -69,6 +69,10 @@ func _test_hud_recenters_after_viewport_resize() -> void:
 	var left_margin: float = hud.position.x
 	var right_margin: float = main.size.x - (hud.position.x + hud.size.x)
 	_assert(is_equal_approx(left_margin, right_margin), "HUD keeps equal left and right margins after a wide viewport resize")
+	var blackout_overlay := main.fiesta_emergency_light as ColorRect
+	_assert(blackout_overlay != null and blackout_overlay.get_anchor(SIDE_LEFT) == 0.0 and blackout_overlay.get_anchor(SIDE_RIGHT) == 1.0 and blackout_overlay.get_anchor(SIDE_TOP) == 0.0 and blackout_overlay.get_anchor(SIDE_BOTTOM) == 1.0, "fiesta blackout overlay anchors to every viewport edge")
+	_assert(blackout_overlay != null and blackout_overlay.position.is_equal_approx(Vector2.ZERO) and blackout_overlay.size.is_equal_approx(main.size), "fiesta blackout overlay fills a resized wide viewport")
+	_assert(main.fiesta_light_props.position.is_equal_approx(Vector2((main.size.x - 1920.0) * 0.5, 0.0)), "fiesta lamp stays centered with the fixed storefront on a wide viewport")
 	main._refresh_fiesta_controls()
 	var friends := main.fiesta_friends as Control
 	_assert(is_equal_approx(friends.position.x + friends.size.x, main.size.x), "fiesta helpers follow the right edge on wide screens")

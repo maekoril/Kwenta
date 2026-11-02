@@ -10,7 +10,11 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | Completed sale | `assets/audio/pixabay/sfx/cash_register_sale.wav`, trimmed from `assets/audio/inbox/cash_register.wav` to its first strong register hit |
 | Patience warning / timeout | `assets/audio/pixabay/sfx/patience_warning.mp3` |
 | Dialogue start cue | `assets/audio/pixabay/sfx/convo.mp3` |
+| Continue / new game | `assets/audio/pixabay/sfx/continue_or_start_game.wav` |
+| Continuous Day 4 rain ambience | `assets/audio/pixabay/ambience/rain.ogg` (converted from supplied WAV) |
+| Random normal-day ambience (Days 1–3, 5, and 7) | `assets/audio/pixabay/ambience/normal_day.ogg` (converted from supplied WAV) |
 | Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
+| Main menu music | `assets/audio/pixabay/music/main_menu.ogg` (converted from supplied WAV) |
 | Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
 | Day 6 fiesta music, continuing through the brownout | `assets/audio/pixabay/music/intense_music.mp3` |
 

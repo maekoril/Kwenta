@@ -5,6 +5,7 @@ const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 var overlay: Control
 var music_slider: HSlider
 var sfx_slider: HSlider
+var ambience_slider: HSlider
 var settings_panel: PanelContainer
 
 func _ready() -> void:
@@ -47,6 +48,7 @@ func _build() -> void:
 	separator.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(separator)
 	music_slider = _add_slider(column, "MUSIC", AUDIO_SETTINGS.MUSIC_BUS)
+	ambience_slider = _add_slider(column, "AMBIENCE", AUDIO_SETTINGS.AMBIENCE_BUS)
 	sfx_slider = _add_slider(column, "SOUND EFFECTS", AUDIO_SETTINGS.SFX_BUS)
 	var close_button := Button.new()
 	close_button.name = "CloseSettingsButton"
@@ -107,6 +109,7 @@ func _style_slider(slider: HSlider) -> void:
 
 func open() -> void:
 	music_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.MUSIC_BUS) * 100)
+	ambience_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.AMBIENCE_BUS) * 100)
 	sfx_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.SFX_BUS) * 100)
 	overlay.visible = true
 	_fit_panel.call_deferred()

@@ -4,9 +4,10 @@ extends RefCounted
 const FILE_PATH := "user://audio_settings.cfg"
 const MUSIC_BUS := "Music"
 const SFX_BUS := "SFX"
+const AMBIENCE_BUS := "Ambience"
 
 static func initialize() -> void:
-	for bus_name in [MUSIC_BUS, SFX_BUS]:
+	for bus_name in [MUSIC_BUS, SFX_BUS, AMBIENCE_BUS]:
 		if AudioServer.get_bus_index(bus_name) < 0:
 			AudioServer.add_bus()
 			AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
@@ -14,6 +15,7 @@ static func initialize() -> void:
 	if config.load(FILE_PATH) == OK:
 		set_volume(MUSIC_BUS, float(config.get_value("audio", "music", 1.0)))
 		set_volume(SFX_BUS, float(config.get_value("audio", "sfx", 1.0)))
+		set_volume(AMBIENCE_BUS, float(config.get_value("audio", "ambience", 1.0)))
 
 static func set_volume(bus_name: String, value: float) -> void:
 	var index := AudioServer.get_bus_index(bus_name)
@@ -33,6 +35,7 @@ static func save() -> void:
 	var config := ConfigFile.new()
 	config.set_value("audio", "music", get_volume(MUSIC_BUS))
 	config.set_value("audio", "sfx", get_volume(SFX_BUS))
+	config.set_value("audio", "ambience", get_volume(AMBIENCE_BUS))
 	var error := config.save(FILE_PATH)
 	if error != OK:
 		push_warning("Could not save audio settings: %s" % error_string(error))

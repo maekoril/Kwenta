@@ -12,13 +12,20 @@ const BRUSH_STROKE = preload("res://scripts/menu_brush_stroke.gd")
 const STORY_TRANSITION = preload("res://scripts/menu_story_transition.gd")
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
+const KWENTA_AUDIO = preload("res://scripts/kwenta_audio.gd")
 const DESIGN_SIZE := Vector2(1920, 1080)
 var menu_canvas: Control
 var settings_menu
 var _selection_in_progress := false
+var menu_audio: KwentaAudio
 
 func _ready() -> void:
 	AUDIO_SETTINGS.initialize()
+	menu_audio = KWENTA_AUDIO.new()
+	menu_audio.register_default_cues()
+	menu_audio.register_default_music()
+	add_child(menu_audio)
+	menu_audio.set_music("main_menu")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_menu()
 	if OS.is_debug_build():
@@ -144,6 +151,8 @@ func _request_new_game() -> void:
 	confirm.popup_centered()
 
 func _begin_game(resume: bool) -> void:
+	if menu_audio != null:
+		menu_audio.play_persistent_cue("menu_start")
 	var transition := STORY_TRANSITION.new()
 	transition.name = "MenuStoryTransition"
 	get_tree().root.add_child(transition)

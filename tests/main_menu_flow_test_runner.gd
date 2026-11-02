@@ -12,6 +12,12 @@ func run() -> void:
 	await process_frame
 	var menu = current_scene
 	assert(menu != null and menu.find_child("NotebookDesk", true, false).texture != null)
+	assert(menu.menu_audio.current_music == "main_menu")
+	var music_player := menu.menu_audio.get_node_or_null("MusicPlayer") as AudioStreamPlayer
+	assert(music_player != null and music_player.stream.resource_path == "res://assets/audio/pixabay/music/main_menu.ogg")
+	assert(music_player != null and is_equal_approx(music_player.volume_db, -10.0))
+	assert(music_player != null and music_player.playing)
+	assert(menu.menu_audio.has_cue("menu_start"))
 	var play = menu.find_child("StartButton", true, false)
 	assert(play != null and play.text == "NEW GAME")
 	play.pressed.emit()
@@ -22,6 +28,26 @@ func run() -> void:
 	await process_frame
 	var main = current_scene
 	assert(main != null and main.get_script().resource_path == "res://scripts/main.gd")
+	var game_music := main.audio.get_node_or_null("MusicPlayer") as AudioStreamPlayer
+	assert(game_music != null and game_music.playing)
+	assert(main.audio.current_ambience.is_empty(), "normal-day ambience stays silent during the prologue")
+	main._start_opening_ambience()
+	assert(main.audio.current_ambience == "normal_day", "normal-day ambience starts only when the store opens")
+	var opening_normal_ambience := main.audio.get_node_or_null("AmbiencePlayer") as AudioStreamPlayer
+	assert(opening_normal_ambience != null and opening_normal_ambience.stream is AudioStreamOggVorbis and opening_normal_ambience.stream.loop, "normal-day ambience loops after the store opens")
+	main.apply_environment(4)
+	await process_frame
+	var rain_ambience := main.audio.get_node_or_null("AmbiencePlayer") as AudioStreamPlayer
+	assert(rain_ambience != null and rain_ambience.playing)
+	main.campaign.day = 4
+	main._start_opening_ambience()
+	assert(main.audio.current_ambience == "rain" and rain_ambience.playing, "Day 4 opening/tutorial flow keeps the rain ambience looping")
+	main.campaign.day = 1
+	main.apply_environment(1)
+	main._start_opening_ambience()
+	await process_frame
+	var normal_ambience := main.audio.get_node_or_null("AmbiencePlayer") as AudioStreamPlayer
+	assert(normal_ambience != null and normal_ambience.playing and normal_ambience.stream is AudioStreamOggVorbis and normal_ambience.stream.loop)
 	assert(main.prologue_background.visible)
 	assert(main.bubble.visible and main.story_after_action == "prologue_end")
 	var pause = main.pause_menu
