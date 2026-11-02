@@ -43,6 +43,8 @@ func present(customer: CustomerState, state: CampaignState, products: Dictionary
 	var customer_name := str(names.get(customer.customer_id, customer.customer_id.capitalize()))
 	heading.add_child(KwentaStyle.make_label(customer_name, 44, KwentaStyle.INK))
 	body.add_child(KwentaStyle.make_label("“Tonyo, puwedeng bukas ang bayad?”", 32, KwentaStyle.INK))
+	if state.day == 4:
+		body.add_child(KwentaStyle.make_label("Check the total and due date, then decide whether to lend.", 25, KwentaStyle.INK_MUTED))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size.y = 240
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -81,6 +83,7 @@ func present(customer: CustomerState, state: CampaignState, products: Dictionary
 	due.add_child(KwentaStyle.make_label("Bukas · Day %d" % (state.day + 1), 34, KwentaStyle.INK))
 	var offer := customer.credit_offer
 	repayment.add_child(KwentaStyle.make_label("₱%d" % (int(offer.principal) + int(offer.interest)), 64, KwentaStyle.INK))
+	body.add_child(KwentaStyle.make_label("Paninda ₱%d + dagdag ₱%d = ₱%d" % [int(offer.principal), int(offer.interest), int(offer.principal) + int(offer.interest)], 30, KwentaStyle.INK))
 	details_button = Button.new()
 	details_button.text = "▸ Detalye ng pautang"
 	KwentaStyle.style_button(details_button, KwentaStyle.PAPER, 28)

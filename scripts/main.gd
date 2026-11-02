@@ -115,6 +115,8 @@ var current_choice_ids: Array[String] = []
 var ui_refresh_elapsed: float = 0.0
 var campaign_started: bool = false
 var shift_start_credit: Dictionary = {}
+var utang_tutorial_customer := ""
+var utang_tutorial_message := ""
 var shift_start_choices: Dictionary = {}
 var shift_start_cash: int = 0
 var shift_start_trust: Dictionary = {}
@@ -330,13 +332,18 @@ func _ready() -> void:
 	utang_close.hide()
 	add_child(utang_close)
 	utang_button.pressed.connect(func():
-		if shift == null or shift.frozen or not shift.is_running: return
+		if shift == null or (shift.frozen and utang_tutorial_message.is_empty()) or not shift.is_running: return
 		shift.frozen = true
+		utang_button.modulate = Color.WHITE
 		utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
-		utang_close.show())
+		utang_close.show()
+		if not utang_tutorial_message.is_empty():
+			_show_tutorial_hint(utang_tutorial_message, 60.0)
+			utang_tutorial_message = "")
 	utang_close.pressed.connect(func():
 		utang_ledger.hide()
 		utang_close.hide()
+		if tutorial_hint.visible: tutorial_hint.hide()
 		shift.frozen = false)
 
 	supplier_note = SUPPLIER_NOTE.new()
@@ -434,6 +441,12 @@ func _launch_debug_start() -> void:
 	if moment in [2, 14]:
 		_begin_shift()
 		return
+	if moment == 31:
+		campaign.add_debt("debug_credit", "neighbor_lina", 100, 7, 5)
+		completed_tutorials.erase("utang_repayment")
+	if moment == 30:
+		completed_tutorials.erase("utang_first")
+		completed_tutorials.erase("utang_event")
 	# Direct scene previews start a real shift, but skip its opening and customers.
 	_begin_shift()
 	_clear_tutorial_spotlight()
@@ -447,6 +460,12 @@ func _launch_debug_start() -> void:
 	shift.start_shift(false)
 	shift.active_customers.clear()
 	shift.customers_changed.emit()
+	if moment == 30:
+		shift.credit_requested_today = false
+		shift._spawn_customer()
+		return
+	if moment == 31:
+		return
 	if moment in [8, 12]:
 		story_events.suppress()
 		shift.finish_shift()
@@ -493,10 +512,14 @@ func _show_save_warning() -> void:
 func _process(delta: float) -> void:
 	_refresh_fiesta_controls()
 	if is_instance_valid(utang_button):
-		utang_button.visible = campaign != null and campaign.day >= 4 and shift != null and shift.is_running and not shift.frozen
+		utang_button.visible = campaign != null and campaign.day >= 4 and shift != null and shift.is_running and (not shift.frozen or not utang_tutorial_message.is_empty())
 	if is_instance_valid(customer_story_button) and is_instance_valid(customer_story_actor):
 		customer_story_button.position = customer_story_actor.global_position - global_position
 		customer_story_button.modulate.a = customer_story_actor.modulate.a
+		if tutorial_overlay.visible and tutorial_overlay.title.text == "UTANG EVENT":
+			tutorial_overlay.spotlight_rect = _tutorial_rect_for(customer_story_button).grow(18.0)
+			tutorial_overlay._position_coachmark()
+			tutorial_overlay.queue_redraw()
 	if tutorial_step == TutorialStep.DAY2_CUSTOMER and tutorial_overlay != null and tutorial_overlay.visible:
 		_update_day_two_customer_sukli_target()
 	if shift != null and shift_in_progress and not opening_sign_active and fiesta_preview_step < 0 and tutorial_step not in [TutorialStep.DAY1_HUD, TutorialStep.DAY1_PRODUCT, TutorialStep.DAY1_CUSTOMER, TutorialStep.DAY1_CLOSING, TutorialStep.DAY2_CUSTOMER, TutorialStep.DAY2_MONEY, TutorialStep.DAY2_GIVE]:
@@ -2389,8 +2412,49 @@ func _build_story_events() -> void:
 		story_events.visitor_portrait_requested.connect(_show_story_visitor_portrait)
 		story_events.visitor_portrait_hidden.connect(_hide_story_visitor_portrait)
 		story_events.visitor_tutorial_completed.connect(_remember_story_event_tutorial)
+		story_events.credit_decided.connect(_on_utang_tutorial_decision)
+		story_events.repayment_completed.connect(_on_utang_tutorial_repayment)
+		story_events.partial_repayment_completed.connect(_on_utang_tutorial_partial_repayment)
 	story_events.bind(story, shift, bubble, PORTRAIT_ATLAS)
+	if not shift.credit_recorded.is_connected(_on_utang_tutorial_recorded):
+		shift.credit_recorded.connect(_on_utang_tutorial_recorded)
 	move_child(bubble, get_child_count() - 1)
+
+func _on_utang_tutorial_decision(approved: bool, customer_id: String) -> void:
+	if campaign.day != 4 or bool(completed_tutorials.get("utang_first", false)): return
+	if approved:
+		utang_tutorial_customer = customer_id
+		for customer in shift.active_customers:
+			if customer.instance_id == customer_id: customer.tutorial_protected = true
+		_show_tutorial_hint("Serve the items. The debt is recorded when the order is complete.", 12.0)
+	else:
+		_remember_tutorial("utang_first")
+		_show_utang_tutorial_ledger.call_deferred("You declined. Lola Rosa’s existing debt is ₱320.")
+
+func _on_utang_tutorial_recorded(customer_id: String) -> void:
+	if customer_id != utang_tutorial_customer or bool(completed_tutorials.get("utang_first", false)): return
+	utang_tutorial_customer = ""
+	_remember_tutorial("utang_first")
+	_show_utang_tutorial_ledger.call_deferred("The debt is recorded. You receive cash when the customer pays.")
+
+func _on_utang_tutorial_repayment() -> void:
+	if bool(completed_tutorials.get("utang_repayment", false)): return
+	_remember_tutorial("utang_repayment")
+	_show_utang_tutorial_ledger.call_deferred("Payment received! The ledger now shows the debt as paid.")
+
+func _on_utang_tutorial_partial_repayment() -> void:
+	if bool(completed_tutorials.get("utang_repayment", false)): return
+	_remember_tutorial("utang_repayment")
+	_show_utang_tutorial_ledger.call_deferred("Lola Rosa paid ₱110. Her remaining balance is ₱210.")
+
+func _show_utang_tutorial_ledger(message: String) -> void:
+	if not shift_in_progress or not shift.is_running: return
+	while story_events.is_active():
+		await story_events.popup_state_changed
+	shift.frozen = true
+	utang_tutorial_message = message
+	utang_button.modulate = Color(1.5, 1.3, 0.6)
+	_show_tutorial_hint("Tap UTANG to open the ledger.", 60.0)
 
 func _show_story_visitor_portrait(visitor: String, button: Button) -> void:
 	_hide_story_visitor_portrait()
@@ -2464,12 +2528,26 @@ func _show_customer_story_prompt(instance_id: String) -> void:
 	customer_story_button.z_index = 90
 	customer_story_button.tooltip_text = "Tap to begin the story event"
 	add_child(customer_story_button)
-	var mark := STORY_EVENT_MARKER.create_marker()
+	var mark: Control
+	if story_events._mode == "credit_visitor":
+		mark = preload("res://scripts/utang_event_marker.gd").new()
+		mark.name = "UtangEventMarker"
+		customer_story_button.tooltip_text = "Pindutin para kausapin ang gustong umutang"
+		_show_tutorial_hint("A customer wants credit. Tap the notebook icon to talk to them.", 60.0)
+	else:
+		mark = STORY_EVENT_MARKER.create_marker()
 	# The customer actor includes empty space above and beside the portrait.
 	# Place the marker over the portrait itself, not over the actor's bounds.
 	mark.position = Vector2(68.0, 80.0)
 	customer_story_button.add_child(mark)
+	if story_events._mode == "credit_visitor" and not bool(completed_tutorials.get("utang_event", false)):
+		tutorial_hint.hide()
+		tutorial_overlay.show_step("This customer wants credit. Tap them to talk and decide. Time and patience are paused.", _tutorial_rect_for(customer_story_button), "UTANG EVENT")
 	customer_story_button.pressed.connect(func():
+		if story_events._mode == "credit_visitor":
+			tutorial_hint.hide()
+			_remember_tutorial("utang_event")
+			if tutorial_overlay.title.text == "UTANG EVENT": tutorial_overlay.clear_step()
 		customer_story_button.queue_free()
 		customer_story_button = null
 		story_events.tap_customer_story(instance_id)
@@ -2494,7 +2572,7 @@ func _set_shop_input_blocked(blocked: bool) -> void:
 	if is_instance_valid(customer_story_button):
 		customer_story_button.queue_free()
 		customer_story_button = null
-	if tutorial_overlay != null and tutorial_overlay.visible and tutorial_overlay.title.text == "STORY EVENT":
+	if tutorial_overlay != null and tutorial_overlay.visible and tutorial_overlay.title.text in ["STORY EVENT", "UTANG EVENT"]:
 		tutorial_overlay.clear_step()
 	for entry in _blocked_input_nodes:
 		var node_ref = entry["node"]

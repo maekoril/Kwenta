@@ -42,7 +42,7 @@ func run() -> void:
 	debug.scene_select.select(debug.scene_select.get_item_index(7))
 	debug.day_select.select(3)
 	debug._on_day_selected(3)
-	assert(_moment_ids(debug.scene_select) == [0, 1, 2, 27, 10, 9, 16, 8])
+	assert(_moment_ids(debug.scene_select) == [0, 1, 2, 27, 30, 10, 9, 16, 8])
 	assert(debug.friends_select.get_parent().visible and debug.paolo_select.get_parent().visible)
 	assert(debug.scene_select.get_selected_id() == 0)
 	debug.scene_select.select(debug.scene_select.get_item_index(9))

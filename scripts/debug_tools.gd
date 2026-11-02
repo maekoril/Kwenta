@@ -203,11 +203,13 @@ func _on_day_selected(index: int) -> void:
 		scene_select.add_item("Day 3 · Paolo", 7)
 	elif index == 3:
 		scene_select.add_item("Day 4 · Inay call / lending lesson", 27)
+		scene_select.add_item("Day 4 · Utang tutorial / approve or decline", 30)
 		scene_select.add_item("Day 4 · Dodong / umbrella loan", 10)
 		scene_select.add_item("Day 4 · Jun-jun", 9)
 		scene_select.add_item("Day 4 · Aling Lina", 16)
 	elif index == 4:
 		scene_select.add_item("Day 5 · Wake-up and Inay / collecting debts", 28)
+		scene_select.add_item("Day 5 · Utang repayment tutorial", 31)
 		scene_select.add_item("Day 5 · Dodong returns umbrella", 17)
 		scene_select.add_item("Day 5 · Aling Lina returns", 18)
 		scene_select.add_item("Day 5 · Lola Rosa", 15)
@@ -271,7 +273,7 @@ func _toggle() -> void:
 func _launch() -> void:
 	var day := day_select.selected + 1
 	var moment := scene_select.get_selected_id()
-	if (moment in [11, 12, 25, 26] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10, 27] and day != 4) or (moment in [15, 17, 18, 28] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23, 24, 29] and day != 6):
+	if (moment in [11, 12, 25, 26] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10, 27, 30] and day != 4) or (moment in [15, 17, 18, 28, 31] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23, 24, 29] and day != 6):
 		status.text = "Choose the matching day for that story event."
 		return
 	if moment == 4 and money_select.selected == 2:

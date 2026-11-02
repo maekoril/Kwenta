@@ -2,6 +2,7 @@ class_name ShiftManager
 extends RefCounted
 
 signal credit_requested(customer_instance_id: String)
+signal credit_recorded(customer_instance_id: String)
 signal repayment_requested(debt: Dictionary)
 var credit_requested_today := false
 
@@ -366,6 +367,7 @@ func _finish_order(customer: CustomerState) -> void:
 		campaign_state.add_debt("credit_%d_%s" % [campaign_state.day, customer.customer_id], customer.customer_id, int(customer.credit_offer.principal), int(customer.credit_offer.interest), campaign_state.day + 1, customer.order.requested)
 		_finish_sale(customer, 0)
 		feedback_changed.emit("Naitala sa kuwaderno. Bayad bukas.")
+		credit_recorded.emit(customer.instance_id)
 		return
 	var tendered := order_total
 	if SukliRules.is_enabled(campaign_state.day) and not customer.exact_pay:
@@ -552,7 +554,7 @@ func _spawn_customer() -> void:
 		recent_customer_ids.pop_front()
 
 	campaign_state.save_customer_trust(id, customer.trust)
-	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and rng.randf() < 0.3:
+	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and (campaign_state.day == 4 or rng.randf() < 0.3):
 		_prepare_credit(customer)
 	active_customers.append(customer)
 

@@ -1632,7 +1632,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Doon sa listahan ng utang. May mga dati pa akong nakatala roon."
+					"text": "Tingnan mo ’yung listahan ng utang. May mga naisulat na ako roon."
 				},
 				{
 					"speaker": "Narrator",
@@ -1649,47 +1649,47 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Oo, ikaw muna ang magtatala, anak. Matagal na nating suki si Lola Rosa. Paunti-unti siyang naghuhulog kapag may naitatabi."
+					"text": "Oo, anak. Matagal na nating suki si Lola Rosa. Naghuhulog siya kapag may naitatabi."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Paano po kapag may ibang gustong umutang? Baka mali ang mapagbigyan ko."
+					"text": "Paano po kung may ibang gustong umutang?"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Puwede, pero isa lang muna bawat araw. Mula ₱100 hanggang ₱150 na paninda. Kapag may utang pa, huwag mo munang dagdagan."
+					"text": "Puwede, pero isang tao lang muna kada araw. ₱100 hanggang ₱150 lang, ha. At kung may utang pa siya, huwag muna siyang pautangin ulit."
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "May maliit na dagdag sa bayad. Mas mababa iyon para sa mga madalas bumili sa atin."
+					"text": "May kaunting dagdag sa babayaran nila bukas. Mas maliit ang dagdag kapag suki."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Teka po, Ma. Bago ko ibigay ang paninda, sasabihin ko muna kung magkano lahat ang babayaran nila?"
+					"text": "Sasabihin ko muna po kung magkano lahat bago ko ibigay?"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Oo. Kapag pumayag kayo, isulat mo ang pangalan, halaga, at kung kailan sila magbabayad. Kinabukasan ang usapan natin."
+					"text": "Oo. Kapag pumayag ka, ibigay mo ang paninda, tapos tingnan mo ang kuwaderno. Doon mo makikita ang utang."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Tapos kapag nagbayad na, saka ko ilalagay sa benta?"
+					"text": "Ah, saka lang po papasok ang pera kapag nagbayad na sila?"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Sa bayad-utang mo itala para hiwalay sa mga bagong benta. Wala ka pang matatanggap na pera habang hindi sila nagbabayad."
+					"text": "Oo, anak. Kapag nagbayad sila, tingnan mo sa kuwaderno kung nabawas na ang utang."
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "At kung alangan ka, puwede kang tumanggi. Hindi mo kailangang pumayag sa lahat."
+					"text": "Kung ayaw mong magpautang, ayos lang ding tumanggi."
 				},
 				{
 					"speaker": "Tonyo",
@@ -1752,7 +1752,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Hanggang sa makalawa ka lang muna magpautang. Para kinabukasan, makasingil ka na bago ako bumalik."
+					"text": "Hanggang makalawa ka lang muna magpautang, anak, para makapagbayad sila bago ako bumalik."
 				},
 				{
 					"speaker": "Tonyo",
@@ -2131,7 +2131,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Anak, tingnan mo rin ang lista bago magbukas. Kung may pinautang ka kahapon, ngayon ang usapan ninyong bayad."
+					"text": "Anak, tingnan mo muna ang listahan. Kung may pinautang ka kahapon, baka dumaan sila ngayon para magbayad."
 				},
 				{
 					"speaker": "Narrator",
@@ -2142,23 +2142,23 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Ako rin po ang maniningil? Nahihiya po ako... Nandito rin si Lola Rosa, ₱320 pa.",
+					"text": "Ako rin po ba ang tatanggap ng bayad? Nahihiya po ako... May ₱320 pa si Lola Rosa rito.",
 					"show_prop": "utang_ledger"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Kausapin mo lang nang maayos, anak. Kapag dumaan si Lola Rosa at may maihulog, isulat mo ang ibinayad at ang natitira."
+					"text": "Oo, anak. Kung dumaan si Lola Rosa at may maihulog, tanggapin mo lang. Makikita mo sa kuwaderno ang natitira."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Kahit kulang pa, itatala ko ang naibayad niya? Pero hindi ko muna guguhitan ang pangalan hangga’t hindi bayad lahat?"
+					"text": "Kahit hindi pa po buo ang bayad niya?"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Oo. At itala agad ang bawat bayad, ha, para hindi natin masingil ulit."
+					"text": "Oo. Hindi pa mabubura ang utang niya hangga’t hindi pa buo ang bayad."
 				},
 				{
 					"speaker": "Tonyo",
