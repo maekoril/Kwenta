@@ -69,6 +69,26 @@ func run() -> void:
 	assert(opening.utang_ledger.visible)
 	opening.utang_close.pressed.emit()
 	opening.shift.story_queue.clear()
+	# An ordinary customer remains serviceable while the first borrower waits.
+	opening.shift.credit_requested_today = true
+	opening.shift._spawn_customer()
+	assert(opening.shift.active_customers.size() == 1)
+	opening.shift.credit_requested_today = false
+	for attempt in range(20):
+		opening.shift._spawn_customer()
+		if opening.shift.pending_credit_customer != null: break
+	assert(opening.shift.pending_credit_customer != null)
+	assert(opening.shift.active_customers.size() == 1 and not opening.story_events.is_active())
+	var pending_id: String = opening.shift.pending_credit_customer.instance_id
+	opening.shift.active_customers.clear()
+	opening.shift.advance_time(0.01)
+	assert(opening.shift.pending_credit_customer == null)
+	assert(opening.shift.active_customers.size() == 1 and opening.shift.active_customers[0].instance_id == pending_id)
+	assert(opening.story_events._mode == "credit_visitor")
+	opening.story_events.suppress()
+	opening.shift.wait_for_clear_before_first_credit = true
+	opening.story_events._suppressed = false
+	opening.shift.credit_requested_today = false
 	for attempt in range(20):
 		opening.shift.active_customers.clear()
 		opening.shift._spawn_customer()
@@ -80,6 +100,13 @@ func run() -> void:
 	var main = current_scene
 	assert(main.story_events._current.kind == "repayment")
 	var before: int = main.campaign.cash
+	assert(main.story_events._mode == "repayment_visitor")
+	await create_timer(0.7).timeout
+	var visitor = main.story_events._visitor_layer.find_child("StoryVisitorButton", true, false)
+	assert(visitor != null and not visitor.disabled and visitor.find_child("RepaymentEventMarker", true, false) != null)
+	assert(main.campaign.cash == before)
+	visitor.pressed.emit()
+	assert(main.story_events._mode == "choice" and main.campaign.cash == before)
 	main.bubble.choice_made.emit(0)
 	await create_timer(0.3).timeout
 	await process_frame

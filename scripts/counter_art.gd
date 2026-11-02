@@ -76,7 +76,26 @@ static func product_display_texture(product_id: String) -> Texture2D:
 static func product_fixture_texture(product_id: String) -> Texture2D:
 	return product_display_texture(product_id)
 
+const CASUAL_PORTRAIT_PATHS := {
+	"paolo": "res://assets/characters/schoolkids/paolo_casual.png",
+	"bea": "res://assets/characters/schoolkids/bea_casual.png",
+	"classmate_1": "res://assets/characters/schoolkids/classmate_1_casual.png",
+	"classmate_2": "res://assets/characters/schoolkids/classmate_2_casual.png",
+	"classmate_3": "res://assets/characters/schoolkids/classmate_3_casual.png",
+}
+
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:
+	var casual_id := customer_id
+	for suffix in ["_happy", "_sad", "_impatient"]:
+		if casual_id.ends_with(suffix): casual_id = casual_id.trim_suffix(suffix)
+	if CASUAL_PORTRAIT_PATHS.has(casual_id):
+		var texture := load(CASUAL_PORTRAIT_PATHS[casual_id]) as Texture2D
+		if texture != null:
+			var portrait := AtlasTexture.new()
+			portrait.atlas = texture
+			var side := minf(texture.get_width(), texture.get_height())
+			portrait.region = Rect2((texture.get_width() - side) * 0.5, 0.0, side, side)
+			return portrait
 	if NEIGHBOR_PORTRAITS.has(customer_id):
 		var texture: Texture2D = NEIGHBOR_PORTRAITS[customer_id]
 		var neighbor := AtlasTexture.new()

@@ -25,6 +25,7 @@ var glow_time := 0.0
 var sukli_preview: Control
 var fiesta_preview: Control
 var fiesta_preview_mode := false
+var sukli_preview_mode := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -94,6 +95,7 @@ func show_step(message: String, target_rect: Rect2, step_title: String = "GUIDE"
 	sukli_preview.hide()
 	fiesta_preview.hide()
 	fiesta_preview_mode = false
+	sukli_preview_mode = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false
 	skip_button.visible = false
@@ -124,6 +126,7 @@ func show_skip() -> void:
 
 func show_sukli_examples(tender: int, total: int, target_rect: Rect2) -> void:
 	show_info_step("₱%d bayad − ₱%d bili = ₱%d sukli\nTAMA, KULANG, o SOBRA?" % [tender, total, tender - total], target_rect, "SUKLI · PREVIEW ONLY", true)
+	sukli_preview_mode = true
 	sukli_preview.configure(tender - total)
 	sukli_preview.show()
 	_position_coachmark()
@@ -158,7 +161,7 @@ func _position_coachmark() -> void:
 	# Put the card on the opposite side of the highlighted item, within the canvas.
 	coachmark.reset_size()
 	var card_height := maxf(coachmark.get_combined_minimum_size().y, 200.0)
-	if fiesta_preview_mode:
+	if fiesta_preview_mode or sukli_preview_mode:
 		coachmark.position = Vector2((size.x - coachmark.size.x) * 0.5, maxf(30.0, (size.y - card_height) * 0.5))
 		return
 	if arrow_visible:
@@ -187,6 +190,7 @@ func clear_step() -> void:
 	sukli_preview.hide()
 	fiesta_preview.hide()
 	fiesta_preview_mode = false
+	sukli_preview_mode = false
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false
@@ -199,7 +203,7 @@ func clear_step() -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	if fiesta_preview_mode:
+	if fiesta_preview_mode or sukli_preview_mode:
 		draw_rect(Rect2(Vector2.ZERO, size), DIM)
 		return
 	if spotlight_rect.size == Vector2.ZERO:

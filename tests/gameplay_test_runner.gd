@@ -181,7 +181,7 @@ func _test_day_by_day_learning_curve() -> void:
 	var campaign: CampaignState = CampaignStateScript.new(CampaignFixture)
 	var expected_close_minutes: Array[int] = [240, 540, 600, 600, 720, 840, 720]
 	var expected_durations: Array[float] = [160.0, 360.0, 400.0, 400.0, 480.0, 480.0, 480.0]
-	var expected_caps: Array[int] = [1, 2, 2, 3, 4, 5, 4]
+	var expected_caps: Array[int] = [1, 2, 2, 3, 4, 3, 4]
 	for index in expected_close_minutes.size():
 		campaign.day = index + 1
 		_assert(campaign.get_shift_close_minutes() == expected_close_minutes[index], "Day %d closes at the planned in-game time" % campaign.day)
@@ -360,7 +360,7 @@ func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 	var story_portraits := ["tonyo_bored", "tonyo_flustered", "tonyo_determined", "tonyo_smiling_tired", "aling_cora", "aling_cora_smiling", "aling_cora_reading", "jun_jun_tara", "mikay_smug", "bogs_small_smile", "aling_nena_haggling", "aling_nena_happy", "aling_nena_impatient", "aling_nena_embarrassed", "mang_berting_happy", "mang_berting_impatient", "bea_happy", "bea_sad", "paolo_happy", "paolo_sad", "kuya_dodong_thoughtful", "kuya_dodong_soaked"]
 	for portrait_id in story_portraits:
 		var story_portrait: AtlasTexture = CounterArtScript.customer_portrait(portrait_id, CustomerPortraitAtlas)
-		_assert(story_portrait != null and story_portrait.region.size.x == 512.0 and story_portrait.region.size.y >= 509.0, "story portrait exists for %s" % portrait_id)
+		_assert(story_portrait != null and story_portrait.region.size.x >= 512.0 and story_portrait.region.size.y >= 509.0, "story portrait exists for %s" % portrait_id)
 	_assert(CounterArtScript.customer_portrait("jun_jun", CustomerPortraitAtlas).region != CounterArtScript.customer_portrait("bogs", CustomerPortraitAtlas).region, "Jun-jun and Bogs use distinct portrait cells")
 	_assert(CounterArtScript.customer_portrait("bogs", CustomerPortraitAtlas).region != CounterArtScript.customer_portrait("paolo", CustomerPortraitAtlas).region, "Bogs and Paolo use distinct portrait cells")
 

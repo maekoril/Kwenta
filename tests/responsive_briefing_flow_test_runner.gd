@@ -45,6 +45,17 @@ func run() -> void:
 		assert(not main.get_node("StoryIllustrationBackdrop").visible)
 	for day in range(1, 8):
 		main.campaign.day = day
+		main.supplier_story_blocked = false
+		main._refresh_utility_drawer()
+		assert(main.utility_shop.visible == (day >= 2))
+		assert(main.utility_utang.visible == (day >= 4))
+		if day == 2:
+			main.supplier_story_blocked = true
+			main._refresh_utility_drawer()
+			assert(not main.utility_shop.visible)
+			main.supplier_story_blocked = false
+			main._refresh_utility_drawer()
+		assert(main.utility_shop.icon is AtlasTexture)
 		main.shift_in_progress = false
 		main.shop_available = false
 		main._show_pre_shift_briefing()

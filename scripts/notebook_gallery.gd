@@ -5,6 +5,7 @@ var story
 var entries: Array[Dictionary] = []
 var selected := 0
 var thumbnails: VBoxContainer
+var thumbnail_scroll: ScrollContainer
 var picture: TextureRect
 var caption: Label
 var title: Label
@@ -16,11 +17,17 @@ var large_picture: TextureRect
 func _ready() -> void:
 	_label("MGA LARAWANG NAITABI", Vector2(100, 171), Vector2(510, 40), 24)
 	count = _label("", Vector2(100, 216), Vector2(510, 45), 22)
+	thumbnail_scroll = preload("res://scripts/notebook_scroll.gd").new()
+	thumbnail_scroll.name = "ThumbnailScroll"
+	thumbnail_scroll.position = Vector2(100, 278)
+	thumbnail_scroll.size = Vector2(510, 405)
+	thumbnail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	thumbnail_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	add_child(thumbnail_scroll)
 	thumbnails = VBoxContainer.new()
-	thumbnails.position = Vector2(100, 278)
-	thumbnails.size = Vector2(510, 405)
-	thumbnails.add_theme_constant_override("separation", 14)
-	add_child(thumbnails)
+	thumbnails.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	thumbnails.add_theme_constant_override("separation", 8)
+	thumbnail_scroll.add_child(thumbnails)
 	title = _label("", Vector2(765, 177), Vector2(500, 65), 29)
 	picture = _picture(self, Vector2(760, 268), Vector2(515, 305))
 	caption = _label("", Vector2(765, 590), Vector2(500, 80), 25)
@@ -79,8 +86,9 @@ func show_day(progress, day: int) -> void:
 		var entry := entries[i]
 		var seen: bool = CATALOG.is_unlocked(story, entry)
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(510, 119)
-		button.text = entry.title if seen else "?   Hindi pa nakikita"
+		button.custom_minimum_size = Vector2(0, 90)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.text = entry.title if seen else "???"
 		if seen:
 			unlocked += 1
 			button.icon = load("res://assets/story/" + entry.file)
@@ -101,8 +109,8 @@ func _refresh() -> void:
 		return
 	var entry := entries[selected]
 	var seen: bool = CATALOG.is_unlocked(story, entry)
-	title.text = entry.title if seen else "Isang alaalang hindi pa nakikita"
-	caption.text = entry.caption if seen else "Magpatuloy sa kwento. May mga larawang nakadepende sa iyong pinili."
+	title.text = entry.title if seen else "???"
+	caption.text = entry.caption if seen else "???"
 	if seen:
 		picture.texture = load("res://assets/story/" + entry.file)
 		enlarge.visible = true

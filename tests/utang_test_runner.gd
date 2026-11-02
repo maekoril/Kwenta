@@ -11,6 +11,16 @@ func run() -> void:
 	for product in config.product_catalog: products[product.id] = product
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
+	var no_debt_state := CampaignState.new(config)
+	no_debt_state.day = 5
+	no_debt_state.add_debt("future", "neighbor_nico", 100, 5, 6)
+	no_debt_state.add_debt("already_paid", "neighbor_ramon", 100, 5, 5)
+	no_debt_state.repay_debt("already_paid", 105)
+	var no_debt_shift := ShiftManager.new(no_debt_state, products, RandomNumberGenerator.new())
+	var visits: Array = []
+	no_debt_shift.repayment_requested.connect(func(debt): visits.append(debt))
+	no_debt_shift.start_shift(false)
+	assert(visits.is_empty()) # Scripted, future and paid debts do not create a visitor.
 	var shift := ShiftManager.new(state, products, rng)
 	state.record_purchase("neighbor_lina", 150)
 	assert(is_equal_approx(state.credit_rate("neighbor_lina"), 0.015))
@@ -61,11 +71,24 @@ func run() -> void:
 	main.story_events.begin_shift(5)
 	main.shift.start_shift()
 	assert(main.story_events._current.kind == "repayment")
+	assert(main.story_events._mode == "repayment_visitor")
+	assert(main.shift.active_customers.is_empty() and main.shift.frozen)
+	main.shift.advance_time(30.0)
+	assert(main.shift.active_customers.is_empty() and main.shift.elapsed_seconds == 0.0)
+	await create_timer(0.7).timeout
+	var visitor = main.story_events._visitor_layer.find_child("StoryVisitorButton", true, false)
+	assert(visitor != null and not visitor.disabled and visitor.find_child("RepaymentEventMarker", true, false) != null)
+	assert(main.story_events._visitor_layer.find_child("RepaymentVisitorTutorial", true, false) != null)
+	visitor.pressed.emit()
+	assert(main.story_events._mode == "choice")
+	assert(main.completed_tutorials.get("utang_repayment_marker", false))
 	main.bubble.choice_made.emit(0)
 	assert(not main.campaign.has_debt("neighbor_lina"))
 	assert(main.shift.debt_payments_received == debt.principal + debt.interest)
 	assert(main.shift.shift_earnings == 0)
 	await create_timer(0.3).timeout
+	main.shift.advance_time(main.shift.current_spawn_delay + 0.1)
+	assert(not main.shift.active_customers.is_empty())
 	main.story_events.suppress()
 	var borrower := CustomerState.new("neighbor_nico", OrderState.new(), 100)
 	borrower.instance_id = "offer_test"
@@ -105,6 +128,10 @@ func run() -> void:
 	approved_panel.approve_button.pressed.emit()
 	assert(borrower.credit_approved)
 	assert(not borrower.story_arrival_pending)
+	var patience_before: float = borrower.patience_remaining
+	var trust_before: float = borrower.trust
+	assert(not borrower.advance_time(1000.0))
+	assert(borrower.active and not borrower.timed_out and borrower.patience_remaining == patience_before and borrower.trust == trust_before)
 	assert(main.story_events.credit_panel == null)
 	approved_panel._decide(false)
 	assert(borrower.credit_approved)

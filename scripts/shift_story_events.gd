@@ -28,6 +28,7 @@ signal credit_decided(approved: bool, customer_id: String)
 signal repayment_completed
 signal partial_repayment_completed
 signal visitor_tutorial_completed
+signal repayment_marker_tutorial_completed
 
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STORY_TUTORIAL_OVERLAY = preload("res://scripts/interactive_tutorial_overlay.gd")
@@ -62,6 +63,7 @@ var _hover_text: Dictionary = {}                # customer_id -> remark shown wh
 var _mixup_entry: Dictionary = {}
 var _visitor_layer: CanvasLayer
 var _visitor_tutorial_seen := false
+var _repayment_marker_tutorial_seen := false
 var _scene_choice_done := false
 var _paolo_note_visible := false
 var _utang_ledger_visible := false
@@ -398,9 +400,8 @@ func _start_next() -> void:
 			_mode = "credit_visitor"
 			customer_story_prompt_requested.emit(str(_current.get("id", "")))
 		"repayment":
-			_mode = "choice"
-			var debt: Dictionary = _current.debt
-			bubble.ask(str(debt.customer).capitalize(), "Tonyo, heto na ang ₱%d na bayad ko. Salamat, ha!" % int(debt.balance), ["Tanggapin ang bayad"], _portrait(str(debt.customer)), str(debt.customer))
+			_mode = "repayment_visitor"
+			_show_story_visitor(str(_current.debt.customer))
 		"arrival":
 			_play_beats(_current.get("beats", []))
 		"customer_visitor":
@@ -453,12 +454,15 @@ func _show_story_visitor(visitor: String) -> void:
 	button.tooltip_text = "Tap to begin the story event"
 	root.add_child(button)
 	visitor_portrait_requested.emit(visitor, button)
-	var mark := STORY_EVENT_MARKER.create_marker()
+	var mark: Control = preload("res://scripts/repayment_event_marker.gd").new() if _mode == "repayment_visitor" else STORY_EVENT_MARKER.create_marker()
+	if _mode == "repayment_visitor":
+		mark.name = "RepaymentEventMarker"
+		button.tooltip_text = "Tap the customer to receive their debt payment"
 	mark.position = Vector2(50, -80)
 	button.add_child(mark)
 	button.pressed.connect(_on_story_visitor_tapped)
 	await visitor_entrance_finished
-	if not is_instance_valid(button) or _mode not in ["visitor", "outro_visitor"]:
+	if not is_instance_valid(button) or _mode not in ["visitor", "outro_visitor", "repayment_visitor"]:
 		return
 	button.disabled = false
 	if not _visitor_tutorial_seen and _day == 1 and visitor == "mang_berting":
@@ -466,8 +470,24 @@ func _show_story_visitor(visitor: String) -> void:
 		overlay.name = "StoryVisitorTutorial"
 		root.add_child(overlay)
 		overlay.show_step("Tap the visitor with ! to start a story event. Time and customer patience are paused.", button.get_global_rect().merge(mark.get_global_rect()), "STORY EVENT")
+	elif _mode == "repayment_visitor" and _day == 5 and not _repayment_marker_tutorial_seen:
+		var overlay := STORY_TUTORIAL_OVERLAY.new()
+		overlay.name = "RepaymentVisitorTutorial"
+		root.add_child(overlay)
+		overlay.show_step("This symbol means the customer is here to pay their debt. Tap them to receive the payment.", button.get_global_rect().merge(mark.get_global_rect()), "DEBT PAYMENT")
 
 func _on_story_visitor_tapped() -> void:
+	if _mode == "repayment_visitor":
+		if _day == 5 and not _repayment_marker_tutorial_seen:
+			_repayment_marker_tutorial_seen = true
+			repayment_marker_tutorial_completed.emit()
+		_hide_story_visitor()
+		_mode = "choice"
+		var debt: Dictionary = _current.debt
+		var names := {"neighbor_lina": "Aling Lina", "neighbor_rosa": "Lola Rosa", "neighbor_nico": "Nico", "neighbor_ramon": "Mang Ramon", "jun_jun": "Jun-jun"}
+		var customer_name := str(names.get(str(debt.customer), str(debt.customer).capitalize()))
+		bubble.ask(customer_name, "Tonyo, heto na ang ₱%d na bayad ko. Salamat, ha!" % int(debt.balance), ["Tanggapin ang bayad"], _portrait(str(debt.customer)), str(debt.customer))
+		return
 	if _mode != "visitor" and _mode != "outro_visitor":
 		return
 	_mark_visitor_tutorial_seen()

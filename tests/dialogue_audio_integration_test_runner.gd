@@ -83,8 +83,12 @@ func _test_hud_recenters_after_viewport_resize() -> void:
 	_assert(is_equal_approx(friends.position.x + friends.size.x, main.size.x) and is_equal_approx(friends.position.y + friends.size.y, main.size.y - 5.0), "fiesta helpers follow both edges on taller screens")
 	viewport_host.size = Vector2(2700.0, 1080.0)
 	await process_frame
+	var menu_button := main.utility_toggle as Control
+	_assert(menu_button != null and not menu_button.get_global_rect().intersects(main.trust_tag.get_global_rect()), "menu control stays clear of the suki meter after resizing")
+	main.utility_toggle.pressed.emit()
 	var pause_button := main.pause_menu.get("_button") as Control
-	_assert(pause_button != null and is_equal_approx(pause_button.position.x, 1795.0 + left_margin), "pause control stays aligned with the re-centered HUD instead of overlapping the suki meter")
+	_assert(pause_button != null and not pause_button.get_global_rect().intersects(main.trust_tag.get_global_rect()) and not pause_button.get_global_rect().intersects(menu_button.get_global_rect()), "open pause control stays clear of the suki meter and menu")
+	main.utility_toggle.pressed.emit()
 	main._show_pre_shift_briefing()
 	await process_frame
 	await process_frame

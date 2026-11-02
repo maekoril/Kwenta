@@ -51,8 +51,8 @@ const DAY_FOCUS_HINTS := {
 	2: "Shop before opening. Today, give the correct sukli after each sale.",
 	3: "Practice orders with different products while customers overlap.",
 	4: "Rain makes customers less patient. Serve the shortest bar first.",
-	5: "Tap UTANG to check balances and due dates.",
-	6: "Fiesta rush! Up to five customers can wait at once.",
+	5: "Tap UTANG LIST to check balances and due dates.",
+	6: "Fiesta rush! Up to three customers can wait at once.",
 	7: "Final day: take your time. Customers will not lose trust today.",
 }
 
@@ -120,7 +120,10 @@ var summary_button: Button
 var bubble: DialogueBubble
 var prologue_background: TextureRect
 var prologue_fade: ColorRect
+var day7_time_label: Label
 var story_illustration: TextureRect
+var story_illustration_previous: TextureRect
+var story_illustration_tween: Tween
 var paolo_debt_note: Control
 var utang_button: Button
 var utang_close: Button
@@ -441,6 +444,21 @@ func _launch_debug_start() -> void:
 				break
 		_show_story_beats(intro.slice(box_index), "DAY 2", "start_shift")
 		return
+	if moment == 34 and campaign.day == 7:
+		var reunion := story.get_day_outro_beats(7)
+		for index in range(reunion.size()):
+			if str(reunion[index].get("text", "")).contains("Kumalansing ang shutter"):
+				_show_story_beats(reunion.slice(index), "DAY 7", "day_choices")
+				return
+	if moment == 35 and campaign.day == 7:
+		_show_story_beats(story.get_day_callback_beats(7), "DAY 7", "finish_day")
+		return
+	if moment == 33 and campaign.day == 7:
+		var ending := story.get_day_callback_beats(7)
+		for index in range(ending.size()):
+			if str(ending[index].get("cutscene", "")) == "day7_time_card":
+				_show_story_beats(ending.slice(index), "DAY 7", "finish_day")
+				return
 	if moment in [0, 27, 28]:
 		_present_day_intro()
 		return
@@ -459,9 +477,10 @@ func _launch_debug_start() -> void:
 	if moment in [2, 14]:
 		_begin_shift()
 		return
-	if moment == 31:
-		campaign.add_debt("debug_credit", "neighbor_lina", 100, 7, 5)
+	if moment in [31, 32]:
+		campaign.add_debt("debug_credit", "neighbor_lina", 100, 7, campaign.day)
 		completed_tutorials.erase("utang_repayment")
+		completed_tutorials.erase("utang_repayment_marker")
 	if moment == 30:
 		completed_tutorials.erase("utang_first")
 		completed_tutorials.erase("utang_event")
@@ -485,7 +504,7 @@ func _launch_debug_start() -> void:
 			shift._spawn_customer()
 			if shift.credit_requested_today: break
 		return
-	if moment == 31:
+	if moment in [31, 32]:
 		return
 	if moment in [8, 12]:
 		story_events.suppress()
@@ -700,9 +719,9 @@ func _build_utility_drawer() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	utility_drawer.add_child(column)
-	utility_shop = _utility_row(column, "ORDER SUPPLIES")
-	utility_utang = _utility_row(column, "UTANG")
-	var diary := _utility_row(column, "KUWADERNO")
+	utility_shop = _utility_row(column, "ORDER")
+	utility_utang = _utility_row(column, "UTANG LIST")
+	var diary := _utility_row(column, "DIARY")
 	for entry in [[utility_shop, 0], [utility_utang, 1], [diary, 2]]:
 		entry[0].icon = _utility_icon(entry[1])
 		entry[0].expand_icon = true
@@ -753,10 +772,13 @@ func _refresh_utility_drawer() -> void:
 	if not is_instance_valid(utility_drawer):
 		return
 	utility_drawer.visible = utility_open
+	utility_shop.visible = campaign != null and campaign.day >= 2 and (campaign.day > 2 or not supplier_story_blocked)
 	utility_shop.disabled = campaign == null or campaign.day <= 1 or supplier_story_blocked
-	utility_shop.text = "ORDER · BEFORE OPENING" if _is_shop_available() else "ORDER · LOCKED"
-	utility_shop.icon = _utility_icon(0) if _is_shop_available() else load("res://assets/sprites/ui/icon_padlock_48x48.png") as Texture2D
+	utility_shop.text = "ORDER"
+	utility_shop.icon = _utility_icon(0)
+	utility_shop.tooltip_text = "Order before opening the store." if not _is_shop_available() else "Order supplies"
 	utility_shop.modulate = Color.WHITE if _is_shop_available() else Color(0.72, 0.72, 0.72)
+	utility_utang.visible = campaign != null and campaign.day >= 4
 	utility_utang.disabled = campaign == null or campaign.day < 4 or shift == null or not shift.is_running or (shift.frozen and tutorial_step != TutorialStep.DAY4_UTANG_ROW and utang_tutorial_message.is_empty())
 	if is_instance_valid(pause_menu) and is_instance_valid(pause_menu._button):
 		pause_menu._button.visible = utility_open and pause_menu._available and not get_tree().paused
@@ -1971,6 +1993,8 @@ func _show_shift_summary() -> void:
 		await day_one_closing_tutorial_finished
 	if campaign.day != 1:
 		await _play_final_closing_sign()
+	if campaign.day == 7:
+		story.write_diary_entry(7)
 	_show_story_beats(story.get_day_outro_beats(campaign.day), pending_shift_summary_title, "day_choices")
 
 func _on_summary_button_pressed() -> void:
@@ -2018,6 +2042,18 @@ func _build_prologue_background() -> void:
 	prologue_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	prologue_fade.visible = false
 	add_child(prologue_fade)
+	day7_time_label = Label.new()
+	day7_time_label.name = "DaySevenTimeCard"
+	day7_time_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	day7_time_label.text = "Makalipas ang isang linggo..."
+	day7_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	day7_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	day7_time_label.add_theme_font_size_override("font_size", 48)
+	day7_time_label.add_theme_color_override("font_color", Color.WHITE)
+	day7_time_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	day7_time_label.z_index = 50
+	day7_time_label.visible = false
+	add_child(day7_time_label)
 
 func _build_day_two_visuals() -> void:
 	var illustration_backdrop := ColorRect.new()
@@ -2028,6 +2064,15 @@ func _build_day_two_visuals() -> void:
 	illustration_backdrop.z_index = 39
 	illustration_backdrop.visible = false
 	add_child(illustration_backdrop)
+	story_illustration_previous = TextureRect.new()
+	story_illustration_previous.name = "PreviousStoryIllustration"
+	story_illustration_previous.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	story_illustration_previous.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	story_illustration_previous.z_index = 39
+	story_illustration_previous.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	story_illustration_previous.hide()
+	add_child(story_illustration_previous)
 	story_illustration = TextureRect.new()
 	story_illustration.name = "DayTwoStoryIllustration"
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
@@ -2075,23 +2120,58 @@ func _show_story_prop(prop_name: String) -> void:
 	elif prop_name == "umbrella_handoff":
 		_show_gallery_illustration("res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png")
 	elif prop_name == "paolo_coins":
-		_show_gallery_illustration("res://assets/story/day3_paolo_coins_v2.png")
+		_show_gallery_illustration("res://assets/story/day3_paolo_coins_casual.png")
 	elif prop_name == "lina_walking_away":
 		_show_gallery_illustration("res://assets/story/day4_lina_alfa_corner.png")
 	elif prop_name == "friends_shelter":
 		_show_gallery_illustration("res://assets/story/day4_friends_shelter.png")
 	elif prop_name == "alfa_save_corner":
 		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
-	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration"]:
-		story_illustration.visible = false
-	elif prop_name == "hide_berting_closeup":
-		story_illustration.visible = false
+	elif prop_name in ["hide_lina_walking_away", "hide_scene_illustration", "hide_berting_closeup"]:
+		_hide_gallery_illustration()
 
-func _show_gallery_illustration(path: String) -> void:
-	story_illustration.texture = load(path) as Texture2D
+func _stop_illustration_transition() -> void:
+	if story_illustration_tween != null and story_illustration_tween.is_valid():
+		story_illustration_tween.kill()
+	if is_instance_valid(story_illustration_previous):
+		story_illustration_previous.hide()
+		story_illustration_previous.modulate.a = 1.0
+
+func _show_gallery_illustration(path: String, smooth: bool = true) -> void:
+	var next_texture := load(path) as Texture2D
+	if next_texture == null: return
+	if story_illustration.visible and story_illustration.texture == next_texture:
+		preload("res://scripts/illustration_catalog.gd").record_seen(story, path)
+		return
+	var old_texture := story_illustration.texture if story_illustration.visible else (story_illustration_previous.texture if story_illustration_previous.visible else null)
+	_stop_illustration_transition()
+	if smooth and old_texture != null and old_texture != next_texture:
+		story_illustration_previous.texture = old_texture
+		story_illustration_previous.show()
+	story_illustration.texture = next_texture
 	_update_story_illustration_fit()
+	story_illustration.modulate.a = 0.0 if smooth else 1.0
 	story_illustration.visible = true
+	if smooth:
+		story_illustration_tween = create_tween().set_parallel(true)
+		story_illustration_tween.tween_property(story_illustration, "modulate:a", 1.0, 0.38).set_trans(Tween.TRANS_SINE)
+		if story_illustration_previous.visible:
+			story_illustration_tween.tween_property(story_illustration_previous, "modulate:a", 0.0, 0.38).set_trans(Tween.TRANS_SINE)
+			story_illustration_tween.chain().tween_callback(story_illustration_previous.hide)
 	preload("res://scripts/illustration_catalog.gd").record_seen(story, path)
+
+func _hide_gallery_illustration() -> void:
+	if not is_instance_valid(story_illustration) or not story_illustration.visible: return
+	var old_texture := story_illustration.texture
+	_stop_illustration_transition()
+	story_illustration_previous.texture = old_texture
+	story_illustration_previous.modulate.a = story_illustration.modulate.a
+	story_illustration_previous.show()
+	story_illustration.hide()
+	story_illustration.modulate.a = 1.0
+	story_illustration_tween = create_tween()
+	story_illustration_tween.tween_property(story_illustration_previous, "modulate:a", 0.0, 0.32).set_trans(Tween.TRANS_SINE)
+	story_illustration_tween.tween_callback(story_illustration_previous.hide)
 
 func _present_prologue() -> void:
 	preload("res://scripts/illustration_catalog.gd").record_seen(story, "res://assets/story/tonyo_bedroom.png")
@@ -2152,10 +2232,48 @@ func _show_current_story_beat() -> void:
 		bubble.close()
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
 		await story_events.story_visitor_tapped
-	if str(beat.get("cutscene", "")) == "box_fall":
+	if str(beat.get("cutscene", "")) == "day7_time_card":
+		bubble.close()
+		prologue_fade.modulate.a = 0.0
+		prologue_fade.visible = true
+		var blackout := create_tween()
+		blackout.tween_property(prologue_fade, "modulate:a", 1.0, 0.6)
+		await blackout.finished
+		day7_time_label.visible = true
+		day7_time_label.modulate.a = 0.0
+		var title_fade := create_tween()
+		title_fade.tween_property(day7_time_label, "modulate:a", 1.0, 0.8)
+		title_fade.tween_interval(1.4)
+		title_fade.tween_property(day7_time_label, "modulate:a", 0.0, 0.6)
+		await title_fade.finished
+		day7_time_label.visible = false
+		story_beat_index += 1
+		_show_current_story_beat()
+		return
+	if str(beat.get("cutscene", "")) == "day7_walk":
+		bubble.close()
+		_show_gallery_illustration("res://assets/story/day7_classroom_seated.png", false)
+		var classroom_fade := create_tween()
+		classroom_fade.tween_property(prologue_fade, "modulate:a", 0.0, 0.5)
+		await classroom_fade.finished
+		prologue_fade.visible = false
+		await get_tree().create_timer(0.65).timeout
+		_show_gallery_illustration("res://assets/story/day7_classroom_stand.png", false)
+		await get_tree().create_timer(0.65).timeout
+		_show_gallery_illustration("res://assets/story/day7_classroom_front_back.png", false)
+		await get_tree().create_timer(0.65).timeout
+		_show_gallery_illustration("res://assets/story/day7_classroom_turn.png", false)
+		await get_tree().create_timer(0.65).timeout
+	elif str(beat.get("cutscene", "")) == "day7_classmates":
+		_show_gallery_illustration("res://assets/story/day7_classmates_listening.png")
+	elif str(beat.get("cutscene", "")) == "day7_tonyo_face":
+		_show_gallery_illustration("res://assets/story/day7_tonyo_presenting.png")
+	elif str(beat.get("cutscene", "")) == "box_fall":
 		_show_gallery_illustration("res://assets/story/day2_box_fall.png")
 	elif str(beat.get("cutscene", "")) == "day3_project":
 		_show_gallery_illustration("res://assets/story/day3_project_box.png")
+	elif str(beat.get("cutscene", "")) == "day7_project":
+		_show_gallery_illustration("res://assets/story/day7_tonyo_miniature.png")
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
 		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
@@ -2175,7 +2293,7 @@ func _show_current_story_beat() -> void:
 		await fade_in.finished
 		prologue_fade.visible = false
 	elif str(beat.get("cutscene", "")) == "end":
-		story_illustration.visible = false
+		_hide_gallery_illustration()
 	var speaker: String = str(beat.get("speaker", "Narrator"))
 	var portrait_id: String = str(beat.get("portrait", ""))
 	var text: String = str(beat.get("text", ""))
@@ -2328,6 +2446,9 @@ func _clear_story_choice_buttons() -> void:
 		child.queue_free()
 
 func _finish_story_day() -> void:
+	if campaign.day == 7 and not pending_shift_summary_text.is_empty():
+		_show_pending_shift_summary()
+		return
 	if not pending_shift_summary_text.is_empty():
 		var entry := story.write_diary_entry(campaign.day)
 		_show_story_beats([
@@ -2359,13 +2480,11 @@ func _advance_story_day() -> void:
 		story_complete = true
 		bubble.close()
 		summary_backdrop.visible = true
-		summary_panel.visible = true
-		summary_title.text = "KWENTA · WAKAS"
-		summary_speaker.text = ""
-		summary_text.text = "Kumpleto na ang pitong araw ni Tonyo. Maaari mong ulitin ang kuwento at pumili ng ibang mga sagot."
-		summary_portrait.visible = false
-		summary_button.visible = true
-		summary_button.text = "REPLAY STORY"
+		summary_panel.visible = false
+		briefing_card.show_summary("KWENTA · WAKAS", "SALAMAT SA PAGLALARO
+Kumpleto na ang kuwento ni Tonyo. Maaari mo itong balikan at pumili ng ibang mga sagot.", size)
+		briefing_card._diary_button.visible = false
+		briefing_card._button.text = "REPLAY STORY"
 		return
 	campaign.advance_day()
 	new_purchase_groups_today.clear()
@@ -2464,6 +2583,9 @@ func _show_pre_shift_briefing() -> void:
 	briefing_card.show_briefing(briefing, size)
 
 func _begin_shift() -> void:
+	shift.wait_for_clear_before_first_credit = not bool(completed_tutorials.get("utang_event", false))
+	story_events._repayment_marker_tutorial_seen = bool(completed_tutorials.get("utang_repayment_marker", false))
+	shift.prioritize_repayment_tutorial = not story_events._repayment_marker_tutorial_seen
 	shop_available = false
 	shift_in_progress = true
 	_refresh_shop_button()
@@ -2660,7 +2782,7 @@ func _show_supplier_row_tutorial() -> void:
 func _show_utang_row_tutorial() -> void:
 	await get_tree().process_frame
 	if utility_open and tutorial_step == TutorialStep.DAY4_UTANG_MENU:
-		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_ROW, "Tap UTANG to check who owes money and see their balances.", utility_utang, "UTANG NOTEBOOK")
+		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_ROW, "Tap UTANG LIST to check who owes money and see their balances.", utility_utang, "UTANG NOTEBOOK")
 		_refresh_utility_drawer()
 		tutorial_overlay.z_index = 58
 		var drawer_left := utility_drawer.global_position.x - tutorial_overlay.global_position.x
@@ -2705,6 +2827,9 @@ func _build_story_events() -> void:
 		story_events.visitor_portrait_requested.connect(_show_story_visitor_portrait)
 		story_events.visitor_portrait_hidden.connect(_hide_story_visitor_portrait)
 		story_events.visitor_tutorial_completed.connect(_remember_story_event_tutorial)
+		story_events.repayment_marker_tutorial_completed.connect(func():
+			_remember_tutorial("utang_repayment_marker")
+			shift.prioritize_repayment_tutorial = false)
 		story_events.credit_decided.connect(_on_utang_tutorial_decision)
 		story_events.repayment_completed.connect(_on_utang_tutorial_repayment)
 		story_events.partial_repayment_completed.connect(_on_utang_tutorial_partial_repayment)
@@ -2731,12 +2856,12 @@ func _on_utang_tutorial_recorded(customer_id: String) -> void:
 	_show_utang_tutorial_ledger.call_deferred("The debt is recorded. You receive cash when the customer pays.")
 
 func _on_utang_tutorial_repayment() -> void:
-	if bool(completed_tutorials.get("utang_repayment", false)): return
+	if campaign.day != 5 or bool(completed_tutorials.get("utang_repayment", false)): return
 	_remember_tutorial("utang_repayment")
 	_show_utang_tutorial_ledger.call_deferred("Payment received! The ledger now shows the debt as paid.")
 
 func _on_utang_tutorial_partial_repayment() -> void:
-	if bool(completed_tutorials.get("utang_repayment", false)): return
+	if campaign.day != 5 or bool(completed_tutorials.get("utang_repayment", false)): return
 	_remember_tutorial("utang_repayment")
 	_show_utang_tutorial_ledger.call_deferred("Lola Rosa paid ₱110. Her remaining balance is ₱210.")
 
@@ -2747,7 +2872,7 @@ func _show_utang_tutorial_ledger(message: String) -> void:
 	shift.frozen = true
 	utang_tutorial_message = message
 	utility_toggle.modulate = Color(1.5, 1.3, 0.6)
-	_show_tutorial_hint("Open the menu, then tap UTANG to check the ledger.", 60.0)
+	_show_tutorial_hint("Open the menu, then tap UTANG LIST to check the ledger.", 60.0)
 
 func _show_story_visitor_portrait(visitor: String, button: Button) -> void:
 	_hide_story_visitor_portrait()
@@ -3014,18 +3139,13 @@ func _begin_day_two_sukli_tutorial(customer: CustomerState) -> void:
 	tutorial_change_due = customer.payment.change_due()
 	tutorial_payment_tender = customer.payment.tendered
 	tutorial_payment_total = customer.payment.total
-	tutorial_step = TutorialStep.DAY2_MONEY
+	tutorial_step = TutorialStep.DAY2_RULES
 	tutorial_sukli_ready = false
 	tutorial_sukli_generation += 1
-	var generation := tutorial_sukli_generation
-	var customer_id := customer.instance_id
-	# Wait until the drawer finishes sliding so the spotlight uses its final position.
-	await get_tree().create_timer(0.32).timeout
-	if generation != tutorial_sukli_generation or not cash_tray.is_open() or cash_tray.customer_id != customer_id:
-		return
-	tutorial_step = TutorialStep.DAY2_RULES
 	sukli_rules_previous_frozen = shift.frozen
 	shift.frozen = true
+	# Controls receive mouse input in scene-tree order, independently of z_index.
+	move_child(tutorial_overlay, get_child_count() - 1)
 	tutorial_overlay.show_sukli_examples(tutorial_payment_tender, tutorial_payment_total, _tutorial_rect_for(cash_tray))
 
 func _finish_sukli_rules_intro() -> void:
@@ -3427,9 +3547,9 @@ func _show_fiesta_preview() -> void:
 	var helpers := ["mikay", "jun_jun", "bogs"]
 	var titles := ["MIKAY · SUKLI", "JUN-JUN · ORDER", "BOGS · FIESTA RESCUE"]
 	var messages := [
-		"Si Mikay ang magbibigay ng tamang sukli. Piliin siya, tapos ang customer na naghihintay ng sukli.",
-		"Si Jun-jun ang mag-aabot ng buong natitirang order. Piliin siya, tapos ang customer na may order.",
-		"Si Bogs ang tatapos sa lahat ng kasalukuyang order. Isang pindot lang! Sukli ay hiwalay pa ring aasikasuhin."
+		"Mikay gives exact change. Tap her, then a customer waiting for change. She rests for 20 seconds.",
+		"Jun-jun serves one customer’s remaining order. Tap him, then a customer. He rests for 60 seconds.",
+		"Tap Bogs to complete all current orders. Change is separate. He rests for 120 seconds."
 	]
 	tutorial_overlay.show_fiesta_example(helpers[fiesta_preview_step], messages[fiesta_preview_step], titles[fiesta_preview_step], fiesta_preview_step == 2)
 

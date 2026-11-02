@@ -216,12 +216,13 @@ func refresh_patience() -> void:
 		return
 
 	var patience_ratio: float = clampf(customer.patience_remaining / maxf(customer.patience_seconds, 0.001), 0.0, 1.0)
+	patience_bar.visible = not customer.credit_approved
 	patience_bar.value = patience_ratio * 100.0
 	_refresh_name_tag()
 
 	# Low patience: switch to the impatient sprite (if this character has one) and pulse
 	# the character like "huy, asan na yung binili ko?!" No more red tint.
-	var impatient: bool = patience_ratio < IMPATIENT_BELOW and customer.active
+	var impatient: bool = not customer.credit_approved and patience_ratio < IMPATIENT_BELOW and customer.active
 	if impatient != _shown_impatient:
 		_shown_impatient = impatient
 		_apply_portrait()
@@ -460,7 +461,7 @@ func _set_bubble_paying(paying: bool) -> void:
 		return
 	_bubble_paying = paying
 	name_tag.visible = not paying
-	patience_bar.visible = true
+	patience_bar.visible = customer == null or not customer.credit_approved
 	order_bubble.add_theme_stylebox_override("panel", _make_box(Color("f2dfb9"), Color("593d2d"), 3, ORDER_BUBBLE_PADDING, 9))
 	if not paying:
 		_stop_pay_pulse()

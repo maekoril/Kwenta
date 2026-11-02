@@ -183,7 +183,7 @@ func write_diary_entry(day: int) -> String:
 			match get_choice("day4_rain"):
 				"join": entry = "Sumama ako sa laro sa ulan. Pagbalik ko, nakita kong may dumaan palang bibili. Sana bumalik si Aling Lina."
 				"stay": entry = "Inaya akong maglaro sa ulan, pero nagbantay muna ako ng tindahan. Bawi ako sa kanila sa susunod."
-				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Coke, at nagsalita pa nga si Bogs!"
+				"shelter": entry = "Pinasilong ko ang mga kaibigan ko. Nagsalo kami sa Feeta, at nagsalita pa nga si Bogs!"
 				_: entry = "Maulan ngayon. Tinapos ko ang araw sa pagbabantay ng tindahan."
 		5:
 			match get_choice("day5_debt"):
@@ -191,7 +191,10 @@ func write_diary_entry(day: int) -> String:
 				"defer": entry = "Sinabi ni Lola Rosa na magbabayad siya ng ₱110, pero sinabi kong itatanong ko muna kay Inay. ₱320 pa rin ang utang niya."
 				_: entry = "May bagong tindahan sa tapat. Gusto ko pa ring alagaan ang mga suki ni Inay."
 		6:
-			entry = "Abala ang araw na ito. Mabuti na lang, natapos ko rin ang pagbabantay."
+			match get_choice("day6_help"):
+				"ask": entry = "Fiesta ngayon. Nagpatulong ako sa mga kaibigan ko sa tindahan. Namatay ang ilaw, pero natuloy pa rin kami."
+				"alone": entry = "Fiesta ngayon. Ako ang humawak ng tindahan. Namatay ang ilaw, pero bumalik ang mga kaibigan ko para tumulong."
+				_: entry = "Fiesta ngayon. Abala ang araw sa tindahan, pero natapos ko rin ang pagbabantay."
 		7:
 			entry = "Isang linggo na akong nagbantay ng tindahan. Ang dami kong natutunan at gustong ikuwento kay Inay."
 		_:

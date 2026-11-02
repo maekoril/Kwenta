@@ -5,6 +5,9 @@ signal credit_requested(customer_instance_id: String)
 signal credit_recorded(customer_instance_id: String)
 signal repayment_requested(debt: Dictionary)
 var credit_requested_today := false
+var wait_for_clear_before_first_credit := false
+var prioritize_repayment_tutorial := true
+var pending_credit_customer: CustomerState = null
 
 signal customers_changed
 signal cash_changed(value: int)
@@ -27,7 +30,8 @@ signal payment_started(customer_instance_id: String)
 const HAGGLE_REFUSE_TRUST_LOSS := 5.0
 const MIXUP_MISSED_TRUST_LOSS := 15.0
 const WALKOUT_BARANGAY_TRUST_LOSS := 15.0
-const SUKI_RECOVERY_PER_TIMELY_SALE := 2.0
+const SUKI_RECOVERY_PER_TIMELY_SALE := 5.0
+const FIESTA_BROWNOUT_SPAWN_SECONDS := 5.0
 
 var campaign_state: CampaignState
 var products_by_id: Dictionary
@@ -114,6 +118,7 @@ func reset_story_state() -> void:
 func start_shift(spawn_initial_customer: bool = true) -> void:
 	frozen = false
 	credit_requested_today = false
+	pending_credit_customer = null
 	active_customers.clear()
 	recent_customer_ids.clear()
 	elapsed_seconds = 0.0
@@ -144,11 +149,15 @@ func start_shift(spawn_initial_customer: bool = true) -> void:
 	# 6 PM, then 8 PM). Story events can still freeze time, but never replace it.
 	shift_duration_seconds = maxf(0.01, campaign_state.get_shift_length_seconds())
 	shift_close_minutes = campaign_state.get_shift_close_minutes()
+	var due_repayments: Array[Dictionary] = []
 	for debt in campaign_state.debts:
 		if not debt.scripted and int(debt.balance) > 0 and int(debt.due_day) <= campaign_state.day:
-			repayment_requested.emit(debt.duplicate(true))
-	if spawn_initial_customer:
+			due_repayments.append(debt.duplicate(true))
+	var tutorial_first := campaign_state.day == 5 and prioritize_repayment_tutorial and not due_repayments.is_empty()
+	if spawn_initial_customer and not tutorial_first:
 		_spawn_customer()
+	for debt in due_repayments:
+		repayment_requested.emit(debt)
 	_update_clock()
 
 func _drain_trust_for_overdue_change(delta_seconds: float) -> void:
@@ -184,7 +193,7 @@ func advance_time(delta_seconds: float) -> void:
 			is_closing = true
 			_update_clock()
 			closing_started.emit()
-			if active_customers.is_empty() and not story_waiting_for_clear:
+			if active_customers.is_empty() and not story_waiting_for_clear and pending_credit_customer == null:
 				finish_shift()
 				return
 			# A closing tutorial may pause the shift from the closing_started signal.
@@ -226,8 +235,20 @@ func advance_time(delta_seconds: float) -> void:
 		if customer.active:
 			remaining_customers.append(customer)
 	active_customers = remaining_customers
+	# During the fiesta, the next visitor can wait for a space at the counter.
+	if fiesta_brownout_rush and not is_closing and not story_waiting_for_clear and pending_credit_customer == null and active_customers.size() >= _active_customer_limit():
+		spawn_elapsed = minf(spawn_elapsed + delta_seconds, current_spawn_delay)
 	var spawned_customer := false
-	if not is_closing and not story_waiting_for_clear and not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
+	if pending_credit_customer != null and active_customers.is_empty() and not story_waiting_for_clear:
+		var waiting_customer := pending_credit_customer
+		pending_credit_customer = null
+		active_customers.append(waiting_customer)
+		customers_changed.emit()
+		credit_requested.emit(waiting_customer.instance_id)
+		spawned_customer = true
+	elif pending_credit_customer != null:
+		pass # Let the existing customers leave before the tutorial visitor enters.
+	elif not is_closing and not story_waiting_for_clear and not story_queue.is_empty() and active_customers.size() < _active_customer_limit():
 		_spawn_customer()   # a scripted story customer doesn't wait for the spawn timer
 		spawned_customer = true
 	elif not is_closing and not story_waiting_for_clear and active_customers.size() < _active_customer_limit():
@@ -239,7 +260,7 @@ func advance_time(delta_seconds: float) -> void:
 			spawned_customer = true
 	if customer_left and not spawned_customer:
 		customers_changed.emit()
-	if is_closing and active_customers.is_empty() and not story_waiting_for_clear:
+	if is_closing and active_customers.is_empty() and not story_waiting_for_clear and pending_credit_customer == null:
 		finish_shift()
 		return
 	_update_clock()
@@ -485,11 +506,12 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 		story_customer_sale_completed.emit(customer.instance_id, customer.story_after_sale)
 	else:
 		active_customers.erase(customer)
-	spawn_elapsed = 0.0
-	current_spawn_delay = _next_spawn_delay()
+	if not fiesta_brownout_rush:
+		spawn_elapsed = 0.0
+		current_spawn_delay = _next_spawn_delay()
 	cash_changed.emit(campaign_state.cash)
 	customers_changed.emit()
-	if is_running and is_closing and active_customers.is_empty() and not story_waiting_for_clear:
+	if is_running and is_closing and active_customers.is_empty() and not story_waiting_for_clear and pending_credit_customer == null:
 		finish_shift()
 
 func finish_story_customer(instance_id: String) -> void:
@@ -558,6 +580,9 @@ func _spawn_customer() -> void:
 	campaign_state.save_customer_trust(id, customer.trust)
 	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and (campaign_state.day == 4 or rng.randf() < 0.3):
 		_prepare_credit(customer)
+	if wait_for_clear_before_first_credit and not customer.credit_offer.is_empty() and not active_customers.is_empty():
+		pending_credit_customer = customer
+		return
 	active_customers.append(customer)
 
 	customers_changed.emit()
@@ -575,11 +600,11 @@ func start_fiesta_brownout_rush() -> void:
 		return
 	fiesta_brownout_rush = true
 	spawn_elapsed = 0.0
-	current_spawn_delay = minf(current_spawn_delay, 3.0)
+	current_spawn_delay = FIESTA_BROWNOUT_SPAWN_SECONDS
 
 func _next_spawn_delay() -> float:
 	if fiesta_brownout_rush:
-		return 3.0
+		return FIESTA_BROWNOUT_SPAWN_SECONDS
 	if spawn_delay_min_seconds > 0.0 and spawn_delay_max_seconds >= spawn_delay_min_seconds:
 		return rng.randf_range(spawn_delay_min_seconds, spawn_delay_max_seconds)
 	return campaign_state.get_customer_spawn_interval()

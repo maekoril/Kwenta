@@ -2,10 +2,11 @@ extends RefCounted
 
 # Only illustrations actually used in the story, not unused art variants.
 const ENTRIES := [
+	{"id": "day7_project", "day": 7, "file": "day7_tonyo_miniature.png", "title": "Ang Tindahan Namin", "caption": "Ang miniature ni Tonyo para sa project niya.", "seen_only": true},
 	{"id": "bedroom", "day": 1, "file": "tonyo_bedroom.png", "title": "Kwarto ni Tonyo", "caption": "Dito nagsimula ang linggo ni Tonyo."},
 	{"id": "box", "day": 2, "file": "day2_box_fall.png", "title": "Tumingin sa dinadaanan", "caption": "Bagong araw, bagong aayusin sa tindahan."},
 	{"id": "berting", "day": 2, "file": "berting_counter_50.png", "title": "Mang Berting's 50 pesos", "caption": "Naiwan ni Mang Berting ang kanyang ₱50."},
-	{"id": "paolo_coins", "day": 3, "file": "day3_paolo_coins_v2.png", "title": "Kulang ng Tatlo", "caption": "Binilang ni Paolo ang mga baryang dala niya.", "seen_only": true},
+	{"id": "paolo_coins", "day": 3, "file": "day3_paolo_coins_casual.png", "title": "Kulang ng Tatlo", "caption": "Binilang ni Paolo ang mga baryang dala niya.", "seen_only": true},
 	{"id": "project_box", "day": 3, "file": "day3_project_box.png", "title": "Karton Pa Lang", "caption": "Naghihintay pa sa ilalim ng kama ang project ni Tonyo.", "seen_only": true},
 	{"id": "corner", "day": 4, "file": "day4_alfa_save_corner.png", "title": "Bagong karibal", "caption": "May bagong karatula sa kabilang tindahan."},
 	{"id": "umbrella", "day": 4, "file": "day4_tonyo_lends_umbrella_stocked_tonyo.png", "title": "Payong ni Inay", "caption": "Ipinahiram ni Tonyo ang payong ni Aling Cora kay Kuya Dodong."},

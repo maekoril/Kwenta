@@ -22,7 +22,7 @@ const FULL_SHIFT_GAME_MINUTES := 720 # 8:00 AM through 8:00 PM
 @export_range(0.0, 100.0, 1.0) var trusted_regular_minimum: float = 80.0
 @export_range(1, 30, 1) var campaign_day_count: int = 7
 @export_file("*.json") var story_source_path: String = "res://data/story/kwenta_7_day_story.json"
-@export var customer_caps: Array[int] = [1, 2, 2, 3, 4, 5, 4]
+@export var customer_caps: Array[int] = [1, 2, 2, 3, 4, 3, 4]
 @export var max_order_sizes: Array[int] = [2, 3, 3, 4, 4, 5, 5]
 
 func get_shift_close_minutes(day: int) -> int:

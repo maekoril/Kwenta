@@ -13,9 +13,9 @@ func _initialize() -> void:
 	customer.exact_pay = true
 	manager.active_customers.append(customer)
 	manager.deliver_product(customer.instance_id, "instant_noodles")
-	assert(state.barangay_trust == 77.0 and updates == [77.0])
+	assert(state.barangay_trust == 80.0 and updates == [80.0])
 	manager.deliver_product(customer.instance_id, "instant_noodles")
-	assert(state.barangay_trust == 77.0)
+	assert(state.barangay_trust == 80.0)
 	state.barangay_trust = 99.0
 	var capped = CustomerState.new("regular", OrderState.new({"instant_noodles": 1}), 20.0)
 	capped.instance_id = "regular_2"
@@ -39,9 +39,9 @@ func _initialize() -> void:
 	timely.begin_payment(15, 20, 10.0)
 	manager.active_customers.append(timely)
 	manager.give_change(timely.instance_id, 5)
-	assert(state.barangay_trust == 72.0)
+	assert(state.barangay_trust == 75.0)
 	state.advance_day()
-	assert(state.barangay_trust == 72.0)
+	assert(state.barangay_trust == 75.0)
 	manager.active_customers.clear()
 	var walkout = CustomerState.new("walkout", OrderState.new({"instant_noodles": 1}), 1.0)
 	walkout.instance_id = "walkout_1"
@@ -49,6 +49,6 @@ func _initialize() -> void:
 	manager.is_running = true
 	manager.shift_duration_seconds = 1000.0
 	manager.advance_time(1.0)
-	assert(state.barangay_trust == 57.0)
+	assert(state.barangay_trust == 60.0)
 	print("Suki recovery, cap, and overdue-payment checks passed")
 	quit()

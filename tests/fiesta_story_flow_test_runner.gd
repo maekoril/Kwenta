@@ -33,7 +33,9 @@ func run() -> void:
 		assert(main.fiesta_emergency_light.visible and main.shift.fiesta_brownout_rush)
 		assert(main.fiesta_light_props.visible)
 		assert((main.fiesta_emergency_light.material as ShaderMaterial).get_shader_parameter("lights_arrived"))
-		assert(is_equal_approx(main.shift._next_spawn_delay(), 3.0))
+		assert(is_equal_approx(main.shift._next_spawn_delay(), 5.0))
+		assert(is_equal_approx(main.shift.current_spawn_delay, 5.0))
+		assert(main.shift._active_customer_limit() == 3)
 		assert(main.shift.fiesta_route == route)
 		var visits: Array = main.story.get_day_shift_events(6).filter(func(event): return event.get("customer") == "neighbor_ramon")
 		assert(visits.size() == 1 and int(visits[0].at_minute) > 630)
@@ -45,7 +47,7 @@ func run() -> void:
 		main.apply_environment(1)
 		assert(not main.fiesta_light_props.visible and not main.fiesta_emergency_light.visible)
 		var day7: Array = main.story.get_day_callback_beats(7)
-		assert(day7.any(func(beat): return str(beat.get("text", "")).contains("Ako rin ang nag-alok")) == (route == "alone"))
+		assert(day7.any(func(beat): return str(beat.get("text", "")).contains("Ikaw pala ang humawak")) == (route == "alone"))
 	var story = current_scene.story
 	for choice in ["credit", "free", "no"]:
 		story.choices["day3_candy"] = choice
@@ -60,6 +62,27 @@ func run() -> void:
 	change_scene_to_file("res://scenes/main.tscn")
 	await create_timer(0.5).timeout
 	var main = current_scene
+	# A full counter holds arrivals, but does not discard the time already waited.
+	var pacing := ShiftManager.new(main.campaign, main.products_by_id, RandomNumberGenerator.new())
+	pacing.start_shift(false)
+	pacing.credit_requested_today = true
+	pacing.start_fiesta_brownout_rush()
+	for i in range(3):
+		var waiting := CustomerState.new("pacing_%d" % i, OrderState.new({"instant_noodles": 1}), 100.0)
+		waiting.instance_id = "pacing_%d" % i
+		waiting.exact_pay = true
+		pacing.active_customers.append(waiting)
+	pacing.advance_time(3.0)
+	assert(pacing.active_customers.size() == 3 and is_equal_approx(pacing.spawn_elapsed, 3.0))
+	pacing.deliver_product("pacing_0", "instant_noodles")
+	assert(is_equal_approx(pacing.spawn_elapsed, 3.0))
+	pacing.advance_time(2.0)
+	assert(pacing.active_customers.size() == 3)
+	pacing.advance_time(5.0)
+	assert(pacing.active_customers.size() == 3 and is_equal_approx(pacing.spawn_elapsed, 5.0))
+	pacing.deliver_product("pacing_1", "instant_noodles")
+	pacing.advance_time(0.01)
+	assert(pacing.active_customers.size() == 3)
 	main.shift.fiesta_route = "alone"
 	main.story_events.begin_shift(6)
 	main.shift.start_shift(false)

@@ -45,7 +45,7 @@ func receive_product(product_id: String) -> int:
 	return order.try_deliver(product_id)
 
 func advance_time(delta_seconds: float) -> bool:
-	if not active or tutorial_protected or delta_seconds <= 0.0:
+	if not active or tutorial_protected or credit_approved or delta_seconds <= 0.0:
 		return false
 
 	patience_remaining = maxf(0.0, patience_remaining - delta_seconds)

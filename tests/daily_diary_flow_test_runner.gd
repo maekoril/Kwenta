@@ -19,7 +19,7 @@ func run() -> void:
 	story.choices["day2_overpayment"] = "return"
 	assert(story.write_diary_entry(2).contains("Itinabi ko"))
 	story.choices["day3_candy"] = "credit"
-	assert(story.write_diary_entry(3).contains("Pinautang"))
+	assert(story.write_diary_entry(3).contains("Sana wala akong nakalimutan"))
 	for option in ["join", "stay", "shelter"]:
 		story.choices["day4_rain"] = option
 		var entry := story.write_diary_entry(4)

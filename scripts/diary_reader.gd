@@ -28,6 +28,8 @@ var page_number: Label
 var medal_title: Label
 var collection_count: Label
 var gallery: Control
+var page_turn: Control
+var page_turn_tween: Tween
 
 func _ready() -> void:
 	name = "DiaryReader"
@@ -99,6 +101,10 @@ func _ready() -> void:
 	next_button.pressed.connect(func(): _flip(1))
 	page_number = _label(book, "", Vector2(490, 775), Vector2(420, 40), 22)
 	page_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	page_turn = preload("res://scripts/notebook_page_turn.gd").new()
+	page_turn.name = "PageTurnAnimation"
+	page_turn.z_index = 20
+	book.add_child(page_turn)
 	resized.connect(_layout)
 	_layout()
 
@@ -129,11 +135,17 @@ func _layout() -> void:
 func _draw_book() -> void:
 	book.draw_style_box(KwentaStyle.box(Color("795035"), Color("38271c"), 0, 0, 15, 5, 10), Rect2(35, 57, 1310, 785))
 	for x in [65, 711]:
-		book.draw_style_box(KwentaStyle.box(Color("faedcf"), Color("c7ab83"), 0, 0, 3, 2, 0), Rect2(x, 145, 615, 595))
+		# Layered page edges and a warm inset make the spread feel like paper.
+		book.draw_rect(Rect2(x + 5, 149, 615, 595), Color("8a6542", 0.16))
+		book.draw_style_box(KwentaStyle.box(Color("fff1d3"), Color("c5a681"), 0, 0, 3, 2, 0), Rect2(x, 145, 615, 595))
 		for y in range(218, 727, 46):
 			book.draw_line(Vector2(x + 18, y), Vector2(x + 596, y), Color("a3b8b4", 0.4), 1)
 		book.draw_line(Vector2(x + 32, 160), Vector2(x + 32, 722), Color("ce8881", 0.5), 2)
-	book.draw_rect(Rect2(680, 145, 31, 595), Color("c7ab83"))
+		book.draw_line(Vector2(x + 40, 207), Vector2(x + 580, 207), Color("b59266", 0.55), 2)
+		book.draw_circle(Vector2(x + 581, 180), 4, Color("b58a52", 0.65))
+	book.draw_rect(Rect2(680, 145, 31, 595), Color("b89973"))
+	book.draw_rect(Rect2(669, 151, 10, 583), Color("8c6d4d", 0.14))
+	book.draw_rect(Rect2(711, 151, 10, 583), Color("8c6d4d", 0.14))
 	for y in range(190, 720, 75):
 		book.draw_circle(Vector2(677, y), 6, Color("5c422d"))
 		book.draw_circle(Vector2(714, y), 6, Color("5c422d"))
@@ -143,6 +155,7 @@ func _draw_book() -> void:
 		book.draw_rect(Rect2(273, 554, 140, 26), Color("d4b985", 0.7))
 
 func open(progress) -> void:
+	_stop_page_turn()
 	gallery.viewer.hide()
 	story = progress
 	days.clear()
@@ -157,6 +170,7 @@ func open(progress) -> void:
 	visible = true
 
 func close() -> void:
+	_stop_page_turn()
 	gallery.viewer.hide()
 	visible = false
 
@@ -180,6 +194,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 func _select_section(value: int) -> void:
+	_stop_page_turn()
 	if value != 0 and section == 0 and not days.is_empty():
 		medal_day = days[page_index]
 	elif value == 0 and days.has(medal_day):
@@ -189,6 +204,7 @@ func _select_section(value: int) -> void:
 	_refresh()
 
 func _select_day(day: int) -> void:
+	_stop_page_turn()
 	if section == 0:
 		if not days.has(day):
 			return
@@ -197,11 +213,32 @@ func _select_day(day: int) -> void:
 	_refresh()
 
 func _flip(direction: int) -> void:
+	var old_day := (page_index if section == 0 else medal_day)
 	if section == 0:
 		page_index = clampi(page_index + direction, 0, maxi(days.size() - 1, 0))
 	else:
 		medal_day = clampi(medal_day + direction, 1, 7)
+	var new_day := (page_index if section == 0 else medal_day)
+	if old_day == new_day: return
 	_refresh()
+	if section == 0:
+		_animate_page_turn(direction)
+	else:
+		_stop_page_turn()
+
+func _stop_page_turn() -> void:
+	if page_turn_tween != null and page_turn_tween.is_valid(): page_turn_tween.kill()
+	if is_instance_valid(page_turn): page_turn.hide()
+
+func _animate_page_turn(direction: int) -> void:
+	if not is_instance_valid(page_turn): return
+	_stop_page_turn()
+	page_turn.direction = direction
+	page_turn.progress = 0.0
+	page_turn.show()
+	page_turn_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	page_turn_tween.tween_property(page_turn, "progress", 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	page_turn_tween.tween_callback(page_turn.hide)
 
 func _result(day: int) -> String:
 	return str(story.choices.get("diary_goal_day_%d" % day, "")) if story != null else ""
@@ -228,14 +265,14 @@ func _refresh() -> void:
 		var result := _result(i + 1)
 		var icon: Texture2D = load("res://assets/sprites/ui/daily_medals/day_%d.png" % (i + 1)) if not result.is_empty() else null
 		collection_buttons[i].icon = icon
-		collection_buttons[i].text = "ARAW %d%s" % [i + 1, " · ✓" if result == "earned" else ("\nWALA PANG TALA" if result.is_empty() else "\nHINDI NAKAMIT")]
+		collection_buttons[i].text = "???" if result.is_empty() else "ARAW %d%s" % [i + 1, " · ✓" if result == "earned" else "\nHINDI NAKAMIT"]
 		KwentaStyle.style_button(collection_buttons[i], KwentaStyle.GOLD if day == i + 1 else Color("efe0be"), 18)
 		collection_buttons[i].material = null
 		if result == "missed":
 			var grayscale := ShaderMaterial.new()
 			grayscale.shader = UNEARNED
 			collection_buttons[i].material = grayscale
-		collection_buttons[i].tooltip_text = "%s · %s" % [MEDAL_NAMES[i] if not result.is_empty() else "Araw %d" % (i + 1), "Nakamit" if result == "earned" else ("Hindi nakamit" if result == "missed" else "Wala pang tala")]
+		collection_buttons[i].tooltip_text = "%s · %s" % [MEDAL_NAMES[i] if not result.is_empty() else "???", "Nakamit" if result == "earned" else ("Hindi nakamit" if result == "missed" else "???")]
 		if result == "earned": earned += 1
 	collection_count.text = "%d sa 7 medalya ang nakamit." % earned
 	entry_label.text = str(story.choices.get("diary_day_%d" % day, "")) if story != null else ""
@@ -245,7 +282,7 @@ func _refresh() -> void:
 	var result := _result(day)
 	medal.material = null
 	medal.texture = null
-	medal_title.text = MEDAL_NAMES[day - 1] if not result.is_empty() else "Isang puwang para sa tagumpay"
+	medal_title.text = MEDAL_NAMES[day - 1] if not result.is_empty() else "???"
 	if not result.is_empty():
 		medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % day)
 		if result != "earned":
@@ -254,7 +291,7 @@ func _refresh() -> void:
 			medal.material = grayscale
 		goal_label.text = "%s\n%s" % ["NAKAMIT!" if result == "earned" else "HINDI NAKAMIT · Ayos lang, bahagi ng kwento.", GOAL.new(day).title]
 	else:
-		goal_label.text = "Wala pang naitalang medalya para sa araw na ito."
+		goal_label.text = "???"
 	page_number.text = "ARAW %d  ·  %s" % [day, ["MGA KWENTO", "KOLEKSYON", "ALBUM"][section]]
 	book.queue_redraw()
 

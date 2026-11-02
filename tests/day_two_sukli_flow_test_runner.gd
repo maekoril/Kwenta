@@ -62,7 +62,10 @@ func check_flow(previous: String, accept: bool) -> void:
 	main._process(5.0)
 	assert(customer.patience_remaining == before)
 	actor.payment_tapped.emit(customer.instance_id)
-	assert(main.tutorial_step == main.TutorialStep.DAY2_MONEY)
+	assert(main.tutorial_step == main.TutorialStep.DAY2_RULES)
+	assert(main.tutorial_overlay.mouse_filter == Control.MOUSE_FILTER_STOP)
+	assert(main.tutorial_overlay.get_index() > main.cash_tray.get_index())
+	assert(main.tutorial_overlay.sukli_preview_mode)
 	main._process(5.0)
 	assert(customer.patience_remaining == before)
 	await create_timer(0.5).timeout
