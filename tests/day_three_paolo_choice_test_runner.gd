@@ -43,8 +43,8 @@ func run() -> void:
 			main.bubble.advanced.emit()
 		assert(not saw_note)
 		assert(not main.paolo_debt_note.visible)
-		var later: Array = main.story.get_day_callback_beats(6)
-		var repayment: Array = later.filter(func(beat): return str(beat.get("debt_payment", "")) == "paolo_story")
+		var later: Array = main.story.get_day_shift_events(6)
+		var repayment: Array = later.filter(func(event): return event.get("visitor") == "paolo_repayment")
 		assert(repayment.size() == (1 if option == "credit" else 0))
 		main.queue_free()
 		await process_frame

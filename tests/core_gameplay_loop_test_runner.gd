@@ -243,7 +243,7 @@ func _test_customer_patience_footer_uses_patience_ratio_and_thresholds() -> void
 	_assert(name_label.text == "Jun", "the name tag contains the customer name only")
 	var grid := actor.get("order_grid") as GridContainer
 	_assert(bubble.size.x >= 152.0 and grid.get_child_count() == 1 and bubble.size.y >= grid.custom_minimum_size.y, "one-item bubbles fit the icon and readable name")
-	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 10.0), "patience uses a ten-pixel horizontal footer row")
+	_assert(is_equal_approx(patience_bar.size.x, bubble.size.x - 16.0) and is_equal_approx(patience_bar.size.y, 10.0), "patience uses a ten-pixel horizontal top row")
 	customer.patience_remaining = 15.25
 	actor.call("refresh_patience")
 	_assert(fill.bg_color == Color("4caa56"), "patience remains green above sixty percent")
@@ -381,6 +381,8 @@ func _test_main_routes_bubble_drops_to_immediate_cash() -> void:
 	_assert(manager.campaign_state.cash > cash_before, "a completed portrait drop pays the global cash balance immediately")
 	var cash_label := main.get("cash_label") as Label
 	_assert(cash_label.text == "%d" % manager.campaign_state.cash, "the cash HUD updates in the same delivery transaction")
+	var sale_feedback := main.get_node_or_null("SalePriceFeedback") as Label
+	_assert(sale_feedback != null and sale_feedback.text == "+₱%d" % customer.bill_total, "a completed cash sale shows the purchased-items total beside the customer")
 	main.queue_free()
 
 func _test_story_replay_resets_the_campaign() -> void:

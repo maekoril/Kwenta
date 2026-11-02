@@ -67,6 +67,7 @@ func _initialize() -> void:
 	phone_viewport.queue_free()
 	await _test_shop_icon_availability()
 	await _test_shop_grace_period()
+	await _test_supplier_note_stays_above_dialogue_input()
 	await _test_live_purchase("hanging_strip", 0)
 	await _test_live_purchase("water_shelf", 30)
 	if failures > 0:
@@ -137,6 +138,9 @@ func _test_shop_icon_availability() -> void:
 	main.set("shop_available", true)
 	main.call("_refresh_shop_button")
 	_assert(shop_button != null and shop_button.visible, "Shop icon appears before Day 2 starts")
+	var cta_glow := main.get_node_or_null("ShopCtaGlow") as Panel
+	var order_cue := shop_button.get_node_or_null("ShopOrderCue") as Label
+	_assert(cta_glow != null and cta_glow.visible and order_cue != null and order_cue.visible and order_cue.text == "ORDER", "available supplier ordering uses a persistent gold CTA glow and ORDER cue")
 	var story_beats: Array[Dictionary] = [{"speaker": "Narrator", "text": "Story in progress"}]
 	main._show_story_beats(story_beats, "DAY 2", "day1_intro")
 	_assert(not shop_button.visible and not main._is_shop_available(), "shop is unavailable during the pre-shift story")
@@ -159,9 +163,13 @@ func _test_shop_icon_availability() -> void:
 	main.call("_begin_shift")
 	_assert(shop_button != null and shop_button.visible and not shop_button.disabled, "Shop icon stays visible and tappable when the shift starts")
 	_assert(bool((shop_button.material as ShaderMaterial).get_shader_parameter("grayscale")), "Disabled shop icon is grayscale")
+	var locked_cue := shop_button.get_node_or_null("ShopLockedCue") as Control
+	_assert(cta_glow != null and not cta_glow.visible and order_cue != null and not order_cue.visible and locked_cue != null and locked_cue.visible, "locked supplier ordering replaces the CTA with a clock cue")
 	shop_button.emit_signal("pressed")
 	_assert(shop != null and not shop.visible, "shop cannot open during an active shift")
-	_assert(main.get_node_or_null("ShopUnavailableNotice") != null, "tapping the locked shop explains that it is unavailable")
+	var locked_notice := main.get_node_or_null("ShopUnavailableNotice") as PanelContainer
+	var locked_message := locked_notice.get_child(0) as Label if locked_notice != null and locked_notice.get_child_count() > 0 else null
+	_assert(locked_notice != null and locked_message != null and locked_message.text.contains("before opening"), "tapping the locked shop explains that orders happen before opening")
 	main._show_shift_summary()
 	_assert(not shop_button.visible, "locked shop icon disappears when the shift ends")
 	main.queue_free()
@@ -177,6 +185,22 @@ func _test_shop_grace_period() -> void:
 	_assert(bool(main.call("_is_shop_available")), "Shop is available before opening")
 	main.set("shift_in_progress", true)
 	_assert(not bool(main.call("_is_shop_available")), "Shop is unavailable once the shift starts")
+	main.queue_free()
+
+func _test_supplier_note_stays_above_dialogue_input() -> void:
+	var main := MainScene.instantiate() as Control
+	root.add_child(main)
+	await process_frame
+	var note := main.get("supplier_note") as Control
+	var bubble := main.get("bubble") as Control
+	var initial_note_index := note.get_index()
+	note.call("present")
+	await process_frame
+	_assert(note != null and bubble != null and note.visible and note.get_index() > bubble.get_index(), "supplier note moves above the dialogue bubble before it accepts CONTINUE input")
+	var continue_button := note.find_child("ContinueButton", true, false) as Button
+	if continue_button != null:
+		continue_button.emit_signal("pressed")
+	_assert(note != null and not note.visible and note.get_index() == initial_note_index and note.get_index() < bubble.get_index(), "supplier-note CONTINUE restores the note behind dialogue and tutorial layers")
 	main.queue_free()
 
 func _assert(condition: bool, message: String) -> void:

@@ -137,6 +137,8 @@ func _begin_drag(viewport_position: Vector2, touch_index: int) -> void:
 	var preview_parent: Node = get_tree().current_scene
 	if preview_parent == null:
 		preview_parent = get_tree().root
+	if preview_parent.has_method("trigger_day_six_brownout") and preview_parent.get("day_six_brownout_triggered"):
+		preview.modulate = Color(0.58, 0.58, 0.62)
 	preview_parent.add_child(preview)
 	_drag_preview = preview
 	_move_drag_preview(viewport_position)

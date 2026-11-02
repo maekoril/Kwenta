@@ -96,7 +96,7 @@ func _test_customer_actor_compacts_orders_and_keeps_its_drop_target_whole() -> v
 	_assert(bubble != null and bubble.size == Vector2(152.0, 134.0), "a one-item order uses the readable-name minimum width and footer rows")
 	_assert(content != null and patience != null and tag != null and grid != null, "bubble contains dedicated icon, name, and patience rows")
 	_assert(tag != null and grid != null and tag.position.y >= grid.get_rect().end.y, "name row sits below the icon grid")
-	_assert(patience != null and tag != null and patience.position.y >= tag.get_rect().end.y, "patience row sits below the name row")
+	_assert(patience != null and grid != null and grid.position.y >= patience.get_rect().end.y, "patience row stays above the order items")
 	_assert(portrait != null and portrait.position.y + StorefrontLayoutScript.CUSTOMER_Y < StorefrontLayoutScript.WINDOW_RECT.end.y and portrait.get_rect().end.y + StorefrontLayoutScript.CUSTOMER_Y >= StorefrontLayoutScript.WINDOW_RECT.end.y, "raised customer bust stays visible while its lower body reaches the sill")
 	if bubble == null or patience == null:
 		actor.queue_free()
@@ -104,7 +104,11 @@ func _test_customer_actor_compacts_orders_and_keeps_its_drop_target_whole() -> v
 	actor.call("set_customer", CustomerStateScript.new("aleng_mila", OrderStateScript.new({"chips": 1, "soft_drink": 1, "instant_noodles": 1, "candy": 1}), 20.0, 100.0), {})
 	await process_frame
 	_assert(bubble.size == Vector2(184.0, 218.0), "four products use two icon rows above the name and patience footer rows")
-	_assert(patience.position.y >= tag.get_rect().end.y, "patience row follows the second icon row without overlap")
+	_assert(grid.position.y >= patience.get_rect().end.y, "patience stays above a multi-row order without overlap")
+	actor.call("set_customer", CustomerStateScript.new("neighbor_rosa", OrderStateScript.new({"chips": 1, "soft_drink": 1, "instant_noodles": 1, "candy": 1, "eggs": 1}), 20.0, 100.0), {})
+	await process_frame
+	_assert(patience.visible and grid.position.y >= patience.get_rect().end.y, "five-item orders keep patience above every item row")
+	_assert(StorefrontLayoutScript.CUSTOMER_Y + bubble.position.y + content.position.y + patience.get_rect().end.y < StorefrontLayoutScript.WINDOW_RECT.end.y, "long-order patience remains above the counter")
 	var drop_target := Rect2(Vector2.ZERO, actor.size)
 	var patience_rect := Rect2(bubble.position + content.position + patience.position, patience.size)
 	_assert(drop_target.encloses(bubble.get_rect()) and drop_target.encloses(patience_rect) and drop_target.encloses(portrait.get_rect()), "actor drop target encloses bubble, bust, and patience bar")

@@ -61,6 +61,48 @@ func run() -> void:
 	assert(shift.helper_cooldown == 0)
 	shift.active_customers.append(first)
 	assert(shift.use_helper_change("first"))
+	shift.helper_cooldown = 0
+	shift.active_customers.clear()
+	var impatient := CustomerState.new("impatient", OrderState.new({"biscuits": 2}), 25)
+	impatient.instance_id = "impatient"
+	impatient.patience_remaining = 5
+	var patient := CustomerState.new("patient", OrderState.new({"biscuits": 2, "canned_sardines": 1}), 25)
+	patient.instance_id = "patient"
+	patient.patience_remaining = 20
+	shift.active_customers.append_array([patient, impatient])
+	assert(shift.use_helper_item("patient"))
+	assert(patient.order.is_complete() and impatient.order.remaining_quantity("biscuits") == 2)
+	assert(not shift.use_helper_item("impatient"))
+	var second_order := CustomerState.new("second_order", OrderState.new({"biscuits": 1, "canned_sardines": 2}), 25)
+	second_order.instance_id = "second_order"
+	second_order.exact_pay = true
+	shift.active_customers.append(second_order)
+	assert(shift.use_helper_rescue())
+	assert(impatient.order.is_complete() and second_order.order.is_complete())
+	assert(not shift.use_helper_rescue())
+	shift.frozen = true
+	shift.advance_time(5)
+	assert(shift.helper_item_cooldown == 60 and shift.helper_patience_cooldown == 120)
+	shift.frozen = false
+	shift.active_customers.clear()
+	shift.advance_time(60)
+	assert(shift.helper_item_cooldown == 0 and shift.helper_patience_cooldown == 60)
+	shift.advance_time(60)
+	assert(shift.helper_patience_cooldown == 0)
+	shift.active_customers.clear() # Advancing the shift may spawn a new customer.
+	assert(not shift.use_helper_rescue())
+	assert(shift.helper_patience_cooldown == 0)
+	shift.active_customers.clear()
+	var final_item := CustomerState.new("last_item", OrderState.new({"biscuits": 1}), 25)
+	final_item.instance_id = "last_item"
+	final_item.exact_pay = true
+	shift.active_customers.append(final_item)
+	var cash_before_item := state.cash
+	assert(shift.use_helper_item("last_item"))
+	assert(not final_item.active and state.cash > cash_before_item)
+	assert(not shift.use_helper_rescue())
+	for i in range(100):
+		assert(shift._choose_customer_id() not in ["mikay", "jun_jun", "bogs"])
 	before = state.cash
 	shift.finish_shift()
 	assert(shift.fiesta_bonus == 0 and state.cash == before)

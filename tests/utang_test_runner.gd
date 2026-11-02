@@ -72,6 +72,9 @@ func run() -> void:
 	main.shift._prepare_credit(borrower)
 	main.shift.active_customers.append(borrower)
 	main.story_events._on_credit_requested("offer_test")
+	assert(main.story_events._mode == "credit_visitor")
+	main.story_events.tap_customer_story("offer_test")
+	for i in range(3): main.bubble.advanced.emit()
 	assert(main.story_events._mode == "credit_choice")
 	var offer_panel = main.story_events.credit_panel
 	assert(offer_panel.items.get_child_count() == borrower.order.requested.size())
@@ -96,6 +99,8 @@ func run() -> void:
 	borrower.active = true
 	borrower.story_arrival_pending = true
 	main.story_events._on_credit_requested("offer_test")
+	main.story_events.tap_customer_story("offer_test")
+	for i in range(3): main.bubble.advanced.emit()
 	var approved_panel = main.story_events.credit_panel
 	approved_panel.approve_button.pressed.emit()
 	assert(borrower.credit_approved)

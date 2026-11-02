@@ -1,6 +1,7 @@
 class_name ShiftStoryEvents
 extends Node
 
+signal fiesta_brownout_finished
 signal story_visitor_tapped
 
 # Plays the story moments that happen DURING a shift, driven by the story JSON:
@@ -23,6 +24,9 @@ signal customer_story_arrival_finished(customer_instance_id: String)
 signal visitor_portrait_requested(visitor: String, button: Button)
 signal visitor_portrait_hidden
 signal visitor_entrance_finished
+signal credit_decided(approved: bool, customer_id: String)
+signal repayment_completed
+signal partial_repayment_completed
 signal visitor_tutorial_completed
 
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
@@ -247,6 +251,9 @@ func _on_game_minutes(minute: int) -> void:
 		_timed.pop_front()
 		if kind == "customer":
 			_run_customer_event(event)
+		elif kind == "narrative" and (minute <= MAX_EVENT_MINUTE or str(event.get("visitor", "")) == "fiesta_brownout"):
+			_queue_popup({"kind": "narrative", "event": event})
+			return
 		elif kind == "scene" and minute <= MAX_EVENT_MINUTE:
 			_queue_popup({"kind": "scene", "event": event})
 
@@ -267,8 +274,13 @@ func _try_start_waiting_scene() -> void:
 		story.choices["day2_cash_legacy"] = "available" if shift.campaign_state.cash >= 50 else "spent"
 	shift.story_waiting_for_clear = false
 	if str(event.get("type", "")) == "customer":
+		var queued_before := shift.story_queue.size()
 		_run_customer_event(event)
-		shift._spawn_customer()
+		if shift.story_queue.size() > queued_before:
+			# The waiting visitor must enter first, even if other story customers are queued.
+			var waiting_customer: Dictionary = shift.story_queue.pop_back()
+			shift.story_queue.push_front(waiting_customer)
+			shift._spawn_customer()
 	else:
 		_queue_popup({"kind": "scene", "event": event})
 
@@ -302,7 +314,30 @@ func _find_story_customer(instance_id: String) -> CustomerState:
 	return null
 
 func tap_customer_story(instance_id: String) -> void:
-	if _mode != "customer_visitor" or str(_current.get("id", "")) != instance_id:
+	if str(_current.get("id", "")) != instance_id:
+		return
+	if _mode == "credit_visitor":
+		var customer := _find_story_customer(instance_id)
+		if customer == null:
+			_start_next()
+			return
+		var names := {"neighbor_lina": "Aling Lina", "neighbor_rosa": "Lola Rosa", "neighbor_nico": "Nico", "neighbor_ramon": "Mang Ramon", "jun_jun": "Jun-jun"}
+		var customer_name := str(names.get(customer.customer_id, customer.customer_id.capitalize()))
+		var requested_items: Array[String] = []
+		for product_id in customer.order.requested:
+			var product := shift.products_by_id.get(product_id) as ProductData
+			var product_name := product.display_name if product != null else str(product_id)
+			var quantity := int(customer.order.requested[product_id])
+			var quantity_text := "isang" if quantity == 1 else "%d na" % quantity
+			requested_items.append("%s %s" % [quantity_text, product_name])
+		var item_list := requested_items[0] if requested_items.size() == 1 else "%s at %s" % [", ".join(requested_items.slice(0, -1)), requested_items[-1]]
+		_play_beats([
+			{"speaker": customer_name, "portrait": customer.customer_id, "text": "Tonyo, pabili nga ng %s. Puwede bang bukas ko na bayaran?" % item_list},
+			{"speaker": "Tonyo", "portrait": "tonyo", "text": "Ah, okay po. Bali, ₱%d po lahat ng uutangin ninyo." % int(customer.credit_offer.principal)},
+			{"speaker": "Tonyo", "portrait": "tonyo", "text": "May dagdag lang pong ₱%d, kaya ₱%d po lahat bukas. Sandali lang po, ha." % [int(customer.credit_offer.interest), int(customer.credit_offer.principal) + int(customer.credit_offer.interest)]},
+		])
+		return
+	if _mode != "customer_visitor":
 		return
 	_mark_visitor_tutorial_seen()
 	_play_beats(_current.get("beats", []))
@@ -360,17 +395,20 @@ func _start_next() -> void:
 	_scene_choice_done = false
 	match str(_current.get("kind", "")):
 		"credit":
-			_show_credit()
+			_mode = "credit_visitor"
+			customer_story_prompt_requested.emit(str(_current.get("id", "")))
 		"repayment":
 			_mode = "choice"
 			var debt: Dictionary = _current.debt
-			bubble.ask(str(debt.customer).capitalize(), "Heto ang bayad kong ₱%d. Salamat sa pautang kahapon!" % int(debt.balance), ["Tanggapin ang bayad"], _portrait(str(debt.customer)), str(debt.customer))
+			bubble.ask(str(debt.customer).capitalize(), "Tonyo, heto na ang ₱%d na bayad ko. Salamat, ha!" % int(debt.balance), ["Tanggapin ang bayad"], _portrait(str(debt.customer)), str(debt.customer))
 		"arrival":
 			_play_beats(_current.get("beats", []))
 		"customer_visitor":
 			_mode = "customer_visitor"
 			customer_story_prompt_requested.emit(str(_current.get("id", "")))
 		"post_sale":
+			_play_beats(story.filter_story_beats(_current.get("event", {}).get("beats", [])))
+		"narrative":
 			_play_beats(story.filter_story_beats(_current.get("event", {}).get("beats", [])))
 		"scene":
 			_present_story_visitor()
@@ -423,7 +461,7 @@ func _show_story_visitor(visitor: String) -> void:
 	if not is_instance_valid(button) or _mode not in ["visitor", "outro_visitor"]:
 		return
 	button.disabled = false
-	if not _visitor_tutorial_seen:
+	if not _visitor_tutorial_seen and _day == 1 and visitor == "mang_berting":
 		var overlay := STORY_TUTORIAL_OVERLAY.new()
 		overlay.name = "StoryVisitorTutorial"
 		root.add_child(overlay)
@@ -521,6 +559,7 @@ func _on_bubble_choice(index: int) -> void:
 			shift.debt_payments_received += shift.campaign_state.repay_debt(str(debt.id), int(debt.balance))
 			shift.cash_changed.emit(shift.campaign_state.cash)
 			_start_next()
+			repayment_completed.emit()
 		"scene", "post_sale", "customer_visitor":
 			_resolve_scene_choice(index)
 		"haggle":
@@ -551,6 +590,9 @@ func _next_beat() -> void:
 		_utang_ledger_visible = false
 		story_prop_requested.emit("hide_utang_ledger")
 	if _beats.is_empty():
+		if str(_current.get("kind", "")) == "credit":
+			_show_credit()
+			return
 		if str(_current.get("kind", "")) in ["scene", "post_sale", "customer_visitor"] and not _scene_choice_done:
 			var event: Dictionary = _current.get("event", {})
 			var choice: Dictionary = event.get("choice", {})
@@ -571,6 +613,8 @@ func _next_beat() -> void:
 				if story.get_choice(finished_choice) == str(followup.get("requires_value", "")):
 					_waiting_scene = followup
 					shift.story_waiting_for_clear = true
+		if str(_current.get("kind", "")) == "narrative" and str(_current.get("event", {}).get("visitor", "")) == "fiesta_brownout":
+			fiesta_brownout_finished.emit()
 		if str(_current.get("kind", "")) == "customer_visitor":
 			var instance_id := str(_current.get("id", ""))
 			var customer := _find_story_customer(instance_id)
@@ -584,6 +628,10 @@ func _next_beat() -> void:
 		return
 	_mode = "beats"
 	var beat: Dictionary = _beats.pop_front()
+	if str(beat.get("debt_payment", "")) == "paolo_story":
+		shift.campaign_state.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
+		shift.debt_payments_received += shift.campaign_state.repay_debt("paolo_story", 3)
+		shift.cash_changed.emit(shift.campaign_state.cash)
 	if beat.has("show_prop"):
 		_utang_ledger_visible = str(beat["show_prop"]) == "utang_ledger"
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
@@ -629,6 +677,7 @@ func _resolve_scene_choice(index: int) -> void:
 			shift.campaign_state.cash += amount
 		if bool(choice.get("record_debt_payment", false)):
 			shift.debt_payments_received += amount
+			partial_repayment_completed.emit()
 		if bool(choice.get("record_sale", false)):
 			shift.campaign_state.record_purchase(str(event.get("visitor", "")), amount)
 			shift.shift_earnings += amount
@@ -747,8 +796,11 @@ func _show_credit() -> void:
 	credit_panel.decided.connect(func(approved: bool):
 		if not _active or _mode != "credit_choice": return
 		_mode = ""
-		shift.resolve_credit(str(_current.id), approved)
-		_start_next())
+		var customer_id := str(_current.id)
+		shift.resolve_credit(customer_id, approved)
+		customer_story_arrival_finished.emit(customer_id)
+		_start_next()
+		credit_decided.emit(approved, customer_id))
 
 func _hide_credit_panel() -> void:
 	if is_instance_valid(_credit_layer):

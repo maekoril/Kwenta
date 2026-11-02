@@ -2,6 +2,7 @@ class_name ShiftManager
 extends RefCounted
 
 signal credit_requested(customer_instance_id: String)
+signal credit_recorded(customer_instance_id: String)
 signal repayment_requested(debt: Dictionary)
 var credit_requested_today := false
 
@@ -16,6 +17,7 @@ signal customer_timed_out(customer_instance_id: String)
 signal barangay_trust_changed(new_value: float) # BAGO
 signal game_over_triggered() # BAGO
 signal customer_served(customer_id: String, product_types: int)
+signal cash_sale_completed(customer_instance_id: String, goods_total: int)
 signal story_customer_arrived(customer_instance_id: String, beats: Array)
 signal story_customer_sale_completed(customer_instance_id: String, event: Dictionary)
 signal haggle_requested(customer_instance_id: String, ask: int)
@@ -42,11 +44,16 @@ var is_running: bool = false
 var did_emit_completion: bool = false
 var is_closing: bool = false
 var fiesta_route := ""
+var fiesta_brownout_rush := false
 var helper_cooldown := 0.0
+var helper_item_cooldown := 0.0
+var helper_patience_cooldown := 0.0
 var paid_goods_sales := 0
 var fiesta_bonus := 0
 var helper_payment := false
 const HELPER_RECHARGE := 20.0
+const HELPER_ORDER_RECHARGE := 60.0
+const HELPER_RESCUE_RECHARGE := 120.0
 
 var shift_earnings: int = 0
 var debt_payments_received: int = 0
@@ -115,7 +122,10 @@ func start_shift(spawn_initial_customer: bool = true) -> void:
 	paid_goods_sales = 0
 	fiesta_bonus = 0
 	helper_cooldown = 0.0
+	helper_item_cooldown = 0.0
+	helper_patience_cooldown = 0.0
 	helper_payment = false
+	fiesta_brownout_rush = false
 	shift_earnings = 0
 	debt_payments_received = 0
 	customers_served = 0
@@ -166,6 +176,8 @@ func advance_time(delta_seconds: float) -> void:
 	if not is_running or frozen or delta_seconds <= 0.0:
 		return
 	helper_cooldown = maxf(0.0, helper_cooldown - delta_seconds)
+	helper_item_cooldown = maxf(0.0, helper_item_cooldown - delta_seconds)
+	helper_patience_cooldown = maxf(0.0, helper_patience_cooldown - delta_seconds)
 	elapsed_seconds += delta_seconds
 	if not is_closing:
 		if elapsed_seconds >= shift_duration_seconds:
@@ -356,6 +368,7 @@ func _finish_order(customer: CustomerState) -> void:
 		campaign_state.add_debt("credit_%d_%s" % [campaign_state.day, customer.customer_id], customer.customer_id, int(customer.credit_offer.principal), int(customer.credit_offer.interest), campaign_state.day + 1, customer.order.requested)
 		_finish_sale(customer, 0)
 		feedback_changed.emit("Naitala sa kuwaderno. Bayad bukas.")
+		credit_recorded.emit(customer.instance_id)
 		return
 	var tendered := order_total
 	if SukliRules.is_enabled(campaign_state.day) and not customer.exact_pay:
@@ -458,6 +471,7 @@ func _finish_sale(customer: CustomerState, net_cash: int) -> void:
 	if not customer.credit_approved:
 		campaign_state.record_purchase(customer.customer_id, customer.bill_total)
 		paid_goods_sales += customer.bill_total
+		cash_sale_completed.emit(customer.instance_id, customer.bill_total)
 	campaign_state.cash = maxi(0, campaign_state.cash + net_cash)
 	shift_earnings += net_cash
 	customers_served += 1
@@ -542,7 +556,7 @@ func _spawn_customer() -> void:
 		recent_customer_ids.pop_front()
 
 	campaign_state.save_customer_trust(id, customer.trust)
-	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and rng.randf() < 0.3:
+	if story_entry.is_empty() and campaign_state.day >= 4 and campaign_state.day <= 6 and not credit_requested_today and not campaign_state.has_debt(id) and (campaign_state.day == 4 or rng.randf() < 0.3):
 		_prepare_credit(customer)
 	active_customers.append(customer)
 
@@ -556,7 +570,16 @@ func _spawn_customer() -> void:
 func _active_customer_limit() -> int:
 	return active_customer_limit_override if active_customer_limit_override > 0 else campaign_state.get_active_customer_limit()
 
+func start_fiesta_brownout_rush() -> void:
+	if campaign_state.day != 6 or not is_running or fiesta_brownout_rush:
+		return
+	fiesta_brownout_rush = true
+	spawn_elapsed = 0.0
+	current_spawn_delay = minf(current_spawn_delay, 3.0)
+
 func _next_spawn_delay() -> float:
+	if fiesta_brownout_rush:
+		return 3.0
 	if spawn_delay_min_seconds > 0.0 and spawn_delay_max_seconds >= spawn_delay_min_seconds:
 		return rng.randf_range(spawn_delay_min_seconds, spawn_delay_max_seconds)
 	return campaign_state.get_customer_spawn_interval()
@@ -564,6 +587,8 @@ func _next_spawn_delay() -> float:
 func _choose_customer_id() -> String:
 	var ids: Array[String] = []
 	for candidate in campaign_state.config.customer_ids:
+		if campaign_state.day == 6 and fiesta_route == "ask" and candidate in ["mikay", "jun_jun", "bogs"]:
+			continue
 		if reserved_story_ids.has(candidate):
 			continue
 		var already_here := false
@@ -592,7 +617,7 @@ func _choose_customer_id() -> String:
 	return ids[0]
 
 func _update_clock() -> void:
-	var game_minutes := int(floor(elapsed_seconds / shift_duration_seconds * float(shift_close_minutes)))
+	var game_minutes := mini(shift_close_minutes, int(floor(elapsed_seconds / shift_duration_seconds * float(shift_close_minutes))))
 	var hour := 8 + floori(float(game_minutes) / 60.0)
 	var minute := game_minutes % 60
 	var display_hour := hour if hour <= 12 else hour - 12
@@ -643,3 +668,48 @@ func use_helper_change(instance_id: String) -> bool:
 		feedback_changed.emit("Mikay: Heto ang tamang sukli! Sandali, aayusin ko muna ang mga barya.")
 		return true
 	return false
+
+func _helper_target(instance_id: String) -> CustomerState:
+	for customer in active_customers:
+		if customer.instance_id == instance_id and customer.active and not customer.parked and not customer.story_arrival_pending:
+			return customer
+	return null
+
+func _complete_helper_order(customer: CustomerState) -> bool:
+	if customer == null or not customer.active or customer.parked or customer.story_arrival_pending or customer.phase != CustomerState.Phase.ORDERING:
+		return false
+	var delivered_any := false
+	for product_id in customer.order.requested:
+		var remaining := customer.order.remaining_quantity(str(product_id))
+		for _i in range(remaining):
+			var result := deliver_product(customer.instance_id, str(product_id))
+			if result == OrderState.DeliveryResult.ACCEPTED or result == OrderState.DeliveryResult.COMPLETED:
+				delivered_any = true
+			if result == OrderState.DeliveryResult.COMPLETED:
+				return true
+	return delivered_any
+
+func use_helper_item(instance_id: String) -> bool:
+	if campaign_state.day != 6 or fiesta_route != "ask" or not is_running or frozen or helper_item_cooldown > 0.0:
+		return false
+	if not _complete_helper_order(_helper_target(instance_id)):
+		return false
+	helper_item_cooldown = HELPER_ORDER_RECHARGE
+	customers_changed.emit()
+	feedback_changed.emit("Jun-jun: Kumpleto na ang order!")
+	return true
+
+func use_helper_rescue() -> bool:
+	if campaign_state.day != 6 or fiesta_route != "ask" or not is_running or frozen or helper_patience_cooldown > 0.0:
+		return false
+	var completed := 0
+	# Completing an order may remove its customer from the active array.
+	for customer in active_customers.duplicate():
+		if _complete_helper_order(customer):
+			completed += 1
+	if completed == 0:
+		return false
+	helper_patience_cooldown = HELPER_RESCUE_RECHARGE
+	customers_changed.emit()
+	feedback_changed.emit("Bogs: Kumpleto na ang %d order!" % completed)
+	return true

@@ -33,11 +33,9 @@ func run() -> void:
 		assert(main.goal_panel.position.x + main.goal_panel.size.x * hud_scale < day_chip.position.x)
 		assert(absf((day_chip.position.x + cash_chip.position.x + cash_chip.size.x * hud_scale) * 0.5 - viewport_size.x * 0.5) < 0.1)
 		assert(cash_chip.position.x + cash_chip.size.x * hud_scale < main.trust_tag.position.x)
-		assert(absf(pause_button.position.x + pause_button.size.x * hud_scale - (viewport_size.x - margin)) < 0.1)
-		assert(absf((pause_button.position.x + pause_button.size.x * hud_scale * 0.5) - (main.shop_button.position.x + main.shop_button.size.x * hud_scale * 0.5)) < 0.1)
-		assert(absf((pause_button.position.x + pause_button.size.x * hud_scale * 0.5) - (main.utang_button.position.x + main.utang_button.size.x * hud_scale * 0.5)) < 0.1)
-		assert(main.shop_button.position.y >= pause_button.position.y + pause_button.size.y * hud_scale + main.HUD_RAIL_GAP * hud_scale - 0.1)
-		assert(main.utang_button.position.y >= main.shop_button.position.y + main.shop_button.size.y * hud_scale + main.HUD_RAIL_GAP * hud_scale - 0.1)
+		assert(absf(main.utility_toggle.position.x + main.utility_toggle.size.x * hud_scale - (viewport_size.x - margin)) < 0.1)
+		assert(main.utility_drawer.position.x >= margin - 0.1)
+		assert(main.utility_drawer.position.x + main.utility_drawer.size.x * hud_scale <= viewport_size.x - margin + 0.1)
 		assert(main.story_illustration.size.is_equal_approx(viewport_size))
 		assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
 		for prop in ["berting_counter_closeup", "lina_walking_away", "friends_shelter"]:
@@ -50,7 +48,7 @@ func run() -> void:
 		main.shift_in_progress = false
 		main.shop_available = false
 		main._show_pre_shift_briefing()
-		assert(main.shop_button.visible == (day > 1))
+		assert(not main.shop_button.visible)
 		assert(main._is_shop_available() == (day > 1))
 		if day > 1:
 			main._open_shelf_shop()
