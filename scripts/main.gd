@@ -45,7 +45,7 @@ const DAY_FOCUS_HINTS := {
 	2: "Shop before opening. Today, give the correct sukli after each sale.",
 	3: "Practice orders with different products while customers overlap.",
 	4: "Rain makes customers less patient. Serve the shortest bar first.",
-	5: "Keep your regulars happy during the Alfa-Save rush.",
+	5: "Tap UTANG to check balances and due dates.",
 	6: "Fiesta rush! Up to five customers can wait at once.",
 	7: "Final day: take your time. Customers will not lose trust today.",
 }
@@ -86,6 +86,7 @@ var customer_story_actor: Control
 var story_visitor_portrait: TextureRect
 var resumed_campaign := false
 var resumed_completed := false
+var debug_controls_visible := true
 var debug_session := false
 var debug_launch_data: Dictionary = {}
 var checkpoint_ready := false
@@ -244,7 +245,7 @@ func _ready() -> void:
 		# Rebuild persistent story debts as well as the choices that caused them.
 		if story.get_choice("day3_candy") == "credit":
 			campaign.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
-			if campaign.day > 4 or (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) != 0):
+			if campaign.day > 4 or (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) not in [0, 27]):
 				story.choices["paolo_debt_recorded"] = "yes"
 			if campaign.day > 6:
 				campaign.repay_debt("paolo_story", 3)
@@ -368,6 +369,11 @@ func _ready() -> void:
 	apply_environment(campaign.day)
 	if OS.is_debug_build():
 		var debug_tools = DEBUG_TOOLS.new()
+		debug_tools.controls_visibility_changed.connect(func(shown: bool):
+			debug_controls_visible = shown
+			if debug_skip_button != null:
+				debug_skip_button.visible = shown and shift_in_progress
+		)
 		debug_tools.is_test_session = debug_session
 		add_child(debug_tools)
 	if debug_session:
@@ -410,11 +416,20 @@ func _launch_debug_start() -> void:
 				break
 		_show_story_beats(intro.slice(box_index), "DAY 2", "start_shift")
 		return
-	if moment == 0:
+	if moment in [0, 27, 28]:
 		_present_day_intro()
 		return
 	if moment == 1:
 		_show_pre_shift_briefing()
+		return
+	if moment in [25, 26]:
+		if moment == 25:
+			completed_tutorials.erase("story_event")
+			story_events._visitor_tutorial_seen = false
+		else:
+			completed_tutorials.erase("day1_drag")
+		completed_tutorials["day1_hud"] = true
+		_begin_shift()
 		return
 	if moment in [2, 14]:
 		_begin_shift()
@@ -436,7 +451,7 @@ func _launch_debug_start() -> void:
 		story_events.suppress()
 		shift.finish_shift()
 		return
-	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked", 15: "neighbor_rosa", 16: "neighbor_lina", 17: "kuya_dodong", 18: "neighbor_lina", 19: "classmate_1", 20: "classmate_2", 21: "classmate_3", 22: "paolo", 23: "paolo_repayment", 24: "fiesta_brownout"}.get(moment, "") as String
+	var visitor := {3: "mang_berting", 4: "mang_berting", 5: "jun_jun_tara", 6: "bea", 7: "paolo", 9: "jun_jun_tara", 10: "kuya_dodong_soaked", 15: "neighbor_rosa", 16: "neighbor_lina", 17: "kuya_dodong", 18: "neighbor_lina", 19: "classmate_1", 20: "classmate_2", 21: "classmate_3", 22: "paolo", 23: "paolo_repayment", 24: "fiesta_brownout", 29: "fiesta_brownout"}.get(moment, "") as String
 	var matching: Array[Dictionary] = []
 	for event in story_events._timed:
 		if str(event.get("visitor", event.get("customer", ""))) == visitor:
@@ -567,6 +582,8 @@ func _build_hud() -> void:
 	hud.add_child(trust_tag)
 
 func _recenter_fixed_hud() -> void:
+	if is_instance_valid(tutorial_hint):
+		tutorial_hint.position = Vector2(360.0, 1004.0) + _ui_offset()
 	if is_instance_valid(gameplay_hud):
 		gameplay_hud.position = _ui_offset()
 	if is_instance_valid(pause_menu):
@@ -805,8 +822,8 @@ func _build_tutorial_hint() -> void:
 	tutorial_hint = _label("", 28, Color("fff1b8"))
 	tutorial_hint.name = "TutorialHint"
 	tutorial_hint.z_index = 46
-	tutorial_hint.position = Vector2(360.0, 140.0) + _ui_offset()
-	tutorial_hint.size = Vector2(1170.0, 80.0)
+	tutorial_hint.position = Vector2(360.0, 1004.0) + _ui_offset()
+	tutorial_hint.size = Vector2(1170.0, 64.0)
 	var hint_box := StyleBoxFlat.new()          # dark-wood pill so the tip reads on any background
 	hint_box.bg_color = Color("3a2116", 0.94)
 	hint_box.border_color = Color("dca842")
@@ -950,10 +967,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.keycode >= KEY_1 and event.keycode <= KEY_7:
 		apply_environment(int(event.keycode) - int(KEY_0))
 		return
-	if event.keycode == KEY_F8:
+	if event.ctrl_pressed and event.alt_pressed and event.shift_pressed and event.keycode == KEY_B:
 		trigger_day_six_brownout()
 		return
-	if event.keycode == KEY_F10:
+	if event.ctrl_pressed and event.alt_pressed and event.shift_pressed and event.keycode == KEY_K:
 		_debug_skip_day()
 
 func _build_product_layer() -> void:
@@ -1514,8 +1531,11 @@ func _on_product_drag_started(_product_id: String) -> void:
 		return
 	var actor: Control = customer_actors.get(tutorial_customer_id)
 	if is_instance_valid(actor):
-		_show_tutorial_spotlight(TutorialStep.DAY1_CUSTOMER, "Now drop it on the highlighted customer.", actor, "SERVE THE CUSTOMER")
+		_show_tutorial_spotlight(TutorialStep.DAY1_CUSTOMER, "Keep holding, then drag the product to the highlighted customer and release.", actor, "SERVE THE CUSTOMER")
 		tutorial_overlay.show_skip()
+		var product: Control = product_items_by_id.get(tutorial_product_id)
+		if is_instance_valid(product):
+			tutorial_overlay.show_drag_arrow(_tutorial_product_rect(tutorial_product_id, product), _tutorial_rect_for(actor))
 
 func _on_product_drag_moved(viewport_position: Vector2) -> void:
 	var hovered := _customer_actor_at(viewport_position)
@@ -1819,6 +1839,8 @@ func _transition_prologue_to_day_one() -> void:
 	_show_story_beats(story.get_day_intro_beats(1), "DAY 1", "day1_intro")
 
 func _present_day_intro() -> void:
+	# The previous day’s illustration stays visible through its final dialogue.
+	story_illustration.visible = false
 	_show_story_beats(story.get_day_intro_beats(campaign.day), "DAY %d" % campaign.day, "start_shift")
 
 func _show_story_beats(beats: Array[Dictionary], title: String, after_action: String) -> void:
@@ -2157,6 +2179,7 @@ func _show_pre_shift_briefing() -> void:
 	shop_available = campaign.day > 1
 	_refresh_shop_button()
 	var briefing = DAY_BRIEFING.new(campaign.day, daily_goal, CAMPAIGN_CONFIG.product_catalog, StoreConfig.load_config("res://data/store_config.json"), new_purchase_groups_today)
+	briefing.shift_detail = "Magsasara ng %s" % _format_game_clock(campaign.get_shift_close_minutes())
 	if campaign.day == 6:
 		briefing.focus = "Piliin si Mikay o Jun-jun at ang customer. Si Bogs, pindutin lang. May sariling pahinga ang bawat isa." if story.get_choice("day6_help") == "ask" else "Mag-isa: +20% ng bayad na paninda kapag natapos ang shift."
 	showing_pre_shift_briefing = true
@@ -2171,7 +2194,7 @@ func _begin_shift() -> void:
 	if pause_menu != null:
 		pause_menu.set_available(true)
 	if debug_skip_button != null:
-		debug_skip_button.visible = true
+		debug_skip_button.visible = debug_controls_visible
 	shift_start_credit = {"debts": campaign.debts.duplicate(true), "paid": campaign.paid_purchases.duplicate(true)}
 	shift_start_choices = story.choices.duplicate(true)
 	shift_start_cash = campaign.cash
@@ -2198,7 +2221,24 @@ func _after_opening_sign() -> void:
 	store_sign.visible = false
 	if story_events != null:
 		story_events.begin_shift(campaign.day)
-	shift.start_shift()
+	# Day 1 introduces a clickable visitor before any buying customer enters.
+	shift.start_shift(campaign.day != 1)
+	if campaign.day == 1 and story_events != null:
+		if debug_session and int(debug_launch_data.get("moment", 0)) == 26:
+			story_events._waiting_scene.clear()
+			shift.story_waiting_for_clear = false
+		else:
+			story_events._try_start_waiting_scene()
+		while story_events.is_active():
+			await story_events.popup_state_changed
+		if not shift_in_progress or not shift.is_running:
+			return
+		shift._spawn_customer()
+		# Nena's arrival line must finish before the product coachmark appears.
+		while story_events.is_active():
+			await story_events.popup_state_changed
+		if not shift_in_progress or not shift.is_running:
+			return
 	if campaign.day == 1 and not tutorial_delivery_seen:
 		_begin_day_one_drag_tutorial()
 	elif campaign.day >= 3:
@@ -2292,20 +2332,10 @@ func _show_day_one_product_step() -> void:
 	if not is_instance_valid(product):
 		_clear_tutorial_spotlight()
 		return
+	tutorial_step = TutorialStep.DAY1_PRODUCT
 	var product_rect := _tutorial_product_rect(tutorial_product_id, product)
-	tutorial_overlay.show_step("Drag the highlighted product to the customer.", product_rect, "SERVE THE CUSTOMER")
+	tutorial_overlay.show_step("Tap and hold the highlighted product to pick it up.", product_rect, "PICK UP THE PRODUCT")
 	tutorial_overlay.show_skip()
-	var actor: Control = customer_actors.get(tutorial_customer_id)
-	if is_instance_valid(actor):
-		# Aim at the customer's window position, even while they are entering.
-		var target_rect := _tutorial_rect_for(actor)
-		var active := shift.get_active_customers()
-		var positions := STOREFRONT_LAYOUT.get_customer_x_positions(mini(active.size(), STOREFRONT_LAYOUT.MAX_CUSTOMERS))
-		for index in range(mini(active.size(), positions.size())):
-			if active[index].instance_id == tutorial_customer_id:
-				target_rect.position.x = customer_layer.global_position.x - tutorial_overlay.global_position.x + positions[index]
-				break
-		tutorial_overlay.show_drag_arrow(product_rect, target_rect)
 
 func _tutorial_product_rect(product_id: String, fallback: Control) -> Rect2:
 	var config := StoreConfig.load_config("res://data/store_config.json")
@@ -3052,6 +3082,9 @@ func _refresh_fiesta_controls() -> void:
 	if not active or shift.fiesta_route != "ask": fiesta_selected_helper = ""
 	fiesta_target_prompt.visible = active and not fiesta_selected_helper.is_empty()
 	if fiesta_target_prompt.visible:
+		# Keep helper targeting instructions unobstructed by transient hints.
+		if is_instance_valid(tutorial_hint) and tutorial_hint.visible:
+			tutorial_hint.hide()
 		var helper_name: String = {"mikay": "Mikay", "jun_jun": "Jun-jun", "bogs": "Bogs"}.get(fiesta_selected_helper, "")
 		var instruction: String = {"mikay": "naghihintay ng sukli", "jun_jun": "may kulang na order", "bogs": "naghihintay"}.get(fiesta_selected_helper, "")
 		fiesta_target_prompt.text = "%s: Pindutin ang customer na %s · ulitin para kanselahin" % [helper_name, instruction]

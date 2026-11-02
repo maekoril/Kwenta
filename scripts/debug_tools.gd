@@ -4,6 +4,11 @@ const GAME_SCENE := "res://scenes/main.tscn"
 const DEBUG_META := "kwenta_debug_launch"
 const OPTIONS_META := "kwenta_debug_options"
 static var options_path := "user://debug_playtest_options.cfg"
+signal controls_visibility_changed(shown: bool)
+
+var controls_visible := true
+var visibility_toggle: CheckBox
+var opener: Button
 var panel: PanelContainer
 var day_select: OptionButton
 var previous_select: OptionButton
@@ -29,9 +34,10 @@ func _ready() -> void:
 		return
 	layer = 200
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	var opener := Button.new()
+	opener = Button.new()
 	opener.name = "DebugOpenButton"
-	opener.text = "TEST MODE [F9]" if is_test_session else "DEBUG  [F9]"
+	opener.text = "TEST MODE" if is_test_session else "DEBUG"
+	opener.tooltip_text = "F2"
 	opener.position = Vector2(30, 96)
 	opener.size = Vector2(210, 56)
 	opener.add_theme_font_size_override("font_size", 23)
@@ -84,6 +90,13 @@ func _ready() -> void:
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		skip_tutorials.add_theme_color_override(color_name, KwentaStyle.INK)
 	column.add_child(skip_tutorials)
+	visibility_toggle = CheckBox.new()
+	visibility_toggle.text = "Show debug controls [F3] · F2 opens menu"
+	visibility_toggle.button_pressed = true
+	visibility_toggle.add_theme_font_size_override("font_size", 21)
+	visibility_toggle.add_theme_color_override("font_color", KwentaStyle.INK)
+	column.add_child(visibility_toggle)
+	visibility_toggle.toggled.connect(_set_controls_visible)
 	status = KwentaStyle.make_label("", 20, Color("a83429"))
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(status)
@@ -113,7 +126,7 @@ func _ready() -> void:
 
 func _remember_options() -> void:
 	var values := {
-		"day": day_select.selected, "moment": scene_select.get_selected_id(),
+		"controls_visible": controls_visible, "day": day_select.selected, "moment": scene_select.get_selected_id(),
 		"day1": previous_select.selected, "day2": money_select.selected, "nena": nena_select.selected, "sukli": sukli_select.selected, "berting": berting_select.selected,
 		"friends": friends_select.selected, "paolo": paolo_select.selected,
 		"day4": day4_select.selected, "dodong": dodong_select.selected, "debt": debt_select.selected, "help": help_select.selected, "skip_tutorials": skip_tutorials.button_pressed
@@ -147,6 +160,7 @@ func _restore_options() -> void:
 		select.select(clampi(int(values.get(pair[1], select.selected)), 0, select.item_count - 1))
 	skip_tutorials.button_pressed = bool(values.get("skip_tutorials", true))
 	_on_scene_selected(scene_select.selected)
+	_set_controls_visible(bool(values.get("controls_visible", true)))
 
 func _add_select(parent: VBoxContainer, caption: String, values: Array[String]) -> OptionButton:
 	var row := HBoxContainer.new()
@@ -176,6 +190,8 @@ func _on_day_selected(index: int) -> void:
 	if index == 0:
 		scene_select.add_item("Prologue · Aling Cora", 11)
 		scene_select.add_item("Day 1 · Friends at closing", 12)
+		scene_select.add_item("Day 1 · Berting / story-event tutorial", 25)
+		scene_select.add_item("Day 1 · First customer / pickup and drag", 26)
 	elif index == 1:
 		scene_select.add_item("Day 2 · Box and supplier note", 13)
 		scene_select.add_item("Day 2 · Aling Nena", 14)
@@ -186,16 +202,19 @@ func _on_day_selected(index: int) -> void:
 		scene_select.add_item("Day 3 · Bea", 6)
 		scene_select.add_item("Day 3 · Paolo", 7)
 	elif index == 3:
-		scene_select.add_item("Day 4 · Dodong", 10)
+		scene_select.add_item("Day 4 · Inay call / lending lesson", 27)
+		scene_select.add_item("Day 4 · Dodong / umbrella loan", 10)
 		scene_select.add_item("Day 4 · Jun-jun", 9)
 		scene_select.add_item("Day 4 · Aling Lina", 16)
 	elif index == 4:
+		scene_select.add_item("Day 5 · Wake-up and Inay / collecting debts", 28)
 		scene_select.add_item("Day 5 · Dodong returns umbrella", 17)
 		scene_select.add_item("Day 5 · Aling Lina returns", 18)
 		scene_select.add_item("Day 5 · Lola Rosa", 15)
 	elif index == 5:
 		scene_select.add_item("Day 6 · Paolo repays ₱3", 23)
-		scene_select.add_item("Day 6 · Fiesta brownout", 24)
+		scene_select.add_item("Day 6 · Fiesta brownout / lampara", 24)
+		scene_select.add_item("Day 6 · Brownout → Mang Ramon", 29)
 		scene_select.add_item("Day 6 · Paolo classmate 1", 19)
 		scene_select.add_item("Day 6 · Paolo classmate 2", 20)
 		scene_select.add_item("Day 6 · Paolo classmate 3", 21)
@@ -221,8 +240,21 @@ func _on_scene_selected(_index: int) -> void:
 	if is_instance_valid(status):
 		status.text = ""
 
+func _set_controls_visible(shown: bool) -> void:
+	controls_visible = shown
+	opener.visible = shown
+	visibility_toggle.set_pressed_no_signal(shown)
+	controls_visibility_changed.emit(shown)
+	if not shown and panel.visible:
+		_toggle()
+	_remember_options()
+
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9:
+	if event is InputEventKey and event.pressed and not event.echo and not event.ctrl_pressed and not event.alt_pressed and not event.shift_pressed and event.keycode == KEY_F3:
+		_set_controls_visible(not controls_visible)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo and not event.ctrl_pressed and not event.alt_pressed and not event.shift_pressed and event.keycode == KEY_F2:
 		_toggle()
 		get_viewport().set_input_as_handled()
 
@@ -239,7 +271,7 @@ func _toggle() -> void:
 func _launch() -> void:
 	var day := day_select.selected + 1
 	var moment := scene_select.get_selected_id()
-	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23, 24] and day != 6):
+	if (moment in [11, 12, 25, 26] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10, 27] and day != 4) or (moment in [15, 17, 18, 28] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23, 24, 29] and day != 6):
 		status.text = "Choose the matching day for that story event."
 		return
 	if moment == 4 and money_select.selected == 2:

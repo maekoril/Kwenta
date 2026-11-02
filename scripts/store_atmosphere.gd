@@ -4,7 +4,7 @@ extends Control
 ## It draws between the world (z 0-25) and the HUD (z 30), so the paper tags,
 ## cash tray and dialogue bubble stay clean. Every piece ignores mouse/touch,
 ## so dragging products and tapping customers works exactly as before.
-## F9 (debug builds) toggles the whole thing, so you can compare before/after.
+## Ctrl+Alt+Shift+A (debug builds) toggles the whole thing, so you can compare before/after.
 
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 
@@ -55,7 +55,7 @@ func _ready() -> void:
 	_fit_to_view()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F9:
+	if OS.is_debug_build() and event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed and event.alt_pressed and event.shift_pressed and event.keycode == KEY_A:
 		visible = not visible
 
 # One shadow per stocked product. Main calls this from _rebuild_product_shelf.

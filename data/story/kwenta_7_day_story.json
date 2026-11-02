@@ -24,7 +24,7 @@
 		{
 			"speaker": "Tonyo",
 			"portrait": "tonyo_bored",
-			"text": "Ah, eh ano po eh..."
+			"text": "Eh... hindi pa po kasi tapos ang project ko. Wala pa naman po akong maipapakita. Bukas na lang po ako papasok."
 		},
 		{
 			"speaker": "Aling Cora",
@@ -34,7 +34,7 @@
 		{
 			"speaker": "Tonyo",
 			"portrait": "tonyo_flustered",
-			"text": "Isang linggo?! Paano na ako nay? Paano ang tindahan? Sino po ang magbabantay ng tindahan?"
+			"text": "Isang linggo po? Eh sino pong magbabantay ng tindahan?"
 		},
 		{
 			"speaker": "Aling Cora",
@@ -44,12 +44,12 @@
 		{
 			"speaker": "Tonyo",
 			"portrait": "tonyo_flustered",
-			"text": "Ako?! Ma, wala po akong alam diyan!"
+			"text": "Ako?! Ma, hindi nga po ako marunong magsukli! Tsaka may project pa po ako. Hindi po ba puwedeng iba muna?"
 		},
 		{
 			"speaker": "Aling Cora",
 			"portrait": "aling_cora_reading",
-			"text": "Hetong kuwaderno, anak. Nakasulat dito ang presyo ng paninda at mga utang. Dito ka rin magkuwenta ng benta."
+			"text": "Tutulungan kitang matuto, anak. Hetong kuwaderno. Nakasulat dito ang presyo ng paninda at mga utang. Dito ka rin magkuwenta ng benta."
 		},
 		{
 			"speaker": "Narrator",
@@ -75,54 +75,19 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_bored",
-					"text": "Ano ba iyan, imbis na naglalaro na ako sa labas. Hays buhay"
+					"text": "Ano ba naman... nasa labas na siguro sila. Bakit kasi ako pa ang kailangang magbantay?"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_bored",
-					"text": "Pero, isang linggo lang naman... kaya ko 'to. Konting benta lang to, tapos tulog."
-				},
-				{
-					"speaker": "Mang Berting",
-					"portrait": "mang_berting",
-					"text": "Tonyo! Si Cora nasaan?"
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Umuwi po sa probinsya."
-				},
-				{
-					"speaker": "Mang Berting",
-					"portrait": "mang_berting",
-					"text": "Ahh, paano ang tindahan?"
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Ako raw po muna, nong."
-				},
-				{
-					"speaker": "Mang Berting",
-					"portrait": "mang_berting_impatient",
-					"text": "Ikaw? Haha! Sige, galingan mo ha? 'wag kang tatamarin iho."
-				},
-				{
-					"speaker": "Narrator",
-					"portrait": "",
-					"text": "At 'di kalaunan ay dumating na rin ang una niyang customer"
-				},
-				{
-					"speaker": "Aling Nena",
-					"portrait": "aling_nena",
-					"text": "Toy pambilan, dalawang noodz nga."
+					"text": "Isang linggo lang. Abot ng paninda, kuha ng bayad. Kapag wala nang bumibili, puwede na siguro akong magpahinga."
 				}
 			],
 			"outro": [
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Tanghali na. Hindi namalayan ni Tonyo ang oras sa kanyang pagtitinda."
+					"text": "Tanghali na. Panay ang tingin ni Tonyo sa labas habang hinihintay ang susunod na bibili."
 				},
 				{
 					"speaker": "Narrator",
@@ -228,6 +193,20 @@
 					"when_value": "play"
 				},
 				{
+					"speaker": "Mikay",
+					"portrait": "mikay_smug",
+					"text": "Wow, tindero na si Tonyo! Baka kailangan muna naming bumili bago mo kami kausapin.",
+					"when_choice": "day1_play",
+					"when_value": "stay"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Hindi kaya! Bantay lang ako ngayon. Sa susunod, sasama rin ako.",
+					"when_choice": "day1_play",
+					"when_value": "stay"
+				},
+				{
 					"speaker": "Narrator",
 					"portrait": "",
 					"text": "Hindi sumama si Tonyo sa laro. Pinili niyang bantayan ang tindahan at sundin ang bilin ni Inay hanggang hapon.",
@@ -270,6 +249,62 @@
 					"text": "Sana ayos lang si Lola sa probinsya.",
 					"when_choice": "day1_play",
 					"when_value": "stay"
+				}
+			],
+			"shift_events": [
+				{
+					"type": "scene",
+					"at_minute": 0.0,
+					"visitor": "mang_berting",
+					"wait_for_clear": true,
+					"reserve_until_shift_end": true,
+					"beats": [
+						{
+							"speaker": "Mang Berting",
+							"portrait": "mang_berting",
+							"text": "Tonyo! Si Cora nasaan?"
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Umuwi po sa probinsya."
+						},
+						{
+							"speaker": "Mang Berting",
+							"portrait": "mang_berting",
+							"text": "Ahh, paano ang tindahan?"
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Ako raw po muna. Sinabi ko na nga pong hindi ako marunong, eh."
+						},
+						{
+							"speaker": "Mang Berting",
+							"portrait": "mang_berting_impatient",
+							"text": "Ikaw? Haha! Sige, galingan mo ha? 'wag kang tatamarin iho."
+						}
+					]
+				},
+				{
+					"type": "customer",
+					"at_minute": 0.0,
+					"customer": "aling_nena",
+					"order": {
+						"instant_noodles": 2.0
+					},
+					"arrival_beats": [
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "At 'di kalaunan ay dumating na rin ang una niyang customer"
+						},
+						{
+							"speaker": "Aling Nena",
+							"portrait": "aling_nena",
+							"text": "Toy pambilan, dalawang noodz nga."
+						}
+					]
 				}
 			]
 		},
@@ -338,7 +373,7 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "Ayos naman po, Mang Berting! Medyo nakakalito lang po ang sukli minsan, hehe."
+							"text": "Ang dami po palang bibilangin. Akala ko po, basta may presyo, madali na ang sukli."
 						},
 						{
 							"speaker": "Mang Berting",
@@ -463,12 +498,12 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Kung tutuusin, ang dali lang pala magtinda. Mani-mani lang sa akin 'to, hehe!"
+					"text": "Isa na namang araw... Hindi naman siguro kailangang buong araw akong abala rito."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Kukunin ko lang ang gusto nila, iaabot sa kanila, tapos tatanggapin ko ang bayad. Ganun lang!"
+					"text": "Kukunin ko lang ang gusto nila, iaabot, tapos tatanggapin ang bayad. Kapag binilisan ko, mas maaga akong makakapagpahinga."
 				},
 				{
 					"speaker": "Narrator",
@@ -490,7 +525,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Hala, kahapon pa pala ’tong kahon dito! Hindi ko man lang napansin. Sige, aayusin ko na ’to gaya ng bilin ni Inay.",
+					"text": "Kahapon pa pala ’to rito. Pati pag-aayos, ako rin? Hay, sige na nga. Baka matapilok na naman ako.",
 					"supplier_note": true
 				},
 				{
@@ -542,7 +577,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Sige po, Kuya. Tingnan ko muna kung ano ang kaya ng ipon ko!"
+					"text": "Sige po, Kuya. Tingnan ko muna ang listahan. Baka sumobra naman ang magastos ko."
 				}
 			],
 			"outro": [
@@ -554,21 +589,21 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Akala ko abot lang ng paninda at kuha ng bayad. Buti may listahan—mas madali palang sundan ang sukli!",
+					"text": "Akala ko abot lang ng paninda at kuha ng bayad. Pati pala sukli, hindi puwedeng minamadali. Buti may listahan.",
 					"when_choice": "day2_sukli_result",
 					"when_value": "perfect"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_flustered",
-					"text": "Kahit may listahan, kailangan ko pa ring mag-ingat sa sukli. Ang bilis kasi pag maraming bumibili!",
+					"text": "May listahan na nga, nalilito pa rin ako kapag sunod-sunod sila. Kailangan ko pa palang bilangin nang maayos.",
 					"when_choice": "day2_sukli_result",
 					"when_value": "mistakes"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_bored",
-					"text": "Hindi ako nakatapos ng pagbibigay ng sukli ngayon. Susubukan ko ulit bukas.",
+					"text": "Hindi ako nakatapos ng pagbibigay ng sukli ngayon. Hay... bukas, titingnan ko muna ang listahan.",
 					"when_choice": "day2_sukli_result",
 					"when_value": "none"
 				},
@@ -633,7 +668,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Bilang muna bago mag-abot ng sukli. Kaya ko na yata ito!"
+					"text": "Bilang muna bago mag-abot ng sukli... para hindi na kailangang ulitin."
 				},
 				{
 					"speaker": "Tonyo",
@@ -783,7 +818,7 @@
 									{
 										"speaker": "Tonyo",
 										"portrait": "tonyo",
-										"text": "Nakita ko po. Pasensya na po, hindi ko agad sinabi."
+										"text": "Opo, nakita ko po. Heto po ang ₱50 ninyo."
 									},
 									{
 										"speaker": "Narrator",
@@ -802,17 +837,17 @@
 									{
 										"speaker": "Mang Berting",
 										"portrait": "mang_berting",
-										"text": "Salamat at sinabi mo rin, iho. Kinabahan lang ako; pambili ko sana ng bigas iyon."
+										"text": "Ay, salamat, Tonyo! Pambili ko sana ng bigas iyan. Kanina ko pa hinahanap."
 									},
 									{
 										"speaker": "Tonyo",
 										"portrait": "tonyo",
-										"text": "Pasensya na po talaga."
+										"text": "Buti po at bumalik kayo."
 									},
 									{
 										"speaker": "Tonyo",
 										"portrait": "tonyo_bored",
-										"text": "Kinabahan ako roon... pero mabuti nang nasabi ko rin."
+										"text": "Pambili pala niya ng bigas ’yon... Buti naibalik ko."
 									}
 								]
 							},
@@ -940,12 +975,24 @@
 									{
 										"speaker": "Tonyo",
 										"portrait": "tonyo",
-										"text": "Hindi muna ako makakasama ngayon. Kailangan ko pang bantayan ang tindahan."
+										"text": "Gusto ko sana, kaso walang ibang bantay. Hindi muna ako makakasama ngayon."
 									},
 									{
 										"speaker": "Jun-jun",
 										"portrait": "jun_jun_tara",
-										"text": "Sige na nga. Bawi ka sa amin sa susunod, ha!"
+										"text": "Hindi ka na naman makakasama? Namimiss na namin ’yung kalaro naming tindero. Bawi ka sa susunod, ha?",
+										"when_choice": "day1_play",
+										"when_value": "stay"
+									},
+									{
+										"speaker": "Jun-jun",
+										"portrait": "jun_jun_tara",
+										"text": "Sayang naman. Sige, Tonyo, bawi ka sa amin sa susunod, ha!",
+										"when_choice": "day1_play",
+										"when_values": [
+											"play",
+											""
+										]
 									}
 								]
 							}
@@ -991,7 +1038,7 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo_bored",
-							"text": "Oo na, gagawin ko na mamaya. Huwag mo munang ipagsabi kay Ma'am!"
+							"text": "Eh ang dami ko ring inaasikaso rito! Gagawin ko naman. Huwag mo munang ipagsabi kay Ma’am, ha?"
 						}
 					]
 				},
@@ -1121,7 +1168,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Bibilangin ko muna ang benta, tapos saka ko iisipin kung ano'ng ilalagay ko roon."
+					"text": "Pati rito, may kailangan pa akong tapusin. Bilangin ko na muna ang benta para wala na akong iisipin mamaya."
 				},
 				{
 					"speaker": "Narrator",
@@ -1172,7 +1219,11 @@
 					"portrait": "",
 					"text": "Hindi pa niya alam kung aling lugar ang gagawin niya. Bukas na lang muna niya iisipin."
 				},
-				{"speaker": "Narrator", "portrait": "", "text": "Ipinikit ni Tonyo ang kanyang mga mata.", "cutscene": "end"}
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Napatingin siya sa kuwadernong kailangan pa niyang sulatan bago matulog."
+				}
 			],
 			"choices": [],
 			"callbacks": []
@@ -1228,7 +1279,7 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "Opo. Akala ko nga po madali lang, pero ang dami palang kailangang asikasuhin."
+							"text": "Ako lang po kasi ang naiwan. Akala ko abot lang ng paninda... pati utang pala, kailangan kong asikasuhin."
 						},
 						{
 							"speaker": "Kuya Dodong",
@@ -1386,7 +1437,19 @@
 									{
 										"speaker": "Jun-jun",
 										"portrait": "jun_jun_tara",
-										"text": "Aww, sayang. Sige, Tonyo. Sa susunod na lang tayo maglaro!"
+										"text": "Akala ko makakalaro ka na namin ngayon. Sayang... bawi ka sa amin kapag puwede ka na, ha?",
+										"when_choice": "day3_friends",
+										"when_values": [
+											"stay",
+											"later"
+										]
+									},
+									{
+										"speaker": "Jun-jun",
+										"portrait": "jun_jun_tara",
+										"text": "Aww, sayang. Sige, Tonyo. Sa susunod na lang tayo maglaro!",
+										"when_choice": "day3_friends",
+										"when_value": ""
 									},
 									{
 										"speaker": "Tonyo",
@@ -1564,7 +1627,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Heto na po, Ma. Anong pahina?"
+					"text": "Kuwaderno na naman po? Sandali, Ma. Akala ko mga presyo lang ang kailangan kong aralin."
 				},
 				{
 					"speaker": "Aling Cora",
@@ -1580,18 +1643,18 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Ma, may ₱320 pa palang utang si Lola Rosa.",
+					"text": "Ma, may ₱320 pa palang utang si Lola Rosa. Ako rin po ba ang bahala rito? Hindi ko naman po alam ang usapan ninyo.",
 					"show_prop": "utang_ledger"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Oo, matagal na nating suki si Lola Rosa. Paunti-unti siyang naghuhulog kapag may naitatabi."
+					"text": "Oo, ikaw muna ang magtatala, anak. Matagal na nating suki si Lola Rosa. Paunti-unti siyang naghuhulog kapag may naitatabi."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Paano po kapag may ibang gustong umutang?"
+					"text": "Paano po kapag may ibang gustong umutang? Baka mali ang mapagbigyan ko."
 				},
 				{
 					"speaker": "Aling Cora",
@@ -1606,7 +1669,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Sabihin ko po muna kung magkano lahat ang babayaran nila?"
+					"text": "Teka po, Ma. Bago ko ibigay ang paninda, sasabihin ko muna kung magkano lahat ang babayaran nila?"
 				},
 				{
 					"speaker": "Aling Cora",
@@ -1652,7 +1715,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Kaso hindi ko po naisulat. Nakalimutan ko sa dami ng ginagawa.",
+					"text": "Kaso hindi ko po naisulat. Akala ko maaalala ko naman... tapos may iba na akong inasikaso.",
 					"when_choice": "day3_candy",
 					"when_value": "credit"
 				},
@@ -1694,7 +1757,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Opo, Ma. Ingat po kayo ni Lola!"
+					"text": "Sige po. Dito ko na ilalagay ang kuwaderno para makita ko agad. Ingat po kayo ni Lola!"
 				},
 				{
 					"speaker": "Narrator",
@@ -2043,7 +2106,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_flustered",
-					"text": "Opo! Ma, may nakita po akong Alfa-Save na magbubukas sa may kanto. Baka doon na bumili ang mga suki natin."
+					"text": "Pagod pa po. Tapos may Alfa-Save pang magbubukas sa kanto. Ma, paano kung doon na bumili ang mga suki natin?"
 				},
 				{
 					"speaker": "Aling Cora",
@@ -2079,18 +2142,18 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Opo. Nandito rin po si Lola Rosa, ₱320 pa.",
+					"text": "Ako rin po ang maniningil? Nahihiya po ako... Nandito rin si Lola Rosa, ₱320 pa.",
 					"show_prop": "utang_ledger"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Kapag dumaan siya at may maihulog, isulat mo kung magkano ang ibinayad at ang natitira."
+					"text": "Kausapin mo lang nang maayos, anak. Kapag dumaan si Lola Rosa at may maihulog, isulat mo ang ibinayad at ang natitira."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Hindi ko po muna guguhitan ang pangalan hangga't hindi pa bayad lahat?"
+					"text": "Kahit kulang pa, itatala ko ang naibayad niya? Pero hindi ko muna guguhitan ang pangalan hangga’t hindi bayad lahat?"
 				},
 				{
 					"speaker": "Aling Cora",
@@ -2153,7 +2216,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Nakahulog si Lola Rosa ng ₱110. Isinulat ko na rin ang natitirang ₱210 para hindi namin makalimutan.",
+					"text": "Kinabahan pa akong kausapin si Lola Rosa. Nakahulog naman siya ng ₱110. Naitala ko na rin ang natitirang ₱210.",
 					"when_choice": "day5_debt",
 					"when_value": "installments"
 				},
@@ -2167,7 +2230,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "May bago mang tindahan sa may kanto, aalagaan ko pa rin ang mga suki namin."
+					"text": "Hindi ko alam kung ilan ang bibili rito kapag bukas na ang Alfa-Save. Pero ihahanda ko pa rin ang paninda natin bukas. Fiesta pa naman."
 				}
 			],
 			"choices": [],
@@ -2252,7 +2315,7 @@
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo",
-							"text": "Salamat, Paolo. Sandali, itala ko lang."
+							"text": "Salamat, Paolo. Itala ko na agad bago ko makalimutan ulit."
 						},
 						{
 							"speaker": "Narrator",
@@ -2503,7 +2566,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Dagdag sa ipon... pero sa akin din lahat ang order at sukli hanggang magsara."
+					"text": "Gusto ko ’yung dagdag sa ipon... pero ang haba na ng pila. Kailangan kong pag-isipan kung kaya ko ang lahat ng order at sukli."
 				},
 				{
 					"speaker": "Narrator",
@@ -2533,7 +2596,7 @@
 								{
 									"speaker": "Tonyo",
 									"portrait": "tonyo",
-									"text": "Jun-jun! Puwede ba kayong tumulong?"
+									"text": "Sige... patulong na rin. Ang dami nila. Jun-jun, ikaw muna sa orders?"
 								},
 								{
 									"speaker": "Jun-jun",
@@ -2558,7 +2621,7 @@
 								{
 									"speaker": "Tonyo",
 									"portrait": "tonyo",
-									"text": "Sige. Salamat sa inyo!"
+									"text": "Salamat. Sabihin n’yo rin kapag kailangan n’yong magpahinga, ha?"
 								}
 							]
 						},
@@ -2601,19 +2664,19 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Buti na lang nakuha natin ang lampara. Salamat sa inyo."
+					"text": "Noong namatay ang ilaw, akala ko hindi na tayo makakapagtinda. Buti nariyan kayo. Salamat."
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "At salamat sa tulong ninyo sa tindahan. Hindi ko sana kinaya nang ganito kagaan.",
+					"text": "Ang dami nating naasikaso. Buti pumayag akong magpatulong... kung ako lang, ang hirap no’n.",
 					"when_choice": "day6_help",
 					"when_value": "ask"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Ako nga ang nagbantay, pero buti na lang tinulungan nila ako sa lampara.",
+					"text": "Ako ang humawak ng orders at sukli, pero kung wala sila, paano ko kaya naasikaso ’yung ilaw? Buti bumalik sila.",
 					"when_choice": "day6_help",
 					"when_value": "alone"
 				}
@@ -2669,14 +2732,14 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_determined",
-					"text": "Kaya ko pala.",
+					"text": "Natapos ko ang orders at sukli. Kaya ko pala... pero malaking tulong pa rin na may kasama ako kanina.",
 					"when_choice": "day6_help",
 					"when_value": "alone"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo_smiling_tired",
-					"text": "Pagod na pagod ako... pero masaya."
+					"text": "Pagod na pagod ako. Noong una, gusto ko lang matapos ang linggo... ngayon, may ikukuwento na ako kay Inay."
 				}
 			]
 		},

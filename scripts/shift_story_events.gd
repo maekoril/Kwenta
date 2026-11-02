@@ -434,7 +434,7 @@ func _show_story_visitor(visitor: String) -> void:
 	if not is_instance_valid(button) or _mode not in ["visitor", "outro_visitor"]:
 		return
 	button.disabled = false
-	if not _visitor_tutorial_seen:
+	if not _visitor_tutorial_seen and _day == 1 and visitor == "mang_berting":
 		var overlay := STORY_TUTORIAL_OVERLAY.new()
 		overlay.name = "StoryVisitorTutorial"
 		root.add_child(overlay)
