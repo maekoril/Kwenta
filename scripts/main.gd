@@ -17,6 +17,12 @@ const STORY_EVENT_MARKER = preload("res://scripts/story_event_marker.gd")
 const PAOLO_DEBT_NOTE = preload("res://scripts/paolo_debt_note.gd")
 const UTANG_LEDGER = preload("res://scripts/utang_ledger.gd")
 const DEBUG_TOOLS = preload("res://scripts/debug_tools.gd")
+const HUD_SAFE_MARGIN := 33.0
+const HUD_TOP_Y := 11.0
+const HUD_RAIL_GAP := 14.0
+const PAUSE_BUTTON_SIZE := Vector2(89.0, 74.0)
+const SHOP_BUTTON_SIZE := Vector2(74.0, 74.0)
+const UTANG_BUTTON_SIZE := Vector2(100.0, 58.0)
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
@@ -80,6 +86,16 @@ var fiesta_selected_helper := ""
 var fiesta_target_prompt: Label
 var fiesta_preview_step := -1
 var shop_button: Button
+var utility_toggle: Button
+var utility_drawer: PanelContainer
+var utility_shop: Button
+var utility_utang: Button
+var utility_pause: Button
+var utility_open := false
+var shop_cta_glow: Panel
+var shop_cta_tween: Tween
+var shop_order_cue: Label
+var shop_locked_cue: Control
 var customer_actors: Dictionary = {}
 var customer_story_button: Button
 var customer_story_actor: Control
@@ -192,7 +208,7 @@ var supplier_delivery_was_tutorial := false
 var supplier_story_blocked := false
 var new_purchase_groups_today: Array[String] = []
 
-enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES }
+enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES, DAY2_SHOP_MENU, DAY4_UTANG_MENU, DAY4_UTANG_ROW }
 func _ready() -> void:
 	AUDIO_SETTINGS.initialize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -316,8 +332,8 @@ func _ready() -> void:
 	add_child(utang_ledger)
 	utang_button = Button.new()
 	utang_button.text = "UTANG"
-	utang_button.position = Vector2(1790, 190) + _ui_offset()
-	utang_button.size = Vector2(100, 58)
+	utang_button.position = _utang_button_position()
+	utang_button.size = UTANG_BUTTON_SIZE
 	utang_button.z_index = 55
 	KwentaStyle.style_button(utang_button, KwentaStyle.PAPER_DARK, 22)
 	add_child(utang_button)
@@ -349,9 +365,10 @@ func _ready() -> void:
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
 	pause_menu.story_progression = story
-	pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
-	# Compact button dimensions for the Option 5 bar.
-	pause_menu.get_child(0).get_child(0).size = Vector2(89.0, 74.0)
+	pause_menu.set_button_size(PAUSE_BUTTON_SIZE)
+	pause_menu.set_button_icon(_utility_icon(3))
+	_build_utility_drawer()
+	_recenter_fixed_hud()
 	_update_cash(campaign.cash)
 	_create_shift_manager()
 	_build_story_events()
@@ -493,7 +510,9 @@ func _show_save_warning() -> void:
 func _process(delta: float) -> void:
 	_refresh_fiesta_controls()
 	if is_instance_valid(utang_button):
-		utang_button.visible = campaign != null and campaign.day >= 4 and shift != null and shift.is_running and not shift.frozen
+		utang_button.visible = false
+	if is_instance_valid(utility_drawer):
+		_refresh_utility_drawer()
 	if is_instance_valid(customer_story_button) and is_instance_valid(customer_story_actor):
 		customer_story_button.position = customer_story_actor.global_position - global_position
 		customer_story_button.modulate.a = customer_story_actor.modulate.a
@@ -509,23 +528,23 @@ func _process(delta: float) -> void:
 				child.refresh_patience()
 
 func _build_hud() -> void:
-	# Option 5: a small, intentional top strip, not the oversized Option 2 board.
-	# Exact coordinates are authored against the original 1920 x 1080 game canvas.
+	# Option 5: a compact top strip that keeps the centre stats together while
+	# the objective and trust controls follow the actual viewport edges.
 	var hud := Control.new()
 	gameplay_hud = hud
 	hud.name = "GameplayHUDOption5"
 	hud.z_index = 30
-	hud.position = _ui_offset()
-	hud.size = STOREFRONT_LAYOUT.VIEWPORT_SIZE
+	hud.position = Vector2.ZERO
+	hud.size = size
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hud)
-	const Y := 11.0
+	const Y := HUD_TOP_Y
 	const H := 74.0
 
 	# Left objective chip: icon + LIVE progress + count (no oversized heading).
 	goal_panel = PanelContainer.new()
 	goal_panel.name = "DailyGoalHud"
-	goal_panel.position = Vector2(33.0, Y)
+	goal_panel.position = Vector2(HUD_SAFE_MARGIN, Y)
 	goal_panel.size = Vector2(399.0, H)
 	goal_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	goal_panel.tooltip_text = "Today's objective"
@@ -572,29 +591,186 @@ func _build_hud() -> void:
 	goal_row.add_child(goal_count_label)
 
 	# Three distinct cream chips — day, time, cash — matching the user's Option 5.
-	day_label = _option5_stat(hud, "DayChip", Vector2(672, Y), Vector2(149, H), "calendar.png", "D1", 27, KwentaStyle.INK, 35.0)
-	clock_label = _option5_stat(hud, "TimeChip", Vector2(835, Y), Vector2(169, H), "clock.png", "8:00", 27, KwentaStyle.INK, 34.0)
-	cash_label = _option5_stat(hud, "CashChip", Vector2(1018, Y), Vector2(178, H), "peso.png", "150", 27, KwentaStyle.MONEY, 35.0)
+	day_label = _option5_stat(hud, "DayChip", Vector2.ZERO, Vector2(149, H), "calendar.png", "D1", 27, KwentaStyle.INK, 35.0)
+	clock_label = _option5_stat(hud, "TimeChip", Vector2.ZERO, Vector2(169, H), "clock.png", "8:00", 27, KwentaStyle.INK, 34.0)
+	cash_label = _option5_stat(hud, "CashChip", Vector2.ZERO, Vector2(178, H), "peso.png", "150", 27, KwentaStyle.MONEY, 35.0)
 
 	# Live suki animation remains controlled by the existing trust update calls.
 	trust_tag = OPTION5_SUKI.new().setup(campaign.barangay_trust, 372.0, 0.0, 3.0, false)
-	trust_tag.position = Vector2(1401.0, Y)
+	trust_tag.position = Vector2.ZERO
 	hud.add_child(trust_tag)
+	_layout_gameplay_hud()
 
 func _recenter_fixed_hud() -> void:
 	if is_instance_valid(tutorial_hint):
 		tutorial_hint.position = Vector2(360.0, 1004.0) + _ui_offset()
-	if is_instance_valid(gameplay_hud):
-		gameplay_hud.position = _ui_offset()
-	if is_instance_valid(pause_menu):
-		pause_menu.place_button(Vector2(1795.0, 11.0) + _ui_offset())
-	if is_instance_valid(shop_button):
-		shop_button.position = _shop_button_position()
+	_layout_gameplay_hud()
+	_layout_right_hud_rail()
 	if is_instance_valid(briefing_card) and briefing_card.visible:
 		briefing_card.call_deferred("_settle", size, false)
 	for child in get_children():
 		if child.name.begins_with("DailyGoalAchievementNotice") and child is Control:
 			child.position = Vector2(33, 100) + _ui_offset()
+
+func _layout_right_hud_rail() -> void:
+	var scale := _hud_scale()
+	if is_instance_valid(pause_menu):
+		pause_menu.set_button_scale(scale)
+		pause_menu.place_button(_pause_button_position() - Vector2((PAUSE_BUTTON_SIZE.x + HUD_RAIL_GAP) * scale, 0))
+	if is_instance_valid(shop_button):
+		shop_button.scale = Vector2.ONE * scale
+		shop_button.position = _shop_button_position()
+		_refresh_shop_cta_layout()
+	if is_instance_valid(utang_button):
+		utang_button.scale = Vector2.ONE * scale
+		utang_button.position = _utang_button_position()
+	if is_instance_valid(utility_toggle):
+		utility_toggle.scale = Vector2.ONE * scale
+		utility_toggle.position = _pause_button_position()
+		utility_drawer.scale = Vector2.ONE * scale
+		utility_drawer.position = Vector2(size.x - maxf(20.0, HUD_SAFE_MARGIN * scale) - utility_drawer.size.x * scale, HUD_TOP_Y + (PAUSE_BUTTON_SIZE.y + HUD_RAIL_GAP) * scale)
+
+func _build_utility_drawer() -> void:
+	utility_toggle = Button.new()
+	utility_toggle.name = "UtilityMenuButton"
+	utility_toggle.text = ""
+	utility_toggle.size = PAUSE_BUTTON_SIZE
+	utility_toggle.z_index = 57
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		utility_toggle.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	utility_toggle.icon = _utility_icon(4)
+	utility_toggle.expand_icon = true
+	add_child(utility_toggle)
+	utility_toggle.pressed.connect(func():
+		utility_open = not utility_open
+		_layout_gameplay_hud()
+		_refresh_utility_drawer()
+		if utility_open and tutorial_step == TutorialStep.DAY2_SHOP_MENU:
+			_show_supplier_row_tutorial.call_deferred()
+		elif not utility_open and tutorial_step == TutorialStep.DAY2_SHOP:
+			tutorial_overlay.z_index = 52
+			_show_tutorial_spotlight(TutorialStep.DAY2_SHOP_MENU, "Tap the menu to find Inay's supplier list.", utility_toggle, "SUPPLIER LIST")
+		elif utility_open and tutorial_step == TutorialStep.DAY4_UTANG_MENU:
+			_show_utang_row_tutorial.call_deferred()
+		elif not utility_open and tutorial_step == TutorialStep.DAY4_UTANG_ROW:
+			tutorial_overlay.z_index = 52
+			_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_MENU, "Tap the menu to find the utang notebook.", utility_toggle, "UTANG NOTEBOOK"))
+	utility_drawer = PanelContainer.new()
+	utility_drawer.name = "UtilityDrawer"
+	utility_drawer.size = Vector2(330, 385)
+	utility_drawer.z_index = 57
+	var panel_texture := load("res://assets/sprites/ui/utility_menu/wood_panel.png") as Texture2D
+	if panel_texture != null:
+		var panel_style := StyleBoxTexture.new()
+		panel_style.texture = panel_texture
+		panel_style.content_margin_left = 45
+		panel_style.content_margin_right = 45
+		panel_style.content_margin_top = 48
+		panel_style.content_margin_bottom = 48
+		utility_drawer.add_theme_stylebox_override("panel", panel_style)
+	add_child(utility_drawer)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	utility_drawer.add_child(column)
+	utility_shop = _utility_row(column, "ORDER SUPPLIES")
+	utility_utang = _utility_row(column, "UTANG")
+	var diary := _utility_row(column, "KUWADERNO")
+	for entry in [[utility_shop, 0], [utility_utang, 1], [diary, 2]]:
+		entry[0].icon = _utility_icon(entry[1])
+		entry[0].expand_icon = true
+		entry[0].alignment = HORIZONTAL_ALIGNMENT_LEFT
+		entry[0].add_theme_constant_override("icon_max_width", 58)
+	utility_shop.pressed.connect(func():
+		utility_open = false
+		_refresh_utility_drawer()
+		_open_shelf_shop())
+	utility_utang.pressed.connect(func():
+		utility_open = false
+		_refresh_utility_drawer()
+		if tutorial_step == TutorialStep.DAY4_UTANG_ROW:
+			_remember_tutorial("day4_utang")
+			_clear_tutorial_spotlight()
+			tutorial_overlay.z_index = 52
+			utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
+			utang_close.show()
+		else:
+			utang_button.pressed.emit())
+	diary.pressed.connect(func():
+		utility_open = false
+		_refresh_utility_drawer()
+		if shift != null and shift.is_running and not shift.frozen:
+			pause_menu.pause()
+		pause_menu.diary_reader.open(story))
+	_refresh_utility_drawer()
+
+func _utility_icon(index: int) -> Texture2D:
+	var sheet := load("res://assets/sprites/ui/utility_menu/icons.png") as Texture2D
+	if sheet == null:
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = sheet
+	atlas.region = Rect2(1300 if index == 3 else 1704, 180, 355, 355) if index >= 3 else Rect2(index * 420, 130, 420, 440)
+	return atlas
+
+func _utility_row(parent: VBoxContainer, caption: String) -> Button:
+	var button := Button.new()
+	button.text = caption
+	button.custom_minimum_size = Vector2(240, 68)
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	KwentaStyle.style_button(button, KwentaStyle.PAPER_DARK, 24)
+	parent.add_child(button)
+	return button
+
+func _refresh_utility_drawer() -> void:
+	if not is_instance_valid(utility_drawer):
+		return
+	utility_drawer.visible = utility_open
+	utility_shop.disabled = campaign == null or campaign.day <= 1 or supplier_story_blocked
+	utility_shop.text = "ORDER · BEFORE OPENING" if _is_shop_available() else "ORDER · LOCKED"
+	utility_shop.icon = _utility_icon(0) if _is_shop_available() else load("res://assets/sprites/ui/icon_padlock_48x48.png") as Texture2D
+	utility_shop.modulate = Color.WHITE if _is_shop_available() else Color(0.72, 0.72, 0.72)
+	utility_utang.disabled = campaign == null or campaign.day < 4 or shift == null or not shift.is_running or (shift.frozen and tutorial_step != TutorialStep.DAY4_UTANG_ROW)
+	if is_instance_valid(pause_menu) and is_instance_valid(pause_menu._button):
+		pause_menu._button.visible = utility_open and pause_menu._available and not get_tree().paused
+
+func _layout_gameplay_hud() -> void:
+	if not is_instance_valid(gameplay_hud):
+		return
+	gameplay_hud.position = Vector2.ZERO
+	gameplay_hud.size = size
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	var center_gap := 14.0
+	var day_panel: Control = null
+	var clock_panel: Control = null
+	var cash_panel: Control = null
+	if is_instance_valid(day_label):
+		day_panel = day_label.get_parent().get_parent() as Control
+	if is_instance_valid(clock_label):
+		clock_panel = clock_label.get_parent().get_parent() as Control
+	if is_instance_valid(cash_label):
+		cash_panel = cash_label.get_parent().get_parent() as Control
+	if day_panel != null and clock_panel != null and cash_panel != null:
+		day_panel.scale = Vector2.ONE * scale
+		clock_panel.scale = Vector2.ONE * scale
+		cash_panel.scale = Vector2.ONE * scale
+		var stats_width := (day_panel.size.x + clock_panel.size.x + cash_panel.size.x + center_gap * 2.0) * scale
+		var stats_x := (size.x - stats_width) * 0.5
+		day_panel.position = Vector2(stats_x, HUD_TOP_Y)
+		clock_panel.position = Vector2(day_panel.position.x + (day_panel.size.x + center_gap) * scale, HUD_TOP_Y)
+		cash_panel.position = Vector2(clock_panel.position.x + (clock_panel.size.x + center_gap) * scale, HUD_TOP_Y)
+	if is_instance_valid(goal_panel):
+		goal_panel.scale = Vector2.ONE * scale
+		goal_panel.position = Vector2(margin, HUD_TOP_Y)
+	if is_instance_valid(trust_tag):
+		trust_tag.scale = Vector2.ONE * scale
+		var rail_width := PAUSE_BUTTON_SIZE.x * (2.0 if utility_open else 1.0) + HUD_RAIL_GAP * (2.0 if utility_open else 1.0)
+		trust_tag.position = Vector2(size.x - margin - (rail_width + trust_tag.size.x) * scale, HUD_TOP_Y)
+
+func _hud_scale() -> float:
+	# The full Option 5 composition fits at 1800px wide and reduces uniformly
+	# below that, preserving padding and avoiding overlap on smaller devices.
+	return clampf(size.x / 1800.0, 0.4, 1.0)
 
 func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
 	var frame := StyleBoxTexture.new()
@@ -891,10 +1067,19 @@ func _show_tutorial_hint(message: String, seconds: float = 5.0) -> void:
 	tutorial_hint_tween.tween_callback(tutorial_hint.hide)
 
 func _build_shop_button() -> void:
+	shop_cta_glow = Panel.new()
+	shop_cta_glow.name = "ShopCtaGlow"
+	shop_cta_glow.size = SHOP_BUTTON_SIZE + Vector2(18.0, 18.0)
+	shop_cta_glow.z_index = 54
+	shop_cta_glow.z_as_relative = false
+	shop_cta_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_cta_glow.add_theme_stylebox_override("panel", KwentaStyle.box(Color(1.0, 0.72, 0.16, 0.20), Color("ffd45b"), 14, 4, 4, 3, 12))
+	shop_cta_glow.hide()
+	add_child(shop_cta_glow)
 	shop_button = Button.new()
 	shop_button.name = "ShopIconButton"
 	shop_button.position = _shop_button_position()
-	shop_button.size = Vector2(74, 74)
+	shop_button.size = SHOP_BUTTON_SIZE
 	shop_button.z_index = 55
 	shop_button.z_as_relative = false
 	KwentaStyle.style_button(shop_button, KwentaStyle.PAPER_DARK, 28)
@@ -910,14 +1095,50 @@ func _build_shop_button() -> void:
 	notebook_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notebook_icon.use_parent_material = true
 	shop_button.add_child(notebook_icon)
+	shop_order_cue = Label.new()
+	shop_order_cue.name = "ShopOrderCue"
+	shop_order_cue.text = "ORDER"
+	shop_order_cue.position = Vector2(4.0, -16.0)
+	shop_order_cue.size = Vector2(66.0, 15.0)
+	shop_order_cue.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shop_order_cue.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	shop_order_cue.add_theme_font_size_override("font_size", 11)
+	shop_order_cue.add_theme_color_override("font_color", Color("ffd45b"))
+	shop_order_cue.add_theme_color_override("font_outline_color", Color("2b1a10"))
+	shop_order_cue.add_theme_constant_override("outline_size", 4)
+	shop_order_cue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_button.add_child(shop_order_cue)
+	shop_locked_cue = HUD_ICON.new().setup(HUD_ICON.Kind.CLOCK, 19.0, Color("2b1a10"), Color("f2dfb9"))
+	shop_locked_cue.name = "ShopLockedCue"
+	shop_locked_cue.position = Vector2(50.0, 49.0)
+	shop_locked_cue.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_locked_cue.hide()
+	shop_button.add_child(shop_locked_cue)
 	shop_button.tooltip_text = "Open Inay's supplier list"
 	shop_button.visible = false
 	shop_button.pressed.connect(_open_shelf_shop)
 	add_child(shop_button)
 
 func _shop_button_position() -> Vector2:
-	# Align the 74px notebook under the centered 89px pause control.
-	return Vector2(1802.5, 97.0) + _ui_offset()
+	# Keep the notebook centered under Pause in the shared right-side rail.
+	var scale := _hud_scale()
+	var rail_center_x := _right_hud_rail_center_x()
+	return Vector2(rail_center_x - SHOP_BUTTON_SIZE.x * scale * 0.5, HUD_TOP_Y + (PAUSE_BUTTON_SIZE.y + HUD_RAIL_GAP) * scale)
+
+func _utang_button_position() -> Vector2:
+	var scale := _hud_scale()
+	var rail_center_x := _right_hud_rail_center_x()
+	return Vector2(rail_center_x - UTANG_BUTTON_SIZE.x * scale * 0.5, HUD_TOP_Y + (PAUSE_BUTTON_SIZE.y + HUD_RAIL_GAP + SHOP_BUTTON_SIZE.y + HUD_RAIL_GAP) * scale)
+
+func _pause_button_position() -> Vector2:
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	return Vector2(size.x - margin - PAUSE_BUTTON_SIZE.x * scale, HUD_TOP_Y)
+
+func _right_hud_rail_center_x() -> float:
+	var scale := _hud_scale()
+	var margin := maxf(20.0, HUD_SAFE_MARGIN * scale)
+	return size.x - margin - PAUSE_BUTTON_SIZE.x * scale * 0.5
 
 func _build_debug_tools() -> void:
 	if not OS.is_debug_build():
@@ -1353,6 +1574,7 @@ func _create_shift_manager() -> void:
 	shift.customers_changed.connect(_on_customers_changed)
 	shift.customer_timed_out.connect(_on_customer_timed_out)
 	shift.customer_served.connect(_on_customer_served)
+	shift.cash_sale_completed.connect(_on_cash_sale_completed)
 	shift.payment_started.connect(_on_sukli_payment_started)
 	shift.cash_changed.connect(_update_cash)
 	shift.clock_changed.connect(_update_clock)
@@ -1430,6 +1652,15 @@ func _on_customer_served(_customer_id: String, product_types: int) -> void:
 	_refresh_daily_goal_hud()
 	if not was_complete and daily_goal.is_complete():
 		_show_daily_goal_achievement()
+
+func _on_cash_sale_completed(customer_instance_id: String, goods_total: int) -> void:
+	if goods_total <= 0:
+		return
+	var actor: Control = customer_actors.get(customer_instance_id)
+	if not is_instance_valid(actor):
+		return
+	var at := actor.global_position - global_position + Vector2(actor.size.x - 36.0, 165.0)
+	_float_text(at, "+₱%d" % goods_total, Color("d9efaa"), "SalePriceFeedback")
 
 func _show_daily_goal_achievement() -> void:
 	if daily_goal == null or campaign == null:
@@ -1729,7 +1960,7 @@ func _build_prologue_background() -> void:
 	prologue_background = TextureRect.new()
 	prologue_background.texture = load("res://assets/story/tonyo_bedroom.png") as Texture2D
 	prologue_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	prologue_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_background.z_index = 38
 	prologue_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1758,7 +1989,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 	_update_story_illustration_fit()
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration.z_index = 39
 	story_illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1769,10 +2000,9 @@ func _build_day_two_visuals() -> void:
 func _update_story_illustration_fit() -> void:
 	if story_illustration.texture == null:
 		return
-	# These full-screen shots fill landscape phones as well as desktop windows.
-	# Cover preserves proportions; only the outer scenery is cropped.
-	var path := story_illustration.texture.resource_path
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png"] else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Story art always fills the viewport without distortion. At non-16:9 sizes,
+	# only the outer scenery is cropped; the centered composition stays intact.
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 
 func _is_paolo_debt_recorded() -> bool:
 	# Later-day saves and debug starts have already passed the Day 4 lesson.
@@ -1798,6 +2028,8 @@ func _show_story_prop(prop_name: String) -> void:
 		return
 	if prop_name == "berting_counter_closeup":
 		_show_gallery_illustration("res://assets/story/berting_counter_50.png")
+	elif prop_name == "umbrella_handoff":
+		_show_gallery_illustration("res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png")
 	elif prop_name == "paolo_coins":
 		_show_gallery_illustration("res://assets/story/day3_paolo_coins_v2.png")
 	elif prop_name == "lina_walking_away":
@@ -2241,6 +2473,11 @@ func _after_opening_sign() -> void:
 			return
 	if campaign.day == 1 and not tutorial_delivery_seen:
 		_begin_day_one_drag_tutorial()
+	elif campaign.day == 4 and not bool(completed_tutorials.get("day4_utang", false)):
+		shift.frozen = true
+		utility_open = false
+		_refresh_utility_drawer()
+		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_MENU, "Tap the menu to find the utang notebook.", utility_toggle, "UTANG NOTEBOOK")
 	elif campaign.day >= 3:
 		_show_tutorial_hint(str(DAY_FOCUS_HINTS.get(campaign.day, "")))
 
@@ -2349,10 +2586,35 @@ func _tutorial_product_rect(product_id: String, fallback: Control) -> Rect2:
 	return _tutorial_rect_for(fallback)
 
 func _begin_day_two_shop_tutorial() -> void:
-	if not is_instance_valid(shop_button):
+	if not is_instance_valid(utility_toggle):
 		_show_pre_shift_briefing()
 		return
-	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Tap Inay's notebook to order from Kuya Ben. Buying is optional; order before you press OPEN STORE.", shop_button, "SUPPLIER LIST")
+	shop_button.hide()
+	_refresh_shop_cta(false)
+	utility_open = false
+	_refresh_utility_drawer()
+	_show_tutorial_spotlight(TutorialStep.DAY2_SHOP_MENU, "Tap the menu to find Inay's supplier list.", utility_toggle, "SUPPLIER LIST")
+
+func _show_supplier_row_tutorial() -> void:
+	await get_tree().process_frame
+	if utility_open and tutorial_step == TutorialStep.DAY2_SHOP_MENU:
+		_show_tutorial_spotlight(TutorialStep.DAY2_SHOP, "Order before you open the store. Buying is optional.", utility_shop, "SUPPLIER LIST")
+		tutorial_overlay.z_index = 58
+		var drawer_left := utility_drawer.global_position.x - tutorial_overlay.global_position.x
+		var card := tutorial_overlay.coachmark
+		card.position.x = maxf(30.0, drawer_left - card.size.x - 30.0)
+		card.position.y = clampf(tutorial_overlay.spotlight_rect.position.y, 30.0, tutorial_overlay.size.y - card.size.y - 30.0)
+
+func _show_utang_row_tutorial() -> void:
+	await get_tree().process_frame
+	if utility_open and tutorial_step == TutorialStep.DAY4_UTANG_MENU:
+		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_ROW, "Tap UTANG to check who owes money and see their balances.", utility_utang, "UTANG NOTEBOOK")
+		_refresh_utility_drawer()
+		tutorial_overlay.z_index = 58
+		var drawer_left := utility_drawer.global_position.x - tutorial_overlay.global_position.x
+		var card := tutorial_overlay.coachmark
+		card.position.x = maxf(30.0, drawer_left - card.size.x - 30.0)
+		card.position.y = clampf(tutorial_overlay.spotlight_rect.position.y, 30.0, tutorial_overlay.size.y - card.size.y - 30.0)
 
 func _on_shelf_shop_closed() -> void:
 	if resume_briefing_after_shop:
@@ -2365,7 +2627,9 @@ func _on_shelf_shop_closed() -> void:
 	if tutorial_step != TutorialStep.DAY2_SHOP:
 		return
 	_remember_tutorial("day2_shop")
+	tutorial_overlay.z_index = 52
 	_clear_tutorial_spotlight()
+	_refresh_shop_button()
 	_show_pre_shift_briefing()
 
 func _label(text_value: String, font_size: int, color: Color) -> Label:
@@ -2755,9 +3019,9 @@ func _is_waiting_for_change(actor: Control) -> bool:
 	var customer: CustomerState = actor.get("customer")
 	return customer != null and (customer.is_paying() or customer.parked)
 
-func _float_text(at: Vector2, text: String, color: Color) -> void:
+func _float_text(at: Vector2, text: String, color: Color, node_name: String = "GameplayFeedback") -> void:
 	var label := _label(text, 42, color)
-	label.name = "GameplayFeedback"
+	label.name = node_name
 	label.z_index = 45
 	label.add_theme_color_override("font_outline_color", Color("2b1a10"))
 	label.add_theme_constant_override("outline_size", 8)
@@ -2792,6 +3056,7 @@ func _open_shelf_shop() -> void:
 	shelf_shop.open()
 	if tutorial_step == TutorialStep.DAY2_SHOP and tutorial_overlay != null:
 		tutorial_overlay.visible = false
+		tutorial_overlay.z_index = 52
 		shelf_shop.show_order_tutorial()
 
 func _is_shop_available() -> bool:
@@ -2802,14 +3067,45 @@ func _is_shop_available() -> bool:
 func _refresh_shop_button() -> void:
 	if shop_button != null:
 		var available := _is_shop_available()
-		shop_button.visible = campaign != null and campaign.day > 1 and not supplier_story_blocked and (available or shift_in_progress)
+		shop_button.visible = campaign != null and campaign.day > 1 and not supplier_story_blocked and (available or shift_in_progress) and (not is_instance_valid(utility_drawer) or tutorial_step == TutorialStep.DAY2_SHOP)
 		# Keep the button tappable so it can explain why the shop is locked.
 		shop_button.disabled = false
 		(shop_button.material as ShaderMaterial).set_shader_parameter("grayscale", not available)
+		_refresh_shop_cta(available)
 		# ShiftStoryEvents moves the full-screen dialogue bubble to the top of the
 		# tree. Keep this tap target after it, otherwise the bubble consumes taps.
 		if shop_button.visible:
 			move_child(shop_button, get_child_count() - 1)
+
+func _refresh_shop_cta(available: bool) -> void:
+	if not is_instance_valid(shop_button):
+		return
+	var cta_visible := available and shop_button.visible
+	if is_instance_valid(shop_order_cue):
+		shop_order_cue.visible = cta_visible
+	if is_instance_valid(shop_locked_cue):
+		shop_locked_cue.visible = shop_button.visible and shift_in_progress and not available
+	shop_button.tooltip_text = "Order supplies before opening" if cta_visible else "Supplier ordering is available before opening"
+	if not is_instance_valid(shop_cta_glow):
+		return
+	shop_cta_glow.visible = cta_visible
+	_refresh_shop_cta_layout()
+	if cta_visible:
+		if shop_cta_tween == null or not shop_cta_tween.is_valid():
+			shop_cta_glow.modulate.a = 0.55
+			shop_cta_tween = create_tween().set_loops()
+			shop_cta_tween.tween_property(shop_cta_glow, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			shop_cta_tween.tween_property(shop_cta_glow, "modulate:a", 0.55, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	elif shop_cta_tween != null and shop_cta_tween.is_valid():
+		shop_cta_tween.kill()
+		shop_cta_tween = null
+
+func _refresh_shop_cta_layout() -> void:
+	if not is_instance_valid(shop_cta_glow) or not is_instance_valid(shop_button):
+		return
+	var scale := _hud_scale()
+	shop_cta_glow.scale = Vector2.ONE * scale
+	shop_cta_glow.position = shop_button.position - Vector2(9.0, 9.0) * scale
 
 func _show_shop_unavailable_notice() -> void:
 	var previous := get_node_or_null("ShopUnavailableNotice")
@@ -2819,12 +3115,12 @@ func _show_shop_unavailable_notice() -> void:
 	notice.name = "ShopUnavailableNotice"
 	notice.z_index = 56
 	notice.z_as_relative = false
-	notice.position = shop_button.position + Vector2(-410, 0)
-	notice.custom_minimum_size = Vector2(395, 74)
+	notice.position = utility_toggle.position + Vector2(-480, 85) * _hud_scale()
+	notice.custom_minimum_size = Vector2(465, 74)
 	notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notice.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f8e8c6"), Color("80532c"), 12, 10, 10, 4, 5))
 	add_child(notice)
-	var message := KwentaStyle.make_label("Shop unavailable during your shift.", 23, KwentaStyle.INK)
+	var message := KwentaStyle.make_label("Available ulit ang supplier bago magbukas bukas.", 21, KwentaStyle.INK)
 	message.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	notice.add_child(message)
 	var animation := notice.create_tween()
