@@ -23,6 +23,8 @@ var arrow_target_rect := Rect2()
 var arrow_visible := false
 var glow_time := 0.0
 var sukli_preview: Control
+var fiesta_preview: Control
+var fiesta_preview_mode := false
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -62,6 +64,10 @@ func _ready() -> void:
 	sukli_preview.name = "SukliOutcomePreview"
 	sukli_preview.visible = false
 	content.add_child(sukli_preview)
+	fiesta_preview = preload("res://scripts/fiesta_skill_preview.gd").new()
+	fiesta_preview.name = "FiestaSkillPreview"
+	fiesta_preview.hide()
+	content.add_child(fiesta_preview)
 	action_row = HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", 16)
 	content.add_child(action_row)
@@ -86,6 +92,8 @@ func _ready() -> void:
 
 func show_step(message: String, target_rect: Rect2, step_title: String = "GUIDE") -> void:
 	sukli_preview.hide()
+	fiesta_preview.hide()
+	fiesta_preview_mode = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false
 	skip_button.visible = false
@@ -121,6 +129,16 @@ func show_sukli_examples(tender: int, total: int, target_rect: Rect2) -> void:
 	_position_coachmark()
 	_reposition_after_layout()
 
+func show_fiesta_example(helper: String, message: String, step_title: String, is_last: bool) -> void:
+	show_info_step(message, Rect2(), step_title, is_last)
+	fiesta_preview_mode = true
+	spotlight_rect = Rect2()
+	fiesta_preview.configure(helper)
+	fiesta_preview.show()
+	_position_coachmark()
+	_reposition_after_layout()
+	queue_redraw()
+
 func show_drag_arrow(from_rect: Rect2, to_rect: Rect2) -> void:
 	arrow_from = from_rect.get_center()
 	arrow_to = to_rect.get_center()
@@ -140,6 +158,9 @@ func _position_coachmark() -> void:
 	# Put the card on the opposite side of the highlighted item, within the canvas.
 	coachmark.reset_size()
 	var card_height := maxf(coachmark.get_combined_minimum_size().y, 200.0)
+	if fiesta_preview_mode:
+		coachmark.position = Vector2((size.x - coachmark.size.x) * 0.5, maxf(30.0, (size.y - card_height) * 0.5))
+		return
 	if arrow_visible:
 		# Keep the whole card outside the highlighted product and drag path.
 		var path_left := minf(spotlight_rect.position.x, arrow_target_rect.position.x)
@@ -164,6 +185,8 @@ func _process(delta: float) -> void:
 
 func clear_step() -> void:
 	sukli_preview.hide()
+	fiesta_preview.hide()
+	fiesta_preview_mode = false
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	next_button.visible = false
@@ -176,6 +199,9 @@ func clear_step() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	if fiesta_preview_mode:
+		draw_rect(Rect2(Vector2.ZERO, size), DIM)
+		return
 	if spotlight_rect.size == Vector2.ZERO:
 		return
 	var viewport_rect := Rect2(Vector2.ZERO, size)

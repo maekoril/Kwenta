@@ -69,6 +69,16 @@ func _test_hud_recenters_after_viewport_resize() -> void:
 	var left_margin: float = hud.position.x
 	var right_margin: float = main.size.x - (hud.position.x + hud.size.x)
 	_assert(is_equal_approx(left_margin, right_margin), "HUD keeps equal left and right margins after a wide viewport resize")
+	main._refresh_fiesta_controls()
+	var friends := main.fiesta_friends as Control
+	_assert(is_equal_approx(friends.position.x + friends.size.x, main.size.x), "fiesta helpers follow the right edge on wide screens")
+	_assert(is_equal_approx(friends.position.y + friends.size.y, main.size.y - 5.0), "fiesta helpers stay near the bottom edge")
+	viewport_host.size = Vector2(1920.0, 1440.0)
+	await process_frame
+	main._refresh_fiesta_controls()
+	_assert(is_equal_approx(friends.position.x + friends.size.x, main.size.x) and is_equal_approx(friends.position.y + friends.size.y, main.size.y - 5.0), "fiesta helpers follow both edges on taller screens")
+	viewport_host.size = Vector2(2700.0, 1080.0)
+	await process_frame
 	var pause_button := main.pause_menu.get("_button") as Control
 	_assert(pause_button != null and is_equal_approx(pause_button.position.x, 1795.0 + left_margin), "pause control stays aligned with the re-centered HUD instead of overlapping the suki meter")
 	main._show_pre_shift_briefing()

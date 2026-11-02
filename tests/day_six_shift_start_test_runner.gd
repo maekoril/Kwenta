@@ -50,18 +50,48 @@ func run() -> void:
 		main.shift.advance_time(0.5)
 		assert(main.shift.elapsed_seconds > 0)
 		main._refresh_fiesta_controls()
-		assert(main.fiesta_button.visible)
+		assert(main.fiesta_button.visible == (option == "alone"))
 		assert(main.fiesta_friends.visible == (option == "ask"))
 		if option == "ask":
+			if main.fiesta_preview_step >= 0:
+				assert(main.tutorial_overlay.fiesta_preview.visible)
+				var elapsed_before: float = main.shift.elapsed_seconds
+				main._process(1.0)
+				assert(is_equal_approx(main.shift.elapsed_seconds, elapsed_before))
+				for step in range(3):
+					assert(main.fiesta_preview_step == step)
+					main._advance_day_one_hud_tour()
+				assert(not main.tutorial_overlay.visible)
 			var customer: CustomerState = main.shift.active_customers[0]
 			customer.begin_payment(15, 50, 14)
-			main._on_payment_tapped(customer.instance_id)
 			main._refresh_fiesta_controls()
-			assert(not main.fiesta_button.disabled)
-			main.fiesta_button.pressed.emit()
+			assert(not main.fiesta_icons["mikay"].disabled)
+			main.fiesta_icons["mikay"].pressed.emit()
+			assert(main.fiesta_selected_helper == "mikay")
+			main._on_payment_tapped(customer.instance_id)
 			assert(not customer.active)
 			assert(not main.cash_tray.is_open())
 			assert(main.shift.helper_cooldown > 0)
+			var first := CustomerState.new("first", OrderState.new({"biscuits": 2}), 25)
+			first.instance_id = "first_target"
+			first.patience_remaining = 5
+			var chosen := CustomerState.new("chosen", OrderState.new({"biscuits": 2}), 25)
+			chosen.instance_id = "chosen_target"
+			chosen.patience_remaining = 15
+			main.shift.active_customers.clear()
+			main.shift.active_customers.append_array([first, chosen])
+			main.shift.customers_changed.emit()
+			main._refresh_fiesta_controls()
+			main.fiesta_icons["jun_jun"].pressed.emit()
+			var tap := InputEventMouseButton.new()
+			tap.button_index = MOUSE_BUTTON_LEFT
+			tap.pressed = true
+			main.customer_actors[chosen.instance_id]._gui_input(tap)
+			assert(chosen.order.is_complete() and first.order.remaining_quantity("biscuits") == 2)
+			assert(main.fiesta_selected_helper.is_empty() and main.shift.helper_item_cooldown > 0)
+			main.fiesta_icons["bogs"].pressed.emit()
+			assert(first.order.is_complete())
+			assert(main.fiesta_selected_helper.is_empty() and main.shift.helper_patience_cooldown > 0)
 		else:
 			assert(main.fiesta_button.disabled)
 			assert(main.fiesta_button.text.contains("20%"))

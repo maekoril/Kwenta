@@ -1,6 +1,7 @@
 class_name ShiftStoryEvents
 extends Node
 
+signal fiesta_brownout_finished
 signal story_visitor_tapped
 
 # Plays the story moments that happen DURING a shift, driven by the story JSON:
@@ -247,6 +248,9 @@ func _on_game_minutes(minute: int) -> void:
 		_timed.pop_front()
 		if kind == "customer":
 			_run_customer_event(event)
+		elif kind == "narrative" and (minute <= MAX_EVENT_MINUTE or str(event.get("visitor", "")) == "fiesta_brownout"):
+			_queue_popup({"kind": "narrative", "event": event})
+			return
 		elif kind == "scene" and minute <= MAX_EVENT_MINUTE:
 			_queue_popup({"kind": "scene", "event": event})
 
@@ -371,6 +375,8 @@ func _start_next() -> void:
 			_mode = "customer_visitor"
 			customer_story_prompt_requested.emit(str(_current.get("id", "")))
 		"post_sale":
+			_play_beats(story.filter_story_beats(_current.get("event", {}).get("beats", [])))
+		"narrative":
 			_play_beats(story.filter_story_beats(_current.get("event", {}).get("beats", [])))
 		"scene":
 			_present_story_visitor()
@@ -571,6 +577,8 @@ func _next_beat() -> void:
 				if story.get_choice(finished_choice) == str(followup.get("requires_value", "")):
 					_waiting_scene = followup
 					shift.story_waiting_for_clear = true
+		if str(_current.get("kind", "")) == "narrative" and str(_current.get("event", {}).get("visitor", "")) == "fiesta_brownout":
+			fiesta_brownout_finished.emit()
 		if str(_current.get("kind", "")) == "customer_visitor":
 			var instance_id := str(_current.get("id", ""))
 			var customer := _find_story_customer(instance_id)
@@ -584,6 +592,10 @@ func _next_beat() -> void:
 		return
 	_mode = "beats"
 	var beat: Dictionary = _beats.pop_front()
+	if str(beat.get("debt_payment", "")) == "paolo_story":
+		shift.campaign_state.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
+		shift.debt_payments_received += shift.campaign_state.repay_debt("paolo_story", 3)
+		shift.cash_changed.emit(shift.campaign_state.cash)
 	if beat.has("show_prop"):
 		_utang_ledger_visible = str(beat["show_prop"]) == "utang_ledger"
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"

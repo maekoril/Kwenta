@@ -195,6 +195,7 @@ func _on_day_selected(index: int) -> void:
 		scene_select.add_item("Day 5 · Lola Rosa", 15)
 	elif index == 5:
 		scene_select.add_item("Day 6 · Paolo repays ₱3", 23)
+		scene_select.add_item("Day 6 · Fiesta brownout", 24)
 		scene_select.add_item("Day 6 · Paolo classmate 1", 19)
 		scene_select.add_item("Day 6 · Paolo classmate 2", 20)
 		scene_select.add_item("Day 6 · Paolo classmate 3", 21)
@@ -238,7 +239,7 @@ func _toggle() -> void:
 func _launch() -> void:
 	var day := day_select.selected + 1
 	var moment := scene_select.get_selected_id()
-	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23] and day != 6):
+	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23, 24] and day != 6):
 		status.text = "Choose the matching day for that story event."
 		return
 	if moment == 4 and money_select.selected == 2:

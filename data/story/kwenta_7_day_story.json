@@ -2058,6 +2058,16 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
+					"text": "Fiesta na bukas, anak. Kung gusto mong subukang magbantay mag-isa, ibibigay ko sa iyo ang 20% ng bayad na benta para sa ipon mo."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Pero kung kailangan mo ng kasama, humingi ka ng tulong, ha? Mas mahalaga sa akin na kaya mong alagaan ang sarili mo."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
 					"text": "Anak, tingnan mo rin ang lista bago magbukas. Kung may pinautang ka kahapon, ngayon ang usapan ninyong bayad."
 				},
 				{
@@ -2175,7 +2185,19 @@
 						"candy": 1.0
 					},
 					"when_choice": "day3_candy",
-					"when_value": "free"
+					"when_value": "free",
+					"arrival_beats": [
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Lumapit ang isang kaklase ni Paolo sa tindahan."
+						},
+						{
+							"speaker": "Kaklase ni Paolo",
+							"portrait": "paolo",
+							"text": "Kuya, sabi po ni Paolo, tinulungan n’yo siya sa kulang niyang bayad. Puwede rin po bang bawasan ang akin?"
+						}
+					]
 				},
 				{
 					"type": "customer",
@@ -2202,20 +2224,119 @@
 					"at_minute": 240.0,
 					"customer": "paolo",
 					"order": {
-						"candy": 1.0
+						"soft_drink": 1.0
 					},
 					"exact_pay": true,
 					"when_choice": "day3_candy",
-					"when_value": "no"
+					"when_value": "no",
+					"arrival_beats": [
+						{
+							"speaker": "Paolo",
+							"portrait": "paolo_happy",
+							"text": "Kuya Tonyo, bumalik na po ako! May sapat na po akong pambili ng Coke."
+						}
+					]
+				},
+				{
+					"type": "narrative",
+					"at_minute": 240.0,
+					"visitor": "paolo_repayment",
+					"when_choice": "day3_candy",
+					"when_value": "credit",
+					"beats": [
+						{
+							"speaker": "Paolo",
+							"portrait": "paolo_happy",
+							"text": "Kuya Tonyo! Heto na po 'yung kulang kong ₱3."
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Salamat, Paolo. Sandali, itala ko lang."
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Tinanggap ni Tonyo ang ₱3 at minarkahang bayad ang utang ni Paolo.",
+							"debt_payment": "paolo_story"
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Ayan, bayad ka na. Salamat at binalikan mo!"
+						}
+					]
+				},
+				{
+					"type": "narrative",
+					"at_minute": 630.0,
+					"visitor": "fiesta_brownout",
+					"beats": [
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Biglang kumurap ang mga ilaw, saka nagdilim ang tindahan."
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo_flustered",
+							"text": "Ay! Brownout? Paano na ang mga customer?"
+						},
+						{
+							"speaker": "Mikay",
+							"portrait": "mikay_smug",
+							"text": "May flashlight ako sa bag! Sandali, ilawan ko rito.",
+							"when_choice": "day6_help",
+							"when_value": "ask"
+						},
+						{
+							"speaker": "Jun-jun",
+							"portrait": "jun_jun_tara",
+							"text": "May kandila rin dito. Ilalagay ko muna sa ligtas na lugar.",
+							"when_choice": "day6_help",
+							"when_value": "ask"
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Dumating sina Jun-jun, Mikay, at Bogs na may dalang mga ilaw.",
+							"when_choice": "day6_help",
+							"when_value": "alone"
+						},
+						{
+							"speaker": "Jun-jun",
+							"portrait": "jun_jun_tara",
+							"text": "Tonyo! Brownout pala. May flashlight si Mikay, at may dala akong kandila!",
+							"when_choice": "day6_help",
+							"when_value": "alone"
+						},
+						{
+							"speaker": "Tonyo",
+							"portrait": "tonyo",
+							"text": "Salamat! Puwede bang pailaw muna rito? Ako na sa mga order at sukli.",
+							"when_choice": "day6_help",
+							"when_value": "alone"
+						},
+						{
+							"speaker": "Narrator",
+							"portrait": "",
+							"text": "Sa flashlight ni Mikay at kandila ni Jun-jun, nakapagpatuloy si Tonyo sa pagbabantay. Sarado ang Alfa-Save dahil sa brownout, kaya may mga mamimili na papunta sa kanila."
+						},
+						{
+							"speaker": "Aling Nena",
+							"portrait": "aling_nena_happy",
+							"text": "Brownout pa rin, pero salamat sa flashlight at kandila, tuloy ang fiesta!"
+						}
+					]
 				}
 			],
 			"haggle": [
 				{
 					"customer": "classmate_1",
-					"ask": 3.0,
+					"ask": 2.0,
 					"speaker": "Kaklase ni Paolo",
 					"portrait": "paolo",
-					"text": "Kuya Tonyo, libre naman po! Nanlibre ka kay Paolo, 'di ba?",
+					"text": "Kuya Tonyo, libre naman po! Tinulungan n’yo po si Paolo sa kulang niya, 'di ba?",
 					"accept": "Sige, libre na ang ₱{ask}",
 					"refuse": "Hindi na po puwede",
 					"accepted": [
@@ -2235,10 +2356,10 @@
 				},
 				{
 					"customer": "classmate_2",
-					"ask": 3.0,
+					"ask": 2.0,
 					"speaker": "Kaklase ni Bea",
 					"portrait": "bea",
-					"text": "Kuya, pwede po bang bawasan? Libre naman si Paolo sa inyo eh!",
+					"text": "Kuya, pwede po bang bawasan? Tinulungan n’yo rin po si Paolo, 'di ba?",
 					"accept": "Sige, libre na ang ₱{ask}",
 					"refuse": "Hindi na po puwede",
 					"accepted": [
@@ -2258,7 +2379,7 @@
 				},
 				{
 					"customer": "classmate_3",
-					"ask": 3.0,
+					"ask": 2.0,
 					"speaker": "Kaklase ni Paolo",
 					"portrait": "paolo",
 					"text": "Kuya Tonyo, isang beses lang po! Libre na, please!",
@@ -2294,7 +2415,7 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Bisperas ng barangay fiesta. Makulay ang banderitas, malakas ang tugtog, at punong-puno ang kalsada."
+					"text": "Araw ng barangay fiesta. Makulay ang banderitas, malakas ang tugtog, at punong-puno ang kalsada."
 				},
 				{
 					"speaker": "Kuya Dodong",
@@ -2309,7 +2430,7 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Naalala ni Tonyo ang napag-usapan nila ni Inay bago siya umalis: kung mag-isa niyang matatapos ang pagbabantay sa fiesta, may dagdag na 20% ng bayad na benta para sa ipon niya."
+					"text": "Naalala ni Tonyo ang sinabi ni Inay kahapon: kung mag-isa niyang matatapos ang pagbabantay, may dagdag siyang 20% ng bayad na benta para sa ipon niya."
 				},
 				{
 					"speaker": "Tonyo",
@@ -2339,32 +2460,32 @@
 					"options": [
 						{
 							"id": "ask",
-							"label": "Humingi ng tulong · Sukli bawat 20s",
+							"label": "Humingi ng tulong · Tatlong kalaro",
 							"response": [
 								{
 									"speaker": "Tonyo",
 									"portrait": "tonyo",
-									"text": "Jun-jun! Puwede ba kayong tumulong? Ako pa rin ang mag-aabot ng paninda."
+									"text": "Jun-jun! Puwede ba kayong tumulong?"
 								},
 								{
 									"speaker": "Jun-jun",
 									"portrait": "jun_jun_tara",
-									"text": "Ako sa mga kahon. Ilalapit ko rito ang mga paninda."
+									"text": "Ako ang bahala sa lahat ng natitira sa isang order! Magpapahinga lang ako nang mas matagal pagkatapos."
 								},
 								{
 									"speaker": "Bogs",
 									"portrait": "bogs",
-									"text": "Ako sa pila! Sabihin n’yo na ang bibilhin bago lumapit."
+									"text": "Ako ang bahala sa lahat ng kasalukuyang order! Magpapahinga ako nang matagal pagkatapos."
 								},
 								{
 									"speaker": "Mikay",
 									"portrait": "mikay_smug",
-									"text": "Ako sa sukli kapag kailangan mo. Buksan mo ang suklian ng customer, saka pindutin ang Tulong sa Sukli."
+									"text": "Ako sa sukli. Pindutin mo ang mukha ko, tapos ang customer na naghihintay ng sukli."
 								},
 								{
 									"speaker": "Mikay",
 									"portrait": "mikay_smug",
-									"text": "Isang customer muna, ha! Kailangan ko ng 20 segundo para ayusin ulit ang mga barya."
+									"text": "Pagkatapos naming tumulong, sandali muna kaming magpapahinga. Makikita mo kung ilang segundo sa mga mukha namin."
 								},
 								{
 									"speaker": "Tonyo",
@@ -2407,17 +2528,26 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Sa gitna ng shift, nawalan ng kuryente. Nagdilim ang Alfa-Save at lumipat sa tindahan ni Tonyo ang mga customer nito."
+					"text": "Pagkatapos ng mahabang araw, nagsara si Tonyo ng tindahan."
 				},
 				{
-					"speaker": "Aling Nena",
-					"portrait": "aling_nena_happy",
-					"text": "Hindi mapapatay ng brownout ang fiesta!"
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Buti na lang may nagdala ng ilaw. Salamat sa inyong lahat."
 				},
 				{
-					"speaker": "Narrator",
-					"portrait": "",
-					"text": "Nagdala ang mga kapitbahay ng lantern, kandila, at flashlight. Dumating din sina Jun-jun, Mikay, at Bogs na may dalang ilaw. Sa liwanag ng bayanihan, nairaos ni Tonyo ang pinakamalaking dagsa."
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "At salamat sa tulong ninyo sa tindahan. Hindi ko sana kinaya nang ganito kagaan.",
+					"when_choice": "day6_help",
+					"when_value": "ask"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Ako man ang humawak ng tindahan, hindi ko makakalimutang pinailawan nila ako.",
+					"when_choice": "day6_help",
+					"when_value": "alone"
 				}
 			],
 			"choices": [],
@@ -2445,56 +2575,6 @@
 						"deny",
 						"owe"
 					]
-				},
-				{
-					"speaker": "Paolo",
-					"portrait": "paolo_happy",
-					"text": "Kuya Tonyo! Heto na po 'yung kulang kong ₱3.",
-					"when_choice": "day3_candy",
-					"when_value": "credit"
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Salamat, Paolo. Sandali, itala ko lang.",
-					"when_choice": "day3_candy",
-					"when_value": "credit"
-				},
-				{
-					"speaker": "Narrator",
-					"portrait": "",
-					"text": "Tinanggap ni Tonyo ang ₱3 at minarkahang bayad ang utang ni Paolo.",
-					"when_choice": "day3_candy",
-					"when_value": "credit",
-					"debt_payment": "paolo_story"
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Ayan, bayad ka na. Salamat at binalikan mo!",
-					"when_choice": "day3_candy",
-					"when_value": "credit"
-				},
-				{
-					"speaker": "Narrator",
-					"portrait": "",
-					"text": "Ikinuwento ni Paolo sa buong klase na sinagot ni Kuya Tonyo ang kulang niyang ₱3. Tatlong kaklase niya ang dumating na umaasang mababawasan din ang bayad nila.",
-					"when_choice": "day3_candy",
-					"when_value": "free"
-				},
-				{
-					"speaker": "Narrator",
-					"portrait": "",
-					"text": "Bumalik si Paolo, tuwid na tuwid ang tayo, parang may gustong patunayan.",
-					"when_choice": "day3_candy",
-					"when_value": "no"
-				},
-				{
-					"speaker": "Paolo",
-					"portrait": "paolo_happy",
-					"text": "Heto po ang eksaktong ₱10, Kuya.",
-					"when_choice": "day3_candy",
-					"when_value": "no"
 				},
 				{
 					"speaker": "Narrator",
@@ -2638,7 +2718,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Tama lang na nag-ingat ka. Pero bukas, bigyan mo ng kendi si Paolo.",
+					"text": "Buti at bumalik si Paolo nang may pambili na siya. Salamat sa maayos mong pakikitungo sa kanya.",
 					"when_choice": "day3_candy",
 					"when_value": "no"
 				},
@@ -2680,7 +2760,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Hulugan. Mas matalino ka pa sa akin.",
+					"text": "Buti nakapagbigay si Lola Rosa. Salamat at naitala mo rin ang natitira.",
 					"when_choice": "day5_debt",
 					"when_value": "installments"
 				},
@@ -2701,7 +2781,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Mag-isa mong hinarap ang fiesta? Sa susunod, humingi ka ng tulong. Hindi nakakahiya 'yon.",
+					"text": "Mag-isa mong hinarap ang fiesta? Ako rin ang nag-alok noon, pero tandaan mo: puwede kang humingi ng tulong. Hindi nakakahiya iyon.",
 					"when_choice": "day6_help",
 					"when_value": "alone"
 				},

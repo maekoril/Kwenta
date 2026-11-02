@@ -135,7 +135,8 @@ func _ready() -> void:
 	name_tag.add_theme_stylebox_override("panel", _make_box(Color(0.06, 0.07, 0.08, 0.86), Color(0.06, 0.07, 0.08, 0.86), 0, 1.5, 12))
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bubble_content.add_child(name_tag)
-	bubble_content.move_child(patience_bar, 2)
+	# Keep patience above the items so long orders cannot hide it behind the counter.
+	bubble_content.move_child(patience_bar, 0)
 	name_label = Label.new()
 	name_label.name = "NameLabel"
 	name_label.clip_text = false
@@ -479,7 +480,7 @@ func _stop_pay_pulse() -> void:
 		order_bubble.modulate = Color.WHITE
 
 func _gui_input(event: InputEvent) -> void:
-	if customer == null or not customer.is_paying():
+	if customer == null:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		accept_event()
