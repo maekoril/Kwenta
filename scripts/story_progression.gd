@@ -172,7 +172,7 @@ func write_diary_entry(day: int) -> String:
 				_: entry = "Isa na namang araw sa tindahan. Unti-unti ko nang natututunan ang pagsesukli."
 		3:
 			match get_choice("day3_candy"):
-				"credit": entry = "Kulang si Paolo ng ₱3 sa Coke. Pinautang ko muna siya at isinulat ko rito."
+				"credit": entry = "Ang dami kong inasikaso ngayon sa tindahan. Sana wala akong nakalimutan."
 				"free": entry = "Kulang si Paolo ng ₱3 sa Coke, kaya sinagot ko na ang kulang niya."
 				"no": entry = "Kulang ang dala ni Paolo para sa Coke. Babalik na lang daw siya."
 				_: entry = "Ang dami kong inasikaso ngayon. Hindi ko akalaing magiging abala ako sa tindahan."

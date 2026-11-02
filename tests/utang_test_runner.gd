@@ -108,6 +108,9 @@ func run() -> void:
 	assert(main.utang_ledger.records.size() >= 4)
 	main.campaign.day = 4
 	main.utang_ledger.show_records(main.campaign, false, false)
+	assert(main.utang_ledger.records.any(func(row): return row[1] == "Lola Rosa"))
+	main.campaign.day = 3
+	main.utang_ledger.show_records(main.campaign, false, false)
 	assert(not main.utang_ledger.records.any(func(row): return row[1] == "Lola Rosa"))
 	main.queue_free()
 	await process_frame

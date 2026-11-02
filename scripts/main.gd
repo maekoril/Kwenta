@@ -198,11 +198,20 @@ func _ready() -> void:
 		if campaign.day > 1:
 			story.choices["day1_play"] = str(debug_launch_data.get("day1", "stay"))
 		var money_choice := str(debug_launch_data.get("day2", "none")) if campaign.day > 2 else "none"
+		var nena_choice := str(debug_launch_data.get("day2_haggle", "none"))
+		if nena_choice in ["kind", "full"] and (campaign.day > 2 or (campaign.day == 2 and int(debug_launch_data.get("moment", 0)) in [3, 8])):
+			story.choices["day2_haggle"] = nena_choice
+		var sukli_choice := str(debug_launch_data.get("day2_sukli_result", ""))
+		if sukli_choice in ["none", "perfect", "mistakes"] and campaign.day > 2:
+			story.choices["day2_sukli_result"] = sukli_choice
 		if money_choice != "none":
 			story.choices["day2_berting_money"] = "seen"
 			story.choices["day2_overpayment"] = money_choice
 			if money_choice == "keep":
 				story.choices["day2_money_separate"] = "yes"
+		var berting_resolution := str(debug_launch_data.get("day3_berting_resolution", "none"))
+		if money_choice == "keep" and berting_resolution in ["returned", "deny"] and (campaign.day > 3 or (campaign.day == 3 and int(debug_launch_data.get("moment", 0)) in [5, 6, 7, 8])):
+			story.choices["day3_berting_resolution"] = berting_resolution
 		if (campaign.day == 3 and int(debug_launch_data.get("moment", 0)) in [6, 7, 8]) or campaign.day > 3:
 			var friends_choice := str(debug_launch_data.get("day3_friends", "none"))
 			if friends_choice in ["later", "stay"]:
@@ -223,6 +232,17 @@ func _ready() -> void:
 		var help_choice := str(debug_launch_data.get("day6_help", ""))
 		if campaign.day >= 6 and help_choice in ["ask", "alone"]:
 			story.choices["day6_help"] = help_choice
+		# Rebuild persistent story debts as well as the choices that caused them.
+		if story.get_choice("day3_candy") == "credit":
+			campaign.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
+			if campaign.day > 4 or (campaign.day == 4 and int(debug_launch_data.get("moment", 0)) != 0):
+				story.choices["paolo_debt_recorded"] = "yes"
+			if campaign.day > 6:
+				campaign.repay_debt("paolo_story", 3)
+				campaign.cash -= 3 # The debug starting balance already includes prior activity.
+		if story.get_choice("day5_debt") == "installments":
+			campaign.repay_debt("rosa_old", 110)
+			campaign.cash -= 110
 		# Quick playtests start with earlier days completed, but never alter the real save.
 		# Reconstruct their diary pages from the scenario choices, not invented goal results.
 		for completed_day in range(1, campaign.day):
@@ -301,7 +321,7 @@ func _ready() -> void:
 	utang_button.pressed.connect(func():
 		if shift == null or shift.frozen or not shift.is_running: return
 		shift.frozen = true
-		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
+		utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
 		utang_close.show())
 	utang_close.pressed.connect(func():
 		utang_ledger.hide()
@@ -386,6 +406,13 @@ func _launch_debug_start() -> void:
 	if moment == 1:
 		_show_pre_shift_briefing()
 		return
+	if moment == 23 and campaign.day == 6:
+		var repayment_beats: Array[Dictionary] = []
+		for beat in story._get_day(6).get("callbacks", []):
+			if str(beat.get("when_choice", "")) == "day3_candy" and str(beat.get("when_value", "")) == "credit":
+				repayment_beats.append(beat)
+		_show_story_beats(repayment_beats, "DAY 6", "finish_day")
+		return
 	if moment in [2, 14]:
 		_begin_shift()
 		return
@@ -399,7 +426,7 @@ func _launch_debug_start() -> void:
 	store_sign.visible = false
 	story_events.begin_shift(campaign.day)
 	shift.story_queue.clear()
-	shift.start_shift()
+	shift.start_shift(false)
 	shift.active_customers.clear()
 	shift.customers_changed.emit()
 	if moment in [8, 12]:
@@ -1206,7 +1233,7 @@ func _on_bubble_choice(index: int) -> void:
 	_select_story_choice(current_choice_data, current_choice_ids[index])
 
 func _on_bubble_advanced() -> void:
-	if showing_pre_shift_briefing or story_after_action.is_empty():
+	if (showing_pre_shift_briefing and story_after_action != "supplier_delivery_done") or story_after_action.is_empty():
 		return
 	if story_events != null and story_events.is_active():
 		return
@@ -1651,9 +1678,13 @@ func _update_story_illustration_fit() -> void:
 	var path := story_illustration.texture.resource_path
 	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png"] else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 
+func _is_paolo_debt_recorded() -> bool:
+	# Later-day saves and debug starts have already passed the Day 4 lesson.
+	return story.get_choice("day3_candy") == "credit" and (campaign.day > 4 or story.get_choice("paolo_debt_recorded") == "yes")
+
 func _show_story_prop(prop_name: String) -> void:
 	if prop_name == "utang_ledger":
-		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
+		utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
 		return
 	if prop_name == "hide_utang_ledger":
 		utang_ledger.visible = false
@@ -1736,8 +1767,10 @@ func _show_current_story_beat() -> void:
 		_complete_story_beats()
 		return
 	var beat: Dictionary = story_beats[story_beat_index]
+	if bool(beat.get("record_paolo_debt", false)):
+		story.choices["paolo_debt_recorded"] = "yes"
 	if str(beat.get("show_prop", "")) == "utang_ledger":
-		utang_ledger.show_records(campaign, story.get_choice("day3_candy") == "credit", story.get_choice("day5_debt") == "installments")
+		utang_ledger.show_records(campaign, _is_paolo_debt_recorded(), story.get_choice("day5_debt") == "installments")
 	if beat.has("story_visitor") and story_events != null:
 		bubble.close()
 		story_events.present_outro_visitor(str(beat["story_visitor"]))

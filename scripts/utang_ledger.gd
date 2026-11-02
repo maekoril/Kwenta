@@ -39,9 +39,13 @@ func show_note(include_paolo: bool = false, current_rosa_balance: int = 320) -> 
 
 func _layout_page() -> void:
 	if not is_instance_valid(page): return
-	var fit := maxf(0.1, minf(0.88, minf((size.x - 80.0) / PAGE_SIZE.x, (size.y * 0.52) / PAGE_SIZE.y)))
+	# Keep the lower portion clear for narration and character dialogue.
+	var top_margin := 24.0
+	var dialogue_clearance := size.y * 0.57
+	var fit := maxf(0.1, minf(1.05, minf((size.x - 80.0) / PAGE_SIZE.x, (dialogue_clearance - top_margin) / PAGE_SIZE.y)))
 	page.pivot_offset = PAGE_SIZE * 0.5
-	page.position = Vector2((size.x - PAGE_SIZE.x) * 0.5, 24.0 - (PAGE_SIZE.y * (1.0 - fit) * 0.5))
+	var visual_top := top_margin + (dialogue_clearance - top_margin - PAGE_SIZE.y * fit) * 0.5
+	page.position = Vector2((size.x - PAGE_SIZE.x) * 0.5, visual_top - (PAGE_SIZE.y * (1.0 - fit) * 0.5))
 	page.scale = Vector2.ONE * fit
 
 func _draw_page() -> void:
@@ -84,9 +88,10 @@ func show_records(state: CampaignState, include_paolo: bool, rosa_paid: bool) ->
 	if include_paolo:
 		state.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
 	records = [["03/12", "Mang Lito", "₱45", true], ["03/18", "Mang Ramon", "₱80", true]]
-	if state.day < 5: records.clear()
+	if state.day < 4: records.clear()
 	for debt in state.debts:
-		if state.day < 5 and debt.id == "rosa_old": continue
+		if state.day < 4 and debt.id == "rosa_old": continue
+		if debt.id == "paolo_story" and not include_paolo: continue
 		var name: String = str(debt.customer).replace("neighbor_", "").capitalize()
 		if debt.customer == "neighbor_rosa": name = "Lola Rosa"
 		var date := "Dati" if debt.id == "rosa_old" else "Day %d" % int(debt.due_day)

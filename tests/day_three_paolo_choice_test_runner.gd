@@ -41,7 +41,7 @@ func run() -> void:
 		while main.story_events._mode == "beats":
 			saw_note = saw_note or main.paolo_debt_note.visible
 			main.bubble.advanced.emit()
-		assert(saw_note == (option == "credit"))
+		assert(not saw_note)
 		assert(not main.paolo_debt_note.visible)
 		var later: Array = main.story.get_day_callback_beats(6)
 		var repayment: Array = later.filter(func(beat): return str(beat.get("debt_payment", "")) == "paolo_story")

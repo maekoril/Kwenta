@@ -140,7 +140,7 @@ func run() -> void:
 	assert(main.campaign.day == 4 and main.story_events._current.event.visitor == "jun_jun_tara")
 	assert(main.story.get_choice("day3_friends") == "later")
 	assert(main.story.get_choice("day3_candy") == "credit")
-	assert(main.story.choices["diary_day_3"].contains("Pinautang"))
+	assert(main.story.choices["diary_day_3"].contains("nakalimutan"))
 	assert(main.story.choices["diary_day_3"].contains("susunod ako"))
 	assert(main.story.get_choice("day4_rain").is_empty())
 	debug = main.find_child("DebugOpenButton", true, false).get_parent()

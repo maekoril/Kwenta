@@ -104,7 +104,7 @@ func reset_story_state() -> void:
 	orders_completed = 0
 	story_queue.clear()
 
-func start_shift() -> void:
+func start_shift(spawn_initial_customer: bool = true) -> void:
 	frozen = false
 	credit_requested_today = false
 	active_customers.clear()
@@ -137,7 +137,8 @@ func start_shift() -> void:
 	for debt in campaign_state.debts:
 		if not debt.scripted and int(debt.balance) > 0 and int(debt.due_day) <= campaign_state.day:
 			repayment_requested.emit(debt.duplicate(true))
-	_spawn_customer()
+	if spawn_initial_customer:
+		_spawn_customer()
 	_update_clock()
 
 func _drain_trust_for_overdue_change(delta_seconds: float) -> void:

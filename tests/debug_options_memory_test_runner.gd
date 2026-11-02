@@ -21,6 +21,8 @@ func run() -> void:
 	debug.friends_select.item_selected.emit(1)
 	debug.dodong_select.select(0)
 	debug.dodong_select.item_selected.emit(0)
+	debug.sukli_select.select(2)
+	debug.sukli_select.item_selected.emit(2)
 	debug.skip_tutorials.button_pressed = false
 	debug.queue_free()
 	await process_frame
@@ -30,6 +32,7 @@ func run() -> void:
 	assert(debug.day_select.selected == 3 and debug.scene_select.get_selected_id() == 10)
 	assert(debug.paolo_select.selected == 0 and debug.friends_select.selected == 1 and not debug.skip_tutorials.button_pressed)
 	assert(debug.dodong_select.selected == 0)
+	assert(debug.sukli_select.selected == 2)
 	debug.queue_free()
 	await process_frame
 	remove_meta(DEBUG.OPTIONS_META)
@@ -39,6 +42,7 @@ func run() -> void:
 	assert(debug.day_select.selected == 3 and debug.scene_select.get_selected_id() == 10)
 	assert(debug.paolo_select.selected == 0 and debug.friends_select.selected == 1 and not debug.skip_tutorials.button_pressed)
 	assert(debug.dodong_select.selected == 0)
+	assert(debug.sukli_select.selected == 2)
 	debug.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))

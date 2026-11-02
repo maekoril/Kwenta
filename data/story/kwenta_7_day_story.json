@@ -1051,13 +1051,12 @@
 									{
 										"speaker": "Narrator",
 										"portrait": "",
-										"text": "Kinuha ni Tonyo ang ₱12, inabot ang Coke, at isinulat sa kuwaderno: Paolo — utang ₱3.",
-										"show_prop": "paolo_debt_note"
+										"text": "Kinuha ni Tonyo ang ₱12 at inabot ang Coke. Sa dami ng inaasikaso niya, hindi niya naisulat ang kulang na ₱3."
 									},
 									{
 										"speaker": "Paolo",
 										"portrait": "paolo_happy",
-										"text": "Salamat po, Kuya Tonyo! Babalikan ko po 'yung kulang."
+										"text": "Salamat po, Kuya Tonyo! Babalik po ako sa araw ng fiesta para bayaran 'yung kulang."
 									}
 								]
 							},
@@ -1552,19 +1551,155 @@
 			],
 			"intro": [
 				{
-					"speaker": "Aling Cora",
-					"portrait": "aling_cora",
-					"text": "Tonyo, mula ngayon puwede kang magpautang nang limitado: isang bagong pautang bawat araw, ₱100 hanggang ₱150. Huwag dagdagan ang may hindi pa bayad."
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Bago magbukas ng tindahan, sinagot ni Tonyo ang tawag ni Inay.",
+					"phone_ring": true
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Mas maliit ang dagdag para sa madalas bumili. Ipakita muna ang kabuuang bayad at itala sa kuwaderno. Bukas ang singilan; puwede mong tanggihan ang pautang."
+					"text": "Anak, may ituturo pala ako sa iyo. Kunin mo muna ang kuwaderno."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Heto na po, Ma. Anong pahina?"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Hanggang Day 6 lang tayo magpapautang para makasingil sa Day 7. Walang ibabawas sa kaha ngayon, pero wala ring papasok na bayad hanggang bukas."
+					"text": "Doon sa listahan ng utang. May mga dati pa akong nakatala roon."
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Binuklat ni Tonyo ang kuwaderno. May mga pangalang may guhit na, at may mga halagang hindi pa nababayaran.",
+					"show_prop": "utang_ledger"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Ma, may ₱320 pa palang utang si Lola Rosa.",
+					"show_prop": "utang_ledger"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Oo, matagal na nating suki si Lola Rosa. Paunti-unti siyang naghuhulog kapag may naitatabi."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Paano po kapag may ibang gustong umutang?"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Puwede, pero isa lang muna bawat araw. Mula ₱100 hanggang ₱150 na paninda. Kapag may utang pa, huwag mo munang dagdagan."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "May maliit na dagdag sa bayad. Mas mababa iyon para sa mga madalas bumili sa atin."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Sabihin ko po muna kung magkano lahat ang babayaran nila?"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Oo. Kapag pumayag kayo, isulat mo ang pangalan, halaga, at kung kailan sila magbabayad. Kinabukasan ang usapan natin."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Tapos kapag nagbayad na, saka ko ilalagay sa benta?"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Sa bayad-utang mo itala para hiwalay sa mga bagong benta. Wala ka pang matatanggap na pera habang hindi sila nagbabayad."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "At kung alangan ka, puwede kang tumanggi. Hindi mo kailangang pumayag sa lahat."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Ay, Ma... may pinautang po pala ako kahapon.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Sino, anak?",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Si Paolo po. ₱12 lang ang dala niya para sa Coke, kaya pinautang ko muna ang kulang na ₱3.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Kaso hindi ko po naisulat. Nakalimutan ko sa dami ng ginagawa.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Mabuti at naalala mo. Isulat mo na ngayon. Sa susunod, itala mo agad bago ka may ibang asikasuhin.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Isinulat ni Tonyo ang pangalan ni Paolo at ang utang niyang ₱3.",
+					"when_choice": "day3_candy",
+					"when_value": "credit",
+					"record_paolo_debt": true,
+					"show_prop": "utang_ledger"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Ayan po. Sa makalawa raw po siya babalik para magbayad.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Sige, sundin ninyo ang napag-usapan ninyo. Wala nang dagdag sa ₱3 niya, ha.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Hanggang sa makalawa ka lang muna magpautang. Para kinabukasan, makasingil ka na bago ako bumalik."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Opo, Ma. Ingat po kayo ni Lola!"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Ibinaba ni Tonyo ang telepono at itinabi ang kuwaderno sa puwesto niya."
 				},
 				{
 					"speaker": "Narrator",
@@ -1903,7 +2038,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora_smiling",
-					"text": "Ayos naman si Lola, anak. Nababantayan mo ba ang tindahan?"
+					"text": "Ayos naman siya, anak. Ikaw, kumusta ka riyan?"
 				},
 				{
 					"speaker": "Tonyo",
@@ -1913,74 +2048,63 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "May mga pipili talagang bumili roon, anak. Hindi natin kontrolado iyon."
+					"text": "May bibili rin doon, anak. Pero huwag mo munang pangunahan."
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora_smiling",
-					"text": "Ang magagawa natin, alagaan ang mga suki at asikasuhin nang maayos ang lahat ng pumupunta sa atin."
+					"text": "Asikasuhin mo lang nang maayos ang mga pumupunta sa atin. Iyon muna ang isipin mo."
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Tonyo, pakitingnan mo nga pala ang kuwaderno. Nandoon din ang listahan ng mga dati pang utang sa tindahan."
+					"text": "Anak, tingnan mo rin ang lista bago magbukas. Kung may pinautang ka kahapon, ngayon ang usapan ninyong bayad."
 				},
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Binuklat ni Tonyo ang kuwaderno hanggang sa mga lumang tala ni Inay.",
+					"text": "Binuklat ni Tonyo ang kuwaderno at tiningnan ang mga nakatalang utang.",
 					"show_prop": "utang_ledger"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Ma, may ₱320 pa pong utang si Lola Rosa. Akala ko po ba bawal utang dito?",
-					"show_prop": "utang_ledger"
-				},
-				{
-					"speaker": "Aling Cora",
-					"portrait": "aling_cora_smiling",
-					"text": "Matagal na nating suki si Lola Rosa. Pinayagan ko siya noon, at tumutupad naman siya sa usapan."
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Ahh... so may exceptions pala 'yung karatula?"
-				},
-				{
-					"speaker": "Aling Cora",
-					"portrait": "aling_cora",
-					"text": "Huwag mo nang dagdagan ang lumang utang ni Lola Rosa, ha. Sundin mo ang limitasyon natin kahapon."
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Opo, Ma. Isusulat ko ang bawat pautang at kung kailan ang bayad."
-				},
-				{
-					"speaker": "Tonyo",
-					"portrait": "tonyo",
-					"text": "Ay, Ma, may naisulat din po pala ako diyan. Kinulang si Paolo ng ₱3 noong bumili siya ng Coke.",
-					"when_choice": "day3_candy",
-					"when_value": "credit",
+					"text": "Opo. Nandito rin po si Lola Rosa, ₱320 pa.",
 					"show_prop": "utang_ledger"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Naisulat mo naman pala. Sabihin mo rin sa akin sa susunod, ha?",
+					"text": "Kapag dumaan siya at may maihulog, isulat mo kung magkano ang ibinayad at ang natitira."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Hindi ko po muna guguhitan ang pangalan hangga't hindi pa bayad lahat?"
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora",
+					"text": "Oo. At itala agad ang bawat bayad, ha, para hindi natin masingil ulit."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Si Paolo naman po, bukas pa babalik para sa ₱3 niya.",
 					"when_choice": "day3_candy",
 					"when_value": "credit"
 				},
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Kung dumaan si Lola Rosa at maghulog, isulat mo lang nang maayos kung magkano ang ibinayad niya at kung magkano pa ang natitira."
+					"text": "Sige, bukas pa naman ang usapan ninyo.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
 				},
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Opo, Ma. Ihahanda ko na po ang tindahan. Ingat po kayo ni Lola!"
+					"text": "Opo, Ma. Maghahanda na po ako. Ingat po kayo ni Lola!"
 				},
 				{
 					"speaker": "Narrator",
@@ -2019,7 +2143,7 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Nakahulog si Lola Rosa ng ₱110. ₱210 na lang ang natitira. Mabuti na lang naipaliwanag ni Inay kung paano ito itatala.",
+					"text": "Nakahulog si Lola Rosa ng ₱110. Isinulat ko na rin ang natitirang ₱210 para hindi namin makalimutan.",
 					"when_choice": "day5_debt",
 					"when_value": "installments"
 				},
@@ -2323,12 +2447,33 @@
 					]
 				},
 				{
-					"speaker": "Narrator",
+					"speaker": "Paolo",
 					"portrait": "paolo_happy",
-					"text": "Binayaran ni Paolo ang ₱3 na inutang niya para sa Coke.",
+					"text": "Kuya Tonyo! Heto na po 'yung kulang kong ₱3.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Salamat, Paolo. Sandali, itala ko lang.",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Tinanggap ni Tonyo ang ₱3 at minarkahang bayad ang utang ni Paolo.",
 					"when_choice": "day3_candy",
 					"when_value": "credit",
 					"debt_payment": "paolo_story"
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Ayan, bayad ka na. Salamat at binalikan mo!",
+					"when_choice": "day3_candy",
+					"when_value": "credit"
 				},
 				{
 					"speaker": "Narrator",
@@ -2479,7 +2624,7 @@
 				{
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora",
-					"text": "Pinautang mo si Paolo ng ₱3? Ako rin, ginagawa ko 'yan.",
+					"text": "Nabayaran na pala ni Paolo ang ₱3. Mabuti at naalala mong sabihin sa akin at itala ang utang niya.",
 					"when_choice": "day3_candy",
 					"when_value": "credit"
 				},

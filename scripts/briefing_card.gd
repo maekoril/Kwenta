@@ -269,6 +269,8 @@ func _animate_medal(medal: TextureRect) -> void:
 
 func _settle(viewport_size: Vector2, play_intro: bool = true) -> void:
 	# Let containers recalculate their minimum sizes after switching card contents.
+	if not is_inside_tree():
+		return
 	await get_tree().process_frame
 	if not is_inside_tree() or not visible:
 		return

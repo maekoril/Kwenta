@@ -488,6 +488,8 @@ func _finish() -> void:
 
 
 func _release() -> void:
+	if not is_inside_tree():
+		return
 	if not _queue.is_empty():
 		_start_next()
 		return

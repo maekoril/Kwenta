@@ -8,6 +8,8 @@ var panel: PanelContainer
 var day_select: OptionButton
 var previous_select: OptionButton
 var money_select: OptionButton
+var berting_select: OptionButton
+var nena_select: OptionButton
 var scene_select: OptionButton
 var friends_select: OptionButton
 var paolo_select: OptionButton
@@ -15,6 +17,7 @@ var day4_select: OptionButton
 var dodong_select: OptionButton
 var debt_select: OptionButton
 var help_select: OptionButton
+var sukli_select: OptionButton
 var skip_tutorials: CheckBox
 var status: Label
 var _paused_before := false
@@ -56,6 +59,9 @@ func _ready() -> void:
 	day_select.select(2)
 	previous_select = _add_select(column, "DAY 1 CHOICE", ["Stayed at store", "Played with friends"])
 	money_select = _add_select(column, "DAY 2 · ₱50", ["Set aside to return", "Kept in pocket", "Berting event not seen"])
+	nena_select = _add_select(column, "DAY 2 · ALING NENA", ["Event not seen", "Gave discount", "Kept full price"])
+	sukli_select = _add_select(column, "DAY 2 · SUKLI", ["No change given", "All correct", "Had mistakes"])
+	berting_select = _add_select(column, "DAY 3 · BERTING", ["Event not seen", "Returned the ₱50", "Denied seeing it"])
 	day_select.item_selected.connect(_on_day_selected)
 	scene_select = _add_select(column, "START AT", [])
 	friends_select = _add_select(column, "DAY 3 · LARO", ["Sasama pagkatapos", "Hindi muna sasama", "Event not seen"])
@@ -65,7 +71,7 @@ func _ready() -> void:
 	day4_select.select(3)
 	dodong_select = _add_select(column, "DAY 4 · PAYONG", ["Pinahiram si Kuya Dodong", "Event not seen"])
 	dodong_select.select(1)
-	debt_select = _add_select(column, "DAY 5 · UTANG", ["Lola Rosa paid ₱110", "Payment deferred", "Event not seen"])
+	debt_select = _add_select(column, "DAY 5 · UTANG", ["Lola Rosa paid ₱110", "Payment deferred (legacy)", "Event not seen"])
 	debt_select.select(2)
 	help_select = _add_select(column, "DAY 6 · FIESTA", ["Asked friends for help", "Worked alone"])
 	column.move_child(scene_select.get_parent(), -1)
@@ -98,8 +104,9 @@ func _ready() -> void:
 	close.pressed.connect(_toggle)
 	actions.add_child(close)
 	_restore_options()
-	for select in [previous_select, money_select, friends_select, paolo_select, day4_select, dodong_select, debt_select, help_select]:
+	for select in [previous_select, money_select, nena_select, sukli_select, berting_select, friends_select, paolo_select, day4_select, dodong_select, debt_select, help_select]:
 		select.item_selected.connect(func(_index): _remember_options())
+	money_select.item_selected.connect(func(_index): _on_scene_selected(scene_select.selected))
 	day_select.item_selected.connect(func(_index): _remember_options())
 	scene_select.item_selected.connect(func(_index): _remember_options())
 	skip_tutorials.toggled.connect(func(_pressed): _remember_options())
@@ -107,7 +114,7 @@ func _ready() -> void:
 func _remember_options() -> void:
 	var values := {
 		"day": day_select.selected, "moment": scene_select.get_selected_id(),
-		"day1": previous_select.selected, "day2": money_select.selected,
+		"day1": previous_select.selected, "day2": money_select.selected, "nena": nena_select.selected, "sukli": sukli_select.selected, "berting": berting_select.selected,
 		"friends": friends_select.selected, "paolo": paolo_select.selected,
 		"day4": day4_select.selected, "dodong": dodong_select.selected, "debt": debt_select.selected, "help": help_select.selected, "skip_tutorials": skip_tutorials.button_pressed
 	}
@@ -135,10 +142,11 @@ func _restore_options() -> void:
 	var moment_index := scene_select.get_item_index(int(values.get("moment", 0)))
 	scene_select.select(moment_index if moment_index >= 0 else 0)
 	_on_scene_selected(scene_select.selected)
-	for pair in [[previous_select, "day1"], [money_select, "day2"], [friends_select, "friends"], [paolo_select, "paolo"], [day4_select, "day4"], [dodong_select, "dodong"], [debt_select, "debt"], [help_select, "help"]]:
+	for pair in [[previous_select, "day1"], [money_select, "day2"], [nena_select, "nena"], [sukli_select, "sukli"], [berting_select, "berting"], [friends_select, "friends"], [paolo_select, "paolo"], [day4_select, "day4"], [dodong_select, "dodong"], [debt_select, "debt"], [help_select, "help"]]:
 		var select: OptionButton = pair[0]
 		select.select(clampi(int(values.get(pair[1], select.selected)), 0, select.item_count - 1))
 	skip_tutorials.button_pressed = bool(values.get("skip_tutorials", true))
+	_on_scene_selected(scene_select.selected)
 
 func _add_select(parent: VBoxContainer, caption: String, values: Array[String]) -> OptionButton:
 	var row := HBoxContainer.new()
@@ -186,6 +194,7 @@ func _on_day_selected(index: int) -> void:
 		scene_select.add_item("Day 5 · Aling Lina returns", 18)
 		scene_select.add_item("Day 5 · Lola Rosa", 15)
 	elif index == 5:
+		scene_select.add_item("Day 6 · Paolo repays ₱3", 23)
 		scene_select.add_item("Day 6 · Paolo classmate 1", 19)
 		scene_select.add_item("Day 6 · Paolo classmate 2", 20)
 		scene_select.add_item("Day 6 · Paolo classmate 3", 21)
@@ -199,6 +208,9 @@ func _on_day_selected(index: int) -> void:
 
 func _on_scene_selected(_index: int) -> void:
 	var moment := scene_select.get_selected_id()
+	nena_select.get_parent().visible = day_select.selected >= 2 or (day_select.selected == 1 and moment in [3, 8])
+	sukli_select.get_parent().visible = day_select.selected >= 2
+	berting_select.get_parent().visible = money_select.selected == 1 and (day_select.selected >= 3 or (day_select.selected == 2 and moment in [5, 6, 7, 8]))
 	friends_select.get_parent().visible = (day_select.selected == 2 and moment in [6, 7, 8]) or day_select.selected >= 3
 	paolo_select.get_parent().visible = (day_select.selected == 2 and moment == 8) or day_select.selected >= 3
 	day4_select.get_parent().visible = (day_select.selected == 3 and moment in [8, 16]) or day_select.selected >= 4
@@ -226,7 +238,7 @@ func _toggle() -> void:
 func _launch() -> void:
 	var day := day_select.selected + 1
 	var moment := scene_select.get_selected_id()
-	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22] and day != 6):
+	if (moment in [11, 12] and day != 1) or (moment in [3, 13, 14] and day != 2) or (moment >= 4 and moment <= 7 and day != 3) or (moment in [9, 10] and day != 4) or (moment in [15, 17, 18] and day != 5) or (moment == 16 and day != 4) or (moment in [19, 20, 21, 22, 23] and day != 6):
 		status.text = "Choose the matching day for that story event."
 		return
 	if moment == 4 and money_select.selected == 2:
@@ -244,12 +256,21 @@ func _launch() -> void:
 	if (moment in [19, 20, 21] and paolo_select.selected != 1) or (moment == 22 and paolo_select.selected != 2):
 		status.text = "Choose the matching Day 3 Paolo outcome for this event."
 		return
+	if moment == 23 and paolo_select.selected != 0:
+		status.text = "Choose Pinautang ang ₱3 to preview Paolo's repayment."
+		return
 	_remember_options()
 	var launch_data := {"day": day, "moment": moment, "skip_tutorials": skip_tutorials.button_pressed}
 	if day > 1:
 		launch_data["day1"] = "stay" if previous_select.selected == 0 else "play"
 	if day > 2:
 		launch_data["day2"] = ["return", "keep", "none"][money_select.selected]
+	if day > 2 or (day == 2 and moment in [3, 8]):
+		launch_data["day2_haggle"] = ["none", "kind", "full"][nena_select.selected]
+	if day > 2:
+		launch_data["day2_sukli_result"] = ["none", "perfect", "mistakes"][sukli_select.selected]
+	if money_select.selected == 1 and (day > 3 or (day == 3 and moment in [5, 6, 7, 8])):
+		launch_data["day3_berting_resolution"] = ["none", "returned", "deny"][berting_select.selected]
 	if (day == 3 and moment in [6, 7, 8]) or day > 3:
 		launch_data["day3_friends"] = ["later", "stay", "none"][friends_select.selected]
 	if (day == 3 and moment == 8) or day > 3:
