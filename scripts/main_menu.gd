@@ -38,7 +38,8 @@ func _build_menu() -> void:
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
-	# Fill extra-wide or narrow screens behind the complete, uniformly scaled menu.
+	# Covers the viewport during the first layout frame before the notebook canvas
+	# has been positioned. It also subtly extends the desk at cropped edges.
 	var edge_background := TextureRect.new()
 	edge_background.name = "MenuEdgeBackground"
 	edge_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -114,7 +115,10 @@ func _select_menu_item(button: Button, action: Callable) -> void:
 func _layout_menu() -> void:
 	if menu_canvas == null:
 		return
-	var factor := maxf(0.001, minf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y))
+	# Keep the notebook artwork and its buttons in one proportional composition.
+	# Cover fills every viewport; only non-interactive desk details at the edges
+	# are cropped on non-16:9 devices.
+	var factor := maxf(0.001, maxf(size.x / DESIGN_SIZE.x, size.y / DESIGN_SIZE.y))
 	menu_canvas.scale = Vector2.ONE * factor
 	menu_canvas.position = (size - DESIGN_SIZE * factor) * 0.5
 

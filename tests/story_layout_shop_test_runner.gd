@@ -12,15 +12,12 @@ func run() -> void:
 		root.content_scale_size = viewport_size
 		main.size = Vector2(viewport_size)
 		await process_frame
-		for path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png"]:
+		for path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png", "res://assets/story/day4_friends_shelter.png", "res://assets/story/day4_alfa_save_corner.png", "res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png", "res://assets/story/day5_tonyo_wakes.png"]:
 			main.story_illustration.texture = load(path)
 			main._update_story_illustration_fit()
 			await process_frame
 			assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
 			assert(main.story_illustration.size.is_equal_approx(main.size))
-	main.story_illustration.texture = load("res://assets/story/day5_tonyo_wakes.png")
-	main._update_story_illustration_fit()
-	assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
 	main.queue_free()
 	await process_frame
 	print("PASS: responsive story shots across three viewport ratios")

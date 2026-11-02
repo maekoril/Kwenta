@@ -8,6 +8,7 @@ const ENTRIES := [
 	{"id": "paolo_coins", "day": 3, "file": "day3_paolo_coins_v2.png", "title": "Kulang ng Tatlo", "caption": "Binilang ni Paolo ang mga baryang dala niya.", "seen_only": true},
 	{"id": "project_box", "day": 3, "file": "day3_project_box.png", "title": "Karton Pa Lang", "caption": "Naghihintay pa sa ilalim ng kama ang project ni Tonyo.", "seen_only": true},
 	{"id": "corner", "day": 4, "file": "day4_alfa_save_corner.png", "title": "Bagong karibal", "caption": "May bagong karatula sa kabilang tindahan."},
+	{"id": "umbrella", "day": 4, "file": "day4_tonyo_lends_umbrella_stocked_tonyo.png", "title": "Payong ni Inay", "caption": "Ipinahiram ni Tonyo ang payong ni Aling Cora kay Kuya Dodong."},
 	{"id": "lina", "day": 4, "file": "day4_lina_alfa_corner.png", "title": "Sayang, hindi naabutan", "caption": "Pagbalik ni Tonyo mula sa laro, paalis na si Aling Lina.", "choice": "day4_rain", "value": "join"},
 	{"id": "shelter", "day": 4, "file": "day4_friends_shelter.png", "title": "Feeta & Friends", "caption": "Nagsalo ang magkakaibigan habang hinihintay tumila ang ulan.", "choice": "day4_rain", "value": "shelter"},
 	{"id": "phone", "day": 5, "file": "day5_tonyo_phone_v2.png", "title": "Pangangamusta", "caption": "Tumawag si Nanay para mangamusta."},

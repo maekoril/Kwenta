@@ -10,8 +10,8 @@ func run() -> void:
 		menu._layout_menu()
 		var canvas: Control = menu.menu_canvas
 		var actual: Vector2 = canvas.size * canvas.scale
-		assert(actual.x <= viewport_size.x + 0.1 and actual.y <= viewport_size.y + 0.1)
-		assert(canvas.position.x >= -0.1 and canvas.position.y >= -0.1)
+		assert(actual.x >= viewport_size.x - 0.1 and actual.y >= viewport_size.y - 0.1)
+		assert(canvas.position.x <= 0.1 and canvas.position.y <= 0.1)
 		assert(canvas.get_node("StartButton").position.x + canvas.get_node("StartButton").size.x < canvas.size.x)
 	menu.queue_free()
 	await process_frame
@@ -23,7 +23,7 @@ func run() -> void:
 		main.size = viewport_size
 		await process_frame
 		assert(main.story_illustration.size.is_equal_approx(viewport_size))
-		assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
 		for prop in ["berting_counter_closeup", "lina_walking_away", "friends_shelter"]:
 			main._show_story_prop(prop)
 			assert(main.story_illustration.visible and main.story_illustration.position.is_equal_approx(Vector2.ZERO))

@@ -22,9 +22,14 @@ func run() -> void:
 	await process_frame
 	main.story_events.find_child("StoryVisitorButton", true, false).pressed.emit()
 	assert(main.shift.reserved_story_ids.has("kuya_dodong"))
+	var umbrella_handoff_seen := false
 	while main.story_events._mode == "beats":
+		if main.story_illustration.visible:
+			umbrella_handoff_seen = true
+			assert(main.story_illustration.texture.resource_path == "res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png")
 		main.bubble.advanced.emit()
 	await create_timer(0.3).timeout
+	assert(umbrella_handoff_seen and not main.story_illustration.visible)
 	assert(not main.shift.frozen)
 	var waiting := CustomerState.new("waiting", OrderState.new({"biscuits": 1}), 30.0)
 	waiting.instance_id = "waiting"

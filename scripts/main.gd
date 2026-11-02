@@ -1633,7 +1633,7 @@ func _build_prologue_background() -> void:
 	prologue_background = TextureRect.new()
 	prologue_background.texture = load("res://assets/story/tonyo_bedroom.png") as Texture2D
 	prologue_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	prologue_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_background.z_index = 38
 	prologue_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1662,7 +1662,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 	_update_story_illustration_fit()
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration.z_index = 39
 	story_illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1673,10 +1673,9 @@ func _build_day_two_visuals() -> void:
 func _update_story_illustration_fit() -> void:
 	if story_illustration.texture == null:
 		return
-	# These full-screen shots fill landscape phones as well as desktop windows.
-	# Cover preserves proportions; only the outer scenery is cropped.
-	var path := story_illustration.texture.resource_path
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if path in ["res://assets/story/day2_box_fall.png", "res://assets/story/berting_counter_50.png"] else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Story art always fills the viewport without distortion. At non-16:9 sizes,
+	# only the outer scenery is cropped; the centered composition stays intact.
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 
 func _is_paolo_debt_recorded() -> bool:
 	# Later-day saves and debug starts have already passed the Day 4 lesson.
@@ -1699,6 +1698,8 @@ func _show_story_prop(prop_name: String) -> void:
 		return
 	if prop_name == "berting_counter_closeup":
 		_show_gallery_illustration("res://assets/story/berting_counter_50.png")
+	elif prop_name == "umbrella_handoff":
+		_show_gallery_illustration("res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png")
 	elif prop_name == "paolo_coins":
 		_show_gallery_illustration("res://assets/story/day3_paolo_coins_v2.png")
 	elif prop_name == "lina_walking_away":
