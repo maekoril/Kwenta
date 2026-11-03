@@ -7,7 +7,7 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | Product pickup | `assets/audio/pixabay/sfx/pick_up.mp3` |
 | Correct delivery | `assets/audio/pixabay/sfx/correct_item.wav` (replaced 2026-10-28) |
 | Wrong delivery | `assets/audio/pixabay/sfx/wrong_item.mp3` |
-| Completed sale | `assets/audio/pixabay/sfx/cash_register_sale.wav`, trimmed from `assets/audio/inbox/cash_register.wav` to its first strong register hit |
+| Completed sale | `assets/audio/pixabay/sfx/cash_register_sale.wav`, trimmed from the original cash register recording to its first strong register hit |
 | Patience warning / timeout | `assets/audio/pixabay/sfx/patience_warning.mp3` |
 | Dialogue start cue | `assets/audio/pixabay/sfx/convo.mp3` |
 | Continue / new game | `assets/audio/pixabay/sfx/continue_or_start_game.wav` |
