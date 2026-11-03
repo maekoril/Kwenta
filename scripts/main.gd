@@ -2070,6 +2070,7 @@ func _build_prologue_background() -> void:
 	prologue_background = TextureRect.new()
 	prologue_background.texture = load("res://assets/story/tonyo_bedroom.png") as Texture2D
 	prologue_background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	# Fill every viewport without distortion; crop only outer edges on non-16:9 displays.
 	prologue_background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	prologue_background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prologue_background.z_index = 38
@@ -2109,7 +2110,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration_previous = TextureRect.new()
 	story_illustration_previous.name = "PreviousStoryIllustration"
 	story_illustration_previous.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	story_illustration_previous.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration_previous.z_index = 39
 	story_illustration_previous.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2120,7 +2121,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 	_update_story_illustration_fit()
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration.z_index = 39
 	story_illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2133,8 +2134,9 @@ func _build_day_two_visuals() -> void:
 func _update_story_illustration_fit() -> void:
 	if story_illustration.texture == null:
 		return
-	# Preserve the entire illustration at every aspect ratio; the backdrop fills margins.
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Fill every viewport without distortion; crop only outer edges on non-16:9 displays.
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 
 func _is_paolo_debt_recorded() -> bool:
 	# Later-day saves and debug starts have already passed the Day 4 lesson.

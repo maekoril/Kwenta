@@ -11,11 +11,13 @@ func run() -> void:
 	for dimensions in [Vector2i(1920, 1080), Vector2i(2160, 1080), Vector2i(2400, 1080), Vector2i(1080, 1920)]:
 		root.size = dimensions
 		await process_frame
+		assert(main.prologue_background.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+		assert(main.prologue_background.size.is_equal_approx(main.size))
 		for path in paths:
 			main._show_gallery_illustration(path, false)
 			assert(main.story_illustration.texture != null)
-			assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-			assert(main.story_illustration_previous.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+			assert(main.story_illustration.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+			assert(main.story_illustration_previous.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_COVERED)
 			assert(main.story_illustration.size.is_equal_approx(main.size))
 		var reader = main.pause_menu.diary_reader
 		reader.open(main.story)
