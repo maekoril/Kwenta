@@ -7,7 +7,7 @@ path="res://.godot/imported/supplier_phone_ring.wav-d46a6dd60056f18febe9e0ce2fe4
 
 [deps]
 
-source_file="res://assets/audio/sfx/supplier_phone_ring.wav"
+source_file="res://assets/audio/pixabay/sfx/supplier_phone_ring.wav"
 dest_files=["res://.godot/imported/supplier_phone_ring.wav-d46a6dd60056f18febe9e0ce2fe465fc.sample"]
 
 [params]

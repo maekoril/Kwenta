@@ -2350,7 +2350,7 @@ func _show_current_story_beat() -> void:
 	var text: String = str(beat.get("text", ""))
 	if bool(beat.get("phone_ring", false)):
 		var ring := AudioStreamPlayer.new()
-		ring.stream = load("res://assets/audio/sfx/supplier_phone_ring.wav") as AudioStream
+		ring.stream = load("res://assets/audio/pixabay/sfx/supplier_phone_ring.wav") as AudioStream
 		add_child(ring)
 		ring.finished.connect(ring.queue_free)
 		ring.play()
