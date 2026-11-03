@@ -18,6 +18,8 @@ static func load_progress() -> Dictionary:
 		return {}
 	if int(campaign.get("day", 0)) < 1 or int(campaign.get("day", 0)) > 7:
 		return {}
+	if value.has("replay_checkpoints") and not value.replay_checkpoints is Dictionary:
+		return {}
 	for key in ["customer_trust", "product_price_bonuses", "paid_purchases"]:
 		if campaign.has(key) and not campaign[key] is Dictionary:
 			return {}
@@ -48,6 +50,13 @@ static func remember_tutorial(tutorial_id: String) -> bool:
 	return _write_data(data)
 
 static func _write_data(data: Dictionary) -> bool:
+	var prior := load_progress()
+	var checkpoints: Dictionary = prior.get("replay_checkpoints", {}).duplicate(true)
+	if int(data.campaign.get("day", 0)) == 1 and data.get("choices", {}).is_empty():
+		checkpoints.clear()
+	if not bool(data.get("completed", false)):
+		checkpoints[str(data.campaign.day)] = {"campaign": data.campaign.duplicate(true), "choices": data.choices.duplicate(true), "tutorials": data.get("tutorials", {}).duplicate(true)}
+	data["replay_checkpoints"] = checkpoints
 	var temporary := save_path + ".tmp"
 	var file := FileAccess.open(temporary, FileAccess.WRITE)
 	if file == null:

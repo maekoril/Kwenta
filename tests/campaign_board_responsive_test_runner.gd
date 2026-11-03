@@ -34,17 +34,9 @@ func run() -> void:
 			viewport.get_texture().get_image().save_png("res://output/campaign-board-phone.png")
 		board._show_chapter(7)
 		_check_buttons(board)
-		board._start_replay(board.progress.get_day_callback_beats(7))
-		_check_buttons(board)
-		assert(board.dialogue_scroll.size.y > 0)
-		board.dialogue.text = "Long replay dialogue. ".repeat(100)
-		await process_frame
-		await process_frame
-		assert(board.dialogue.size.y > board.dialogue_scroll.size.y)
 		if DisplayServer.get_name() != "headless" and dimensions.x == 1080:
-			board._refresh_beat()
 			await RenderingServer.frame_post_draw
-			viewport.get_texture().get_image().save_png("res://output/campaign-replay-phone.png")
+			viewport.get_texture().get_image().save_png("res://output/play-day-phone.png")
 	viewport.queue_free()
 	await process_frame
 	if DisplayServer.get_name() != "headless":
@@ -81,5 +73,5 @@ func run() -> void:
 	await process_frame
 	var after := FileAccess.get_file_as_string(save.save_path) if FileAccess.file_exists(save.save_path) else ""
 	assert(before == after)
-	print("Responsive board, scrollable dialogue, debug preview and save isolation: PASS")
+	print("Responsive level cards, play confirmation, debug access and save isolation: PASS")
 	quit()

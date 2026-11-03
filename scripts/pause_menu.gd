@@ -21,6 +21,8 @@ var _menu_confirmation: ConfirmationDialog
 var _settings_menu
 var diary_reader
 var story_progression
+var return_scene := "res://scenes/main_menu.tscn"
+var _return_button: Button
 
 func _ready() -> void:
 	layer = 100                                    # above every z_index used in main.gd
@@ -98,7 +100,14 @@ func _on_main_menu_pressed() -> void:
 func _confirm_main_menu() -> void:
 	resume()
 	main_menu_requested.emit()
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().change_scene_to_file(return_scene)
+
+func set_return_destination(scene: String, caption: String) -> void:
+	return_scene = scene
+	_return_button.text = caption
+	_menu_confirmation.title = "Return to campaign board?"
+	_menu_confirmation.dialog_text = "Leave this replay and return to the campaign board?"
+	_menu_confirmation.ok_button_text = caption
 
 # --- UI -----------------------------------------------------------------------------------
 
@@ -216,6 +225,7 @@ func _build_overlay() -> void:
 	column.add_child(settings_button)
 
 	var menu_button := Button.new()
+	_return_button = menu_button
 	menu_button.text = "MAIN MENU"
 	menu_button.custom_minimum_size = Vector2(360, 80)
 	KwentaStyle.style_button(menu_button, KwentaStyle.PAPER_DARK, KwentaStyle.SIZE_BUTTON)

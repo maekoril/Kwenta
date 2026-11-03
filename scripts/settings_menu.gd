@@ -7,6 +7,7 @@ var music_slider: HSlider
 var sfx_slider: HSlider
 var ambience_slider: HSlider
 var settings_panel: PanelContainer
+var debug_tool_checkbox: CheckBox
 
 func _ready() -> void:
 	layer = 110
@@ -24,7 +25,7 @@ func _build() -> void:
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shade.color = Color(0.08, 0.04, 0.02, 0.75)
 	overlay.add_child(shade)
-	var center := CenterContainer.new()
+	var center := Control.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(center)
 	var panel := PanelContainer.new()
@@ -50,6 +51,18 @@ func _build() -> void:
 	music_slider = _add_slider(column, "MUSIC", AUDIO_SETTINGS.MUSIC_BUS)
 	ambience_slider = _add_slider(column, "AMBIENCE", AUDIO_SETTINGS.AMBIENCE_BUS)
 	sfx_slider = _add_slider(column, "SOUND EFFECTS", AUDIO_SETTINGS.SFX_BUS)
+	if OS.is_debug_build():
+		debug_tool_checkbox = CheckBox.new()
+		debug_tool_checkbox.name = "DebugToolCheckbox"
+		debug_tool_checkbox.text = "Debug tool"
+		debug_tool_checkbox.custom_minimum_size.y = 64
+		debug_tool_checkbox.add_theme_font_size_override("font_size", 27)
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			debug_tool_checkbox.add_theme_color_override(color_name, KwentaStyle.INK)
+		debug_tool_checkbox.toggled.connect(func(enabled: bool):
+			get_tree().call_group("kwenta_debug_tools", "_set_controls_visible", enabled)
+		)
+		column.add_child(debug_tool_checkbox)
 	var close_button := Button.new()
 	close_button.name = "CloseSettingsButton"
 	close_button.text = "BACK"
@@ -108,22 +121,33 @@ func _style_slider(slider: HSlider) -> void:
 		slider.add_theme_icon_override("grabber_highlight", knob)
 
 func open() -> void:
+	if debug_tool_checkbox != null:
+		for debug in get_tree().get_nodes_in_group("kwenta_debug_tools"):
+			if not debug.controls_visibility_changed.is_connected(_sync_debug_checkbox):
+				debug.controls_visibility_changed.connect(_sync_debug_checkbox)
+			_sync_debug_checkbox(debug.controls_visible)
 	music_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.MUSIC_BUS) * 100)
 	ambience_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.AMBIENCE_BUS) * 100)
 	sfx_slider.value = roundi(AUDIO_SETTINGS.get_volume(AUDIO_SETTINGS.SFX_BUS) * 100)
 	overlay.visible = true
 	_fit_panel.call_deferred()
 
+func _sync_debug_checkbox(enabled: bool) -> void:
+	if debug_tool_checkbox != null:
+		debug_tool_checkbox.set_pressed_no_signal(enabled)
+
 func _fit_panel() -> void:
 	if not is_instance_valid(settings_panel):
 		return
 	var viewport_size := get_viewport().get_visible_rect().size
+	settings_panel.size = settings_panel.get_combined_minimum_size()
 	var panel_size := settings_panel.size
 	if panel_size.x <= 0.0 or panel_size.y <= 0.0:
 		return
-	settings_panel.pivot_offset = panel_size * 0.5
+	settings_panel.pivot_offset = Vector2.ZERO
 	var fit := minf(1.0, minf(maxf(1.0, viewport_size.x - 80.0) / panel_size.x, maxf(1.0, viewport_size.y - 80.0) / panel_size.y))
 	settings_panel.scale = Vector2.ONE * fit
+	settings_panel.position = (viewport_size - panel_size * fit) * 0.5
 
 func close() -> void:
 	overlay.visible = false

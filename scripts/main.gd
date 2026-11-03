@@ -24,6 +24,7 @@ const PAUSE_BUTTON_SIZE := Vector2(89.0, 74.0)
 const SHOP_BUTTON_SIZE := Vector2(74.0, 74.0)
 const UTANG_BUTTON_SIZE := Vector2(100.0, 58.0)
 const CAMPAIGN_SAVE = preload("res://scripts/campaign_save.gd")
+const LEVEL_REPLAY = preload("res://scripts/level_replay.gd")
 const SUPPLIER_NOTE = preload("res://scripts/supplier_note.gd")
 const DAILY_GOAL = preload("res://scripts/daily_goal.gd")
 const DAY_BRIEFING = preload("res://scripts/day_briefing.gd")
@@ -102,8 +103,10 @@ var customer_story_actor: Control
 var story_visitor_portrait: TextureRect
 var resumed_campaign := false
 var resumed_completed := false
-var debug_controls_visible := true
+var debug_controls_visible := false
 var debug_session := false
+var replay_session := false
+var replay_debug_access := false
 var debug_launch_data: Dictionary = {}
 var checkpoint_ready := false
 var completed_tutorials: Dictionary = {}
@@ -245,7 +248,17 @@ func _ready() -> void:
 	resized.connect(_recenter_fixed_hud)
 	campaign = CampaignState.new(CAMPAIGN_CONFIG)
 	story = StoryProgression.new(CAMPAIGN_CONFIG)
-	if OS.is_debug_build() and get_tree().has_meta("kwenta_debug_launch"):
+	if get_tree().has_meta(LEVEL_REPLAY.META):
+		var replay: Dictionary = get_tree().get_meta(LEVEL_REPLAY.META)
+		get_tree().remove_meta(LEVEL_REPLAY.META)
+		replay_session = true
+		replay_debug_access = bool(replay.get("debug_access", false)) and OS.is_debug_build()
+		var checkpoint: Dictionary = replay["checkpoint"]
+		campaign.from_dict(checkpoint["campaign"])
+		story.choices = checkpoint["choices"].duplicate(true)
+		completed_tutorials = checkpoint.get("tutorials", {}).duplicate(true)
+		day_two_sukli_tutorial_complete = bool(completed_tutorials.get("day2_sukli", false))
+	elif OS.is_debug_build() and get_tree().has_meta("kwenta_debug_launch"):
 		debug_launch_data = get_tree().get_meta("kwenta_debug_launch")
 		get_tree().remove_meta("kwenta_debug_launch")
 		debug_session = true
@@ -400,6 +413,9 @@ func _ready() -> void:
 	# Skip Day is intentionally hidden; keep the debug helper for developers only.
 	pause_menu = PAUSE_MENU.new()
 	add_child(pause_menu)
+	if replay_session:
+		pause_menu.set_return_destination(LEVEL_REPLAY.BOARD_SCENE, "CAMPAIGN BOARD")
+		pause_menu.main_menu_requested.connect(_prepare_replay_return)
 	pause_menu.story_progression = story
 	pause_menu.set_button_size(PAUSE_BUTTON_SIZE)
 	pause_menu.set_button_icon(_utility_icon(3))
@@ -413,7 +429,7 @@ func _ready() -> void:
 		day_label.text = "D%d" % campaign.day
 		shop_available = campaign.day > 1
 		_refresh_shop_button()
-	if resumed_campaign:
+	if resumed_campaign or replay_session:
 		story_events._visitor_tutorial_seen = bool(completed_tutorials.get("story_event", false))
 		day_label.text = "D%d" % campaign.day
 		shop_available = campaign.day > 1
@@ -429,7 +445,13 @@ func _ready() -> void:
 		)
 		debug_tools.is_test_session = debug_session
 		add_child(debug_tools)
-	if debug_session:
+	if replay_session:
+		pause_menu.set_available(true)
+		if campaign.day == 1:
+			_present_prologue.call_deferred()
+		else:
+			_present_day_intro.call_deferred()
+	elif debug_session:
 		pause_menu.set_available(true)
 		_launch_debug_start.call_deferred()
 	elif get_tree().has_meta("kwenta_menu_story_transition"):
@@ -563,7 +585,7 @@ func _remember_tutorial(tutorial_id: String) -> void:
 	if bool(completed_tutorials.get(tutorial_id, false)):
 		return
 	completed_tutorials[tutorial_id] = true
-	if checkpoint_ready and not CAMPAIGN_SAVE.remember_tutorial(tutorial_id):
+	if not replay_session and checkpoint_ready and not CAMPAIGN_SAVE.remember_tutorial(tutorial_id):
 		_show_save_warning()
 
 func _show_save_warning() -> void:
@@ -2568,7 +2590,7 @@ func _show_pending_shift_summary() -> void:
 	bubble.close()
 	if daily_goal != null:
 		story.choices["diary_goal_day_%d" % campaign.day] = "earned" if daily_goal.is_complete() else "missed"
-	if not debug_session:
+	if not debug_session and not replay_session:
 		checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
 		if not checkpoint_ready:
 			_show_save_warning()
@@ -2578,6 +2600,8 @@ func _show_pending_shift_summary() -> void:
 	var reward_day := campaign.day if daily_goal != null else 0
 	var reward_earned: bool = daily_goal != null and daily_goal.is_complete()
 	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, size, reward_day, reward_earned)
+	if replay_session:
+		briefing_card._button.text = "CAMPAIGN BOARD"
 	if audio != null and not shift_completion_sound_played:
 		shift_completion_sound_played = true
 		audio.play_persistent_cue("level_complete")
@@ -2585,11 +2609,14 @@ func _show_pending_shift_summary() -> void:
 	pending_shift_summary_title = ""
 
 func _advance_story_day() -> void:
+	if replay_session and campaign.day < CAMPAIGN_CONFIG.campaign_day_count:
+		_return_to_campaign_board()
+		return
 	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
 		if story_complete:
 			return
 		story_complete = true
-		if not debug_session:
+		if not debug_session and not replay_session:
 			checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
 			if not checkpoint_ready:
 				_show_save_warning()
@@ -2606,7 +2633,10 @@ func _advance_story_day() -> void:
 		var ending := preload("res://scripts/ending_transition.gd").new()
 		ending.credits_requested.connect(func():
 			var credits := preload("res://scripts/credits.gd").new()
-			credits.closed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+			credits.closed.connect(func():
+				if replay_session: _return_to_campaign_board()
+				else: get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+			)
 			credits.campaign_board_requested.connect(_open_completed_campaign_board)
 			add_child(credits)
 		)
@@ -2627,7 +2657,18 @@ func _advance_story_day() -> void:
 	if pause_menu != null:
 		pause_menu.set_available(true)
 
+func _prepare_replay_return() -> void:
+	get_tree().set_meta(LEVEL_REPLAY.RETURN_META, {"debug_access": replay_debug_access})
+
+func _return_to_campaign_board() -> void:
+	_prepare_replay_return()
+	get_tree().paused = false
+	get_tree().change_scene_to_file.call_deferred(LEVEL_REPLAY.BOARD_SCENE)
+
 func _open_completed_campaign_board() -> void:
+	if replay_session:
+		_return_to_campaign_board()
+		return
 	if has_node("CampaignBoard"):
 		return
 	if audio != null:
@@ -2641,6 +2682,9 @@ func _open_completed_campaign_board() -> void:
 	add_child(board)
 
 func _restart_story() -> void:
+	if replay_session:
+		_return_to_campaign_board()
+		return
 	for actor in customer_actors.values():
 		if is_instance_valid(actor):
 			actor.queue_free()
@@ -3587,6 +3631,15 @@ func _build_game_over_screen() -> void:
 	game_over_screen.position = _ui_offset()
 	game_over_screen.retry_pressed.connect(_retry_current_day)
 	add_child(game_over_screen)
+	if replay_session:
+		var board_button := Button.new()
+		board_button.name = "ReplayReturnToBoardButton"
+		board_button.text = "CAMPAIGN BOARD"
+		board_button.position = Vector2(740, 820)
+		board_button.size = Vector2(940, 75)
+		KwentaStyle.style_button(board_button, KwentaStyle.PAPER_DARK, 28)
+		board_button.pressed.connect(_return_to_campaign_board)
+		game_over_screen.add_child(board_button)
 
 func _on_game_over() -> void:
 	_hide_store_sign()

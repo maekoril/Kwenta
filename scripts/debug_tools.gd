@@ -6,7 +6,7 @@ const OPTIONS_META := "kwenta_debug_options"
 static var options_path := "user://debug_playtest_options.cfg"
 signal controls_visibility_changed(shown: bool)
 
-var controls_visible := true
+var controls_visible := false
 var visibility_toggle: CheckBox
 var opener: Button
 var panel: PanelContainer
@@ -34,6 +34,7 @@ func _ready() -> void:
 		return
 	layer = 200
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	add_to_group("kwenta_debug_tools")
 	opener = Button.new()
 	opener.name = "DebugOpenButton"
 	opener.text = "TEST MODE" if is_test_session else "DEBUG"
@@ -42,6 +43,7 @@ func _ready() -> void:
 	opener.size = Vector2(210, 56)
 	opener.add_theme_font_size_override("font_size", 23)
 	opener.pressed.connect(_toggle)
+	opener.visible = false
 	add_child(opener)
 	panel = PanelContainer.new()
 	panel.name = "DebugPanel"
@@ -63,7 +65,7 @@ func _ready() -> void:
 	column.add_child(description)
 	var board_button := Button.new()
 	board_button.name = "DebugCampaignBoardButton"
-	board_button.text = "CAMPAIGN BOARD · PREVIEW ALL DAYS"
+	board_button.text = "CAMPAIGN BOARD · REPLAY ANY DAY"
 	board_button.custom_minimum_size.y = 65
 	KwentaStyle.style_button(board_button, KwentaStyle.GOLD, 24)
 	board_button.pressed.connect(_open_campaign_board)
@@ -99,7 +101,7 @@ func _ready() -> void:
 	column.add_child(skip_tutorials)
 	visibility_toggle = CheckBox.new()
 	visibility_toggle.text = "Show debug controls [F3] · F2 opens menu"
-	visibility_toggle.button_pressed = true
+	visibility_toggle.button_pressed = false
 	visibility_toggle.add_theme_font_size_override("font_size", 21)
 	visibility_toggle.add_theme_color_override("font_color", KwentaStyle.INK)
 	column.add_child(visibility_toggle)
@@ -154,7 +156,7 @@ func _open_campaign_board() -> void:
 
 func _remember_options() -> void:
 	var values := {
-		"controls_visible": controls_visible, "day": day_select.selected, "moment": scene_select.get_selected_id(),
+		"controls_visible": controls_visible, "debug_tool_enabled": controls_visible, "day": day_select.selected, "moment": scene_select.get_selected_id(),
 		"day1": previous_select.selected, "day2": money_select.selected, "nena": nena_select.selected, "sukli": sukli_select.selected, "berting": berting_select.selected,
 		"friends": friends_select.selected, "paolo": paolo_select.selected,
 		"day4": day4_select.selected, "dodong": dodong_select.selected, "debt": debt_select.selected, "help": help_select.selected, "skip_tutorials": skip_tutorials.button_pressed
@@ -188,7 +190,9 @@ func _restore_options() -> void:
 		select.select(clampi(int(values.get(pair[1], select.selected)), 0, select.item_count - 1))
 	skip_tutorials.button_pressed = bool(values.get("skip_tutorials", true))
 	_on_scene_selected(scene_select.selected)
-	_set_controls_visible(bool(values.get("controls_visible", true)))
+	# Old versions saved visible=true automatically. Only an explicit setting
+	# in the new version should opt into showing the controls.
+	_set_controls_visible(bool(values.get("debug_tool_enabled", false)))
 
 func _add_select(parent: VBoxContainer, caption: String, values: Array[String]) -> OptionButton:
 	var row := HBoxContainer.new()
