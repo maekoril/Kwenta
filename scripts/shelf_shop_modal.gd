@@ -36,6 +36,8 @@ const FIXTURES := [
 var cash := 0
 var purchased_groups: Array = []
 var config: Dictionary = {}
+var _selected := "hanging_strip"
+var _detail: Control
 var _cash_label: Label
 var _panel: Control
 var _fixture_grid: Control
@@ -125,29 +127,40 @@ func _build_shell() -> void:
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f6e7c8"), Color("704729"), 0, 0, 20, 12, 8))
 	panel.add_child(page)
-	var heading := KwentaStyle.make_label("LISTAHAN NI INAY", 48, KwentaStyle.INK)
-	heading.position = Vector2(95, 40)
+	var heading := KwentaStyle.make_label("ORDER KAY KUYA BEN", 48, KwentaStyle.INK)
+	heading.position = Vector2(70, 35)
 	panel.add_child(heading)
-	var explanation := KwentaStyle.make_label("KUYA BEN  •  SUPPLIER\nPumili ng paninda at tumawag bago magbukas.", 25, KwentaStyle.INK_MUTED)
-	explanation.position = Vector2(98, 110)
+	var explanation := KwentaStyle.make_label("Pumili ng paninda para sa tindahan.", 25, KwentaStyle.INK_MUTED)
+	explanation.position = Vector2(70, 100)
 	panel.add_child(explanation)
 	var rule := ColorRect.new()
-	rule.position = Vector2(95, 205)
-	rule.size = Vector2(1320, 3)
+	rule.position = Vector2(70, 205)
+	rule.size = Vector2(1370, 2)
 	rule.color = Color("b68b69")
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(rule)
 
+	var cash_badge := Panel.new()
+	cash_badge.position = Vector2(1060, 45)
+	cash_badge.size = Vector2(270, 60)
+	cash_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cash_badge.add_theme_stylebox_override("panel", KwentaStyle.box(Color("f2dfb8"), Color("a77c51"), 0, 0, 8, 2, 0))
+	panel.add_child(cash_badge)
 	_cash_label = KwentaStyle.make_label("", 27, Color("24572d"))
 	_cash_label.name = "CashLabel"
-	_cash_label.position = Vector2(1100, 95)
-	_cash_label.size = Vector2(250, 50)
-	_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cash_label.position = Vector2(1185, 50)
+	_cash_label.size = Vector2(125, 50)
+	_cash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_cash_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_cash_label.add_theme_color_override("font_outline_color", Color("eff7df"))
 	_cash_label.add_theme_constant_override("outline_size", 3)
 	_cash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_cash_label)
+
+	_add_label(panel, "PERA MO", Vector2(1080, 62), 20, KwentaStyle.INK_MUTED)
+	_add_label(panel, "PANINDA", Vector2(70, 168), 22, KwentaStyle.INK_MUTED)
+	_add_label(panel, "DETALYE NG ORDER", Vector2(730, 168), 22, KwentaStyle.INK_MUTED)
+	_add_label(panel, "Pumili ng paninda, saka tumawag kay Kuya Ben para umorder.", Vector2(70, 790), 22, KwentaStyle.INK_MUTED)
 
 	var close_button := Button.new()
 	close_button.name = "CloseShop"
@@ -167,7 +180,7 @@ func _build_shell() -> void:
 	panel.add_child(_fixture_grid)
 	_tutorial_hint = KwentaStyle.make_label("", 24, Color("265432"))
 	_tutorial_hint.name = "SupplierTutorialHint"
-	_tutorial_hint.position = Vector2(100, 205)
+	_tutorial_hint.position = Vector2(70, 125)
 	_tutorial_hint.size = Vector2(1200, 36)
 	_tutorial_hint.z_index = 5
 	_tutorial_hint.visible = false
@@ -227,8 +240,9 @@ func _render_fixture_cards() -> void:
 	for group_id in FIXTURES:
 		var card := _make_fixture_card(group_id, products)
 		card.name = "FixtureCard_%s" % group_id
-		card.position = ACTION_BUTTON_POSITIONS[group_id]
+		card.position = Vector2(70, 230 + FIXTURES.find(group_id) * 108)
 		_fixture_grid.add_child(card)
+	_render_detail(products)
 
 func _request_fixture_render() -> void:
 	call_deferred("_render_fixture_cards")
@@ -238,17 +252,27 @@ func show_order_tutorial() -> void:
 	await get_tree().process_frame
 	if not visible:
 		return
-	_tutorial_hint.text = "Pumili ng paninda. Tap ORDER para tumawag kay Kuya Ben!"
+	_tutorial_hint.text = "Pumili ng paninda. Saka pindutin ang TUMAWAG kay Kuya Ben!"
 	_tutorial_hint.visible = true
 	for group_id in FIXTURES:
 		var card := _fixture_grid.get_node_or_null("FixtureCard_%s" % group_id) as Control
 		var button := card.get_node_or_null("BuyButton") as Button if card != null else null
-		if button != null and not button.disabled:
+		if button != null and not purchased_groups.has(group_id) and cash >= _group_price(group_id, config.get("products", {})):
 			_tutorial_outline.position = card.position + button.position - Vector2(6, 6)
 			_tutorial_outline.size = button.size + Vector2(12, 12)
 			_tutorial_outline.visible = true
 			return
 	_tutorial_hint.text = "Wala pang kayang bilhin? Tap X. Puwede kang umorder sa susunod."
+
+func _update_tutorial_for_selection() -> void:
+	if purchased_groups.has(_selected) or cash < _group_price(_selected, config.get("products", {})):
+		_tutorial_hint.text = "Pumili ng panindang kaya mong bilhin."
+		_tutorial_outline.visible = false
+		return
+	_tutorial_hint.text = "Pindutin ang TUMAWAG para umorder kay Kuya Ben."
+	_tutorial_outline.position = Vector2(754, 664)
+	_tutorial_outline.size = Vector2(662, 72)
+	_tutorial_outline.visible = true
 
 func show_tutorial_close_hint() -> void:
 	_tutorial_hint.text = "Ayos! Puwede pang umorder, o tap X para magpatuloy."
@@ -263,57 +287,102 @@ func hide_order_tutorial() -> void:
 	if _tutorial_outline != null:
 		_tutorial_outline.visible = false
 
+func _add_label(parent: Node, value: String, at: Vector2, font_size: int, color: Color = KwentaStyle.INK) -> Label:
+	var label := KwentaStyle.make_label(value, font_size, color)
+	label.position = at
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
+
 func _make_fixture_card(group_id: String, products: Dictionary) -> Control:
 	var card := Control.new()
-	card.size = Vector2(600, 160)
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.size = Vector2(620, 96)
 	var price := _group_price(group_id, products)
-	var background := Panel.new()
-	background.name = "CardChrome"
-	background.size = card.size
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	background.add_theme_stylebox_override("panel", KwentaStyle.box(Color("fff5dc"), Color("c9a77c"), 0, 0, 8, 2, 2))
-	card.add_child(background)
+	var bg := Panel.new()
+	bg.size = card.size
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.add_theme_stylebox_override("panel", KwentaStyle.box(Color("ead6a9") if group_id == _selected else Color("fff5dc"), KwentaStyle.GOLD if group_id == _selected else Color("c9a77c"), 0, 0, 8, 2, 2))
+	card.add_child(bg)
 	var preview := TextureRect.new()
 	preview.name = "ProductPreview"
-	preview.position = Vector2(14, 12)
-	preview.size = Vector2(115, 136)
+	preview.position = Vector2(12, 8)
+	preview.size = Vector2(90, 80)
 	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for entry in products.values():
 		if str(entry.get("purchase_group", "")) == group_id:
-			preview.texture = load(str(entry.get("texture_path", ""))) as Texture2D
+			preview.texture = CounterArt.product_single_texture(str(entry.get("game_product_id", "")))
 			break
 	card.add_child(preview)
-	var title := KwentaStyle.make_label(FIXTURE_COPY[group_id][0], 28, KwentaStyle.INK)
-	title.position = Vector2(140, 10)
-	card.add_child(title)
-	var description := KwentaStyle.make_label(FIXTURE_COPY[group_id][1], 21, KwentaStyle.INK_MUTED)
-	description.position = Vector2(140, 48)
-	card.add_child(description)
-
-	var buy_button := Button.new()
-	buy_button.name = "BuyButton"
-	buy_button.position = Vector2(390, 93)
-	buy_button.size = ACTION_BUTTON_SIZE
-	buy_button.focus_mode = Control.FOCUS_NONE
-	buy_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-	var button_texture := BUY_BUTTON_TEXTURE
-	if purchased_groups.has(group_id):
-		buy_button.text = "PURCHASED"
-		buy_button.disabled = true
-		button_texture = NEED_BUTTON_TEXTURE
-	elif cash < price:
-		buy_button.text = "NEED ₱%d" % price
-		buy_button.disabled = true
-		button_texture = NEED_BUTTON_TEXTURE
-	else:
-		buy_button.text = "ORDER ₱%d" % price
-		buy_button.pressed.connect(func() -> void: purchase_requested.emit(group_id, price))
-	_style_buy_button(buy_button, button_texture)
-	card.add_child(buy_button)
+	_add_label(card, FIXTURE_COPY[group_id][0], Vector2(120, 10), 25)
+	_add_label(card, FIXTURE_COPY[group_id][1], Vector2(120, 49), 19, KwentaStyle.INK_MUTED)
+	var amount := _add_label(card, "₱%d" % price, Vector2(470, 12), 27)
+	amount.size.x = 130
+	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if purchased_groups.has(group_id) or cash < price:
+		var status := _add_label(card, "Nabili na" if purchased_groups.has(group_id) else "Kulang ₱%d" % (price - cash), Vector2(440, 56), 18, KwentaStyle.INK_MUTED)
+		status.size.x = 160
+		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var select := Button.new()
+	select.name = "BuyButton"
+	select.flat = true
+	select.size = card.size
+	select.focus_mode = Control.FOCUS_NONE
+	select.pressed.connect(func() -> void:
+		_selected = group_id
+		_request_fixture_render()
+		if _tutorial_hint.visible:
+			_update_tutorial_for_selection()
+	)
+	card.add_child(select)
 	return card
+
+func _render_detail(products: Dictionary) -> void:
+	if is_instance_valid(_detail):
+		_detail.free()
+	_detail = Panel.new()
+	_detail.name = "OrderDetail"
+	_detail.position = Vector2(730, 230)
+	_detail.size = Vector2(710, 528)
+	_detail.add_theme_stylebox_override("panel", KwentaStyle.box(Color("fff5dc"), Color("c9a77c"), 0, 0, 8, 2, 2))
+	_panel.add_child(_detail)
+	_add_label(_detail, FIXTURE_COPY[_selected][0], Vector2(30, 20), 36)
+	_add_label(_detail, "Kasama: " + FIXTURE_COPY[_selected][1], Vector2(30, 72), 22, KwentaStyle.INK_MUTED)
+	var entries := []
+	for entry in products.values():
+		if str(entry.get("purchase_group", "")) == _selected:
+			entries.append(entry)
+	var count := entries.size()
+	for i in range(count):
+		var entry: Dictionary = entries[i]
+		var width: float = 650.0 / maxi(count, 1)
+		var art := TextureRect.new()
+		art.position = Vector2(30 + width * i, 125)
+		art.size = Vector2(width, 160)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.texture = CounterArt.product_single_texture(str(entry.get("game_product_id", "")))
+		_detail.add_child(art)
+		var product_label := _add_label(_detail, str(entry.get("slot_id", "")).replace("_", " ").capitalize(), Vector2(30 + width * i, 292), 20)
+		product_label.size.x = width
+		product_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var price := _group_price(_selected, products)
+	_add_label(_detail, "Kabuuang presyo", Vector2(30, 344), 24)
+	_add_label(_detail, "Matitirang pera", Vector2(30, 382), 24)
+	for row in [[price, 344], [maxi(0, cash - price), 382]]:
+		var amount := _add_label(_detail, "₱%d" % row[0], Vector2(490, row[1]), 24)
+		amount.size.x = 180
+		amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var button := Button.new()
+	button.name = "OrderButton"
+	button.position = Vector2(30, 440)
+	button.size = Vector2(650, 60)
+	button.text = "TUMAWAG KAY KUYA BEN"
+	button.disabled = cash < price or purchased_groups.has(_selected)
+	button.pressed.connect(func() -> void: purchase_requested.emit(_selected, price))
+	KwentaStyle.style_button(button, KwentaStyle.GOLD, 24)
+	_detail.add_child(button)
 
 func _group_price(group_id: String, products: Dictionary) -> int:
 	for product_id in products:

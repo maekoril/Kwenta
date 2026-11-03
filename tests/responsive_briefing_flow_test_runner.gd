@@ -42,6 +42,7 @@ func run() -> void:
 			main._show_story_prop(prop)
 			assert(main.story_illustration.visible and main.story_illustration.position.is_equal_approx(Vector2.ZERO))
 		main._show_story_prop("hide_scene_illustration")
+		await main.story_illustration_tween.finished
 		assert(not main.get_node("StoryIllustrationBackdrop").visible)
 	for day in range(1, 8):
 		main.campaign.day = day

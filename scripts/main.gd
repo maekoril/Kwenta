@@ -213,9 +213,33 @@ var resume_briefing_after_shop := false
 var supplier_delivery_was_tutorial := false
 var supplier_story_blocked := false
 var new_purchase_groups_today: Array[String] = []
+var goal_sound_played := false
+var shift_completion_sound_played := false
 
 enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES, DAY2_SHOP_MENU, DAY4_UTANG_MENU, DAY4_UTANG_ROW, DAY5_SUKI }
+func _connect_existing_game_buttons(node: Node) -> void:
+	_connect_game_button_sound(node)
+	for child in node.get_children():
+		_connect_existing_game_buttons(child)
+
+func _connect_game_button_sound(node: Node) -> void:
+	if node is BaseButton:
+		var button := node as BaseButton
+		var callback := _play_game_button_sound.bind(button)
+		if not button.pressed.is_connected(callback):
+			button.pressed.connect(callback)
+
+func _play_game_button_sound(button: BaseButton) -> void:
+	if not is_ancestor_of(button) or audio == null:
+		return
+	var cue := "button_click"
+	if is_instance_valid(cash_tray) and cash_tray.is_ancestor_of(button) and (button.name.begins_with("Denomination") or button.name.begins_with("CounterPiece")):
+		cue = "coin_pickup"
+	audio.play_ui_cue(cue)
+
 func _ready() -> void:
+	get_tree().node_added.connect(_connect_game_button_sound)
+	_connect_existing_game_buttons(self)
 	AUDIO_SETTINGS.initialize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_recenter_fixed_hud)
@@ -1437,6 +1461,8 @@ func trigger_day_six_brownout() -> void:
 	if brownout_texture == null:
 		return
 	day_six_brownout_triggered = true
+	if audio != null:
+		audio.play_persistent_cue("explosion")
 	store_layer_renderer.set_blackout(true)
 	atmosphere.set_blackout(true)
 	_play_brownout_flicker()
@@ -1757,6 +1783,7 @@ func _on_cash_sale_completed(customer_instance_id: String, goods_total: int) -> 
 func _show_daily_goal_achievement() -> void:
 	if daily_goal == null or campaign == null:
 		return
+	_play_goal_sound_once()
 	var notice := PanelContainer.new()
 	notice.name = "DailyGoalAchievementNotice"
 	notice.z_index = 38
@@ -2009,7 +2036,10 @@ func _show_shift_summary() -> void:
 		debug_skip_button.visible = false
 	showing_shift_results = false
 	if daily_goal != null:
+		var goal_was_complete: bool = daily_goal.is_complete()
 		daily_goal.finalize(campaign.count_trusted_regulars(), campaign.barangay_trust)
+		if not goal_was_complete and daily_goal.is_complete():
+			_play_goal_sound_once()
 		_refresh_daily_goal_hud()
 	var summary_text_value := "TODAY'S SALES\nBenta ngayon: ₱%d\nPera sa kaha: ₱%d\nCustomers served: %d\nCustomers na umalis: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
 	if campaign.day == 6 and shift.fiesta_route == "alone":
@@ -2192,6 +2222,8 @@ func _stop_illustration_transition() -> void:
 		story_illustration_previous.modulate.a = 1.0
 
 func _show_gallery_illustration(path: String, smooth: bool = true) -> void:
+	if path != "res://assets/story/day6_fiesta_fireworks.png" and audio != null:
+		audio.stop_fireworks()
 	var next_texture := load(path) as Texture2D
 	if next_texture == null: return
 	if story_illustration.visible and story_illustration.texture == next_texture:
@@ -2215,6 +2247,8 @@ func _show_gallery_illustration(path: String, smooth: bool = true) -> void:
 	preload("res://scripts/illustration_catalog.gd").record_seen(story, path)
 
 func _hide_gallery_illustration() -> void:
+	if audio != null:
+		audio.stop_fireworks()
 	if not is_instance_valid(story_illustration) or not story_illustration.visible: return
 	var old_texture := story_illustration.texture
 	_stop_illustration_transition()
@@ -2341,6 +2375,8 @@ func _show_current_story_beat() -> void:
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
 		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
 	elif str(beat.get("cutscene", "")) == "day6_fireworks":
+		if audio != null:
+			audio.play_fireworks()
 		_show_gallery_illustration("res://assets/story/day6_fiesta_fireworks.png")
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
 		_show_gallery_illustration("res://assets/story/day5_tonyo_wakes.png")
@@ -2402,6 +2438,8 @@ func _show_current_story_beat() -> void:
 	bubble.show_beat(speaker, text, portrait_tex, portrait_id)
 
 func _complete_story_beats() -> void:
+	if audio != null:
+		audio.stop_fireworks()
 	match story_after_action:
 		"supplier_delivery_done":
 			bubble.close()
@@ -2540,6 +2578,9 @@ func _show_pending_shift_summary() -> void:
 	var reward_day := campaign.day if daily_goal != null else 0
 	var reward_earned: bool = daily_goal != null and daily_goal.is_complete()
 	briefing_card.show_summary(pending_shift_summary_title, pending_shift_summary_text, size, reward_day, reward_earned)
+	if audio != null and not shift_completion_sound_played:
+		shift_completion_sound_played = true
+		audio.play_persistent_cue("level_complete")
 	pending_shift_summary_text = ""
 	pending_shift_summary_title = ""
 
@@ -2647,6 +2688,13 @@ func _ensure_daily_goal() -> void:
 	if daily_goal == null or daily_goal_day != campaign.day:
 		daily_goal = DAILY_GOAL.new(campaign.day)
 		daily_goal_day = campaign.day
+		goal_sound_played = false
+		shift_completion_sound_played = false
+
+func _play_goal_sound_once() -> void:
+	if not goal_sound_played and audio != null:
+		goal_sound_played = true
+		audio.play_persistent_cue("achievement_unlocked")
 
 func _build_briefing_card() -> void:
 	briefing_card = BRIEFING_CARD.new()
@@ -3544,6 +3592,8 @@ func _on_game_over() -> void:
 	_hide_store_sign()
 	if game_over_screen.visible:
 		return      # already showing (two customers can trigger it in the same frame)
+	if audio != null:
+		audio.play_persistent_cue("game_over")
 	_clear_all_angry_customers()
 	shift_in_progress = false
 	_refresh_shop_button()
