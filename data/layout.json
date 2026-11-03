@@ -269,10 +269,10 @@
   "note": "tips panel is a TRANSIENT popup; it covers right-wall slots while shown"
  },
  "zone_arrows": {
-  "right": "res://assets/sprites/ui/arrow_right_96x96.png",
-  "up": "res://assets/sprites/ui/arrow_up_96x96.png",
-  "down": "res://assets/sprites/ui/arrow_down_96x96.png",
-  "left": "res://assets/sprites/ui/arrow_left_96x96.png"
+  "right": "res://assets/ui/arrow_right_96x96.png",
+  "up": "res://assets/ui/arrow_up_96x96.png",
+  "down": "res://assets/ui/arrow_down_96x96.png",
+  "left": "res://assets/ui/arrow_left_96x96.png"
  },
  "asset_root": "res://assets/sprites/"
 }

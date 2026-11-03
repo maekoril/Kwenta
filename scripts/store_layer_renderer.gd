@@ -406,7 +406,7 @@ func _add_lock(root: Control, product_id: String, entry: Dictionary) -> void:
 		lock.modulate = Color(0.55, 0.55, 0.55, 1.0)
 	root.add_child(lock)
 	var icon := TextureRect.new()
-	icon.texture = load("res://assets/sprites/ui/icon_padlock_48x48.png")
+	icon.texture = load("res://assets/ui/icon_padlock_48x48.png")
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.position = Vector2(24, 0)

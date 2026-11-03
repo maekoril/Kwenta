@@ -4,7 +4,7 @@ static var _opening_shown := false
 const OPENING_SPLASH = preload("res://scripts/opening_splash.gd")
 
 const GAME_SCENE := "res://scenes/main.tscn"
-const BACKGROUND_PATH := "res://assets/sprites/ui/main_menu/notebook_desk.png"
+const BACKGROUND_PATH := "res://assets/ui/main_menu/notebook_desk.png"
 const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 const AUDIO_SETTINGS = preload("res://scripts/audio_settings.gd")
 const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")

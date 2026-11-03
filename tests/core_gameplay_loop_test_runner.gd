@@ -12,7 +12,7 @@ const ProductDragItemScene = preload("res://scenes/product_drag_item.tscn")
 const ShiftManagerScript = preload("res://scripts/shift_manager.gd")
 const StorefrontLayoutScript = preload("res://scripts/storefront_layout.gd")
 const SukliRulesScript = preload("res://scripts/sukli_rules.gd")
-const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
+const ProductAtlas = preload("res://assets/store/products/kwenta_generic_products.png")
 const MainScene = preload("res://scenes/main.tscn")
 
 var failures := 0

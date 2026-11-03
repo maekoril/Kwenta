@@ -308,7 +308,7 @@ func _refresh() -> void:
 		day_buttons[i].disabled = section == 0 and not days.has(i + 1)
 		KwentaStyle.style_button(day_buttons[i], KwentaStyle.GOLD if day == i + 1 else KwentaStyle.PAPER_DARK, 22)
 		var result := _result(i + 1)
-		var icon: Texture2D = load("res://assets/sprites/ui/daily_medals/day_%d.png" % (i + 1)) if not result.is_empty() else null
+		var icon: Texture2D = load("res://assets/ui/daily_medals/day_%d.png" % (i + 1)) if not result.is_empty() else null
 		collection_buttons[i].icon = icon
 		collection_buttons[i].text = "???" if result.is_empty() else "ARAW %d%s" % [i + 1, " · ✓" if result == "earned" else "\nHINDI NAKAMIT"]
 		KwentaStyle.style_button(collection_buttons[i], KwentaStyle.GOLD if day == i + 1 else Color("efe0be"), 18)
@@ -330,7 +330,7 @@ func _refresh() -> void:
 	medal.texture = null
 	medal_title.text = MEDAL_NAMES[day - 1] if not result.is_empty() else "???"
 	if not result.is_empty():
-		medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % day)
+		medal.texture = load("res://assets/ui/daily_medals/day_%d.png" % day)
 		if result != "earned":
 			var grayscale := ShaderMaterial.new()
 			grayscale.shader = UNEARNED

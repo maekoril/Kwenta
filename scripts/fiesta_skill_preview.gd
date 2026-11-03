@@ -6,7 +6,7 @@ const HELPERS := {
 	"jun_jun": preload("res://assets/characters/jun_jun/jun_jun_peeking.png"),
 	"bogs": preload("res://assets/characters/bogs/bogs_peeking.png"),
 }
-const ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
+const ATLAS: Texture2D = preload("res://assets/store/products/kwenta_generic_products.png")
 var helper := "mikay"
 
 func _init() -> void:

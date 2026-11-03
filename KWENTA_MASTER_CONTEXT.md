@@ -218,8 +218,8 @@ Files:
 ### Assets
 
 - `assets/store/` — storefront backgrounds, product layers, effects, props, layout, and references.
-- `assets/sprites/ui/sukli/sized/` — cash art, tags, notebook buttons, progress art.
-- `assets/sprites/ui/shop/` — shop panel/icon art.
+- `assets/ui/sukli/sized/` — cash art, tags, notebook buttons, progress art.
+- `assets/ui/shop/` — shop panel/icon art.
 - `assets/characters/shared/customer_portraits_v2.png` — portraits.
 
 ---

@@ -12,8 +12,8 @@ var _available := false
 var _button: Button
 var _pause_visual: TextureRect
 var _custom_pause_icon: Texture2D
-const PAUSE_NORMAL: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_normal.png")
-const PAUSE_HOVER: Texture2D = preload("res://assets/sprites/ui/hud_v5/pause_hover.png")
+const PAUSE_NORMAL: Texture2D = preload("res://assets/ui/hud_v5/pause_normal.png")
+const PAUSE_HOVER: Texture2D = preload("res://assets/ui/hud_v5/pause_hover.png")
 const SETTINGS_MENU = preload("res://scripts/settings_menu.gd")
 const DIARY_READER = preload("res://scripts/diary_reader.gd")
 var _overlay: Control

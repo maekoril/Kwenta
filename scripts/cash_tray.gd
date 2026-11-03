@@ -19,21 +19,21 @@ const GREEN := Color("#4caa56")
 const RED := Color("#c0392b")
 const FONT_PATH := "res://assets/fonts/PixelifySans-Regular.ttf"
 const PESO := "₱"
-const DRAWER_FRAME_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/walnut_panel_background.png")
-const FILLED_MONEY_TRAY_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/money_tray_filled.png")
-const LISTAHAN_PAPER_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/listahan_note.png")
-const COUNTER_PANEL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/counter_paper.png")
-const WOODEN_TAG_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
-const IBIGAY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
-const LINISIN_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
-const PROGRESS_TRACK_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_track.png")
-const PROGRESS_FILL_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/progress_fill.png")
+const DRAWER_FRAME_TEXTURE := preload("res://assets/ui/sukli/sized/walnut_panel_background.png")
+const FILLED_MONEY_TRAY_TEXTURE := preload("res://assets/ui/sukli/sized/money_tray_filled.png")
+const LISTAHAN_PAPER_TEXTURE := preload("res://assets/ui/sukli/sized/listahan_note.png")
+const COUNTER_PANEL_TEXTURE := preload("res://assets/ui/sukli/sized/counter_paper.png")
+const WOODEN_TAG_TEXTURE := preload("res://assets/ui/sukli/sized/wooden_tag.png")
+const IBIGAY_BUTTON_TEXTURE := preload("res://assets/ui/sukli/sized/ibigay_button.png")
+const LINISIN_BUTTON_TEXTURE := preload("res://assets/ui/sukli/sized/linisin_button.png")
+const PROGRESS_TRACK_TEXTURE := preload("res://assets/ui/sukli/sized/progress_track.png")
+const PROGRESS_FILL_TEXTURE := preload("res://assets/ui/sukli/sized/progress_fill.png")
 const MONEY_TEXTURES := {
-	1: preload("res://assets/sprites/ui/sukli/sized/coin_1.png"),
-	5: preload("res://assets/sprites/ui/sukli/sized/coin_5.png"),
-	10: preload("res://assets/sprites/ui/sukli/sized/coin_10.png"),
-	20: preload("res://assets/sprites/ui/sukli/sized/bill_20.png"),
-	50: preload("res://assets/sprites/ui/sukli/sized/bill_50.png"),
+	1: preload("res://assets/ui/sukli/sized/coin_1.png"),
+	5: preload("res://assets/ui/sukli/sized/coin_5.png"),
+	10: preload("res://assets/ui/sukli/sized/coin_10.png"),
+	20: preload("res://assets/ui/sukli/sized/bill_20.png"),
+	50: preload("res://assets/ui/sukli/sized/bill_50.png"),
 }
 const BORDER_W := 6
 const CORNER := 12

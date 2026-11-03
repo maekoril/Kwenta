@@ -231,7 +231,7 @@ func show_summary(title: String, summary: String, viewport_size: Vector2, reward
 			if reward_day >= 1 and reward_day <= 7:
 				var medal := TextureRect.new()
 				medal.name = "DailyGoalMedal"
-				medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % reward_day) as Texture2D
+				medal.texture = load("res://assets/ui/daily_medals/day_%d.png" % reward_day) as Texture2D
 				medal.custom_minimum_size = Vector2(132, 132)
 				medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

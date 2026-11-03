@@ -6,7 +6,7 @@ const CounterArt = preload("res://scripts/counter_art.gd")
 const CustomerActorScene = preload("res://scenes/customer_slot.tscn")
 const CustomerStateScript = preload("res://scripts/customer_state.gd")
 const OrderStateScript = preload("res://scripts/order_state.gd")
-const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
+const ProductAtlas = preload("res://assets/store/products/kwenta_generic_products.png")
 const ProductDragItemScene = preload("res://scenes/product_drag_item.tscn")
 const StorefrontLayout = preload("res://scripts/storefront_layout.gd")
 

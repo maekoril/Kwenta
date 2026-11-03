@@ -15,7 +15,7 @@ func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var frame := StyleBoxTexture.new()
-	frame.texture = load("res://assets/sprites/ui/hud_v5/dark_capsule.png") as Texture2D
+	frame.texture = load("res://assets/ui/hud_v5/dark_capsule.png") as Texture2D
 	frame.texture_margin_left = 30.0
 	frame.texture_margin_right = 30.0
 	frame.texture_margin_top = 22.0
@@ -39,7 +39,7 @@ func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds
 	panel.add_child(row)
 	var heart := TextureRect.new()
 	heart.name = "Heart"
-	heart.texture = load("res://assets/sprites/ui/hud_v5/heart.png") as Texture2D
+	heart.texture = load("res://assets/ui/hud_v5/heart.png") as Texture2D
 	heart.custom_minimum_size = Vector2(40.0, 40.0)
 	heart.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	heart.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

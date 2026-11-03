@@ -48,8 +48,8 @@ func _initialize() -> void:
 	_assert(water_button != null and not water_button.disabled and water_button.text == "ORDER ₱120", "PHP 120 Water Shelf is purchasable with PHP 150 cash")
 	_assert(condiment_button != null and condiment_button.disabled and condiment_button.text == "NEED ₱250", "insufficient cash locks Condiment Shelf with the required caption")
 	_assert(hanging_button != null and condiment_button != null and hanging_button.size == Vector2(185, 55) and condiment_button.size == hanging_button.size, "BUY and NEED buttons share the 160x36 action size")
-	_assert(_button_texture_path(hanging_button) == "res://assets/sprites/ui/sukli/sized/ibigay_button.png", "purchasable fixture uses the ibigay button art")
-	_assert(_button_texture_path(condiment_button) == "res://assets/sprites/ui/sukli/sized/linisin_button.png", "unaffordable fixture uses the linisin button art")
+	_assert(_button_texture_path(hanging_button) == "res://assets/ui/sukli/sized/ibigay_button.png", "purchasable fixture uses the ibigay button art")
+	_assert(_button_texture_path(condiment_button) == "res://assets/ui/sukli/sized/linisin_button.png", "unaffordable fixture uses the linisin button art")
 	if hanging_button != null:
 		hanging_button.emit_signal("pressed")
 	_assert(requested_purchases == [{"group_id": "hanging_strip", "price": 150}], "Hanging Strip button emits its group and configured price")

@@ -5,7 +5,7 @@ signal day_one_closing_tutorial_finished
 const CAMPAIGN_CONFIG: CampaignConfig = preload("res://data/story/summer_campaign.tres")
 const PRODUCT_DRAG_ITEM_SCENE: PackedScene = preload("res://scenes/product_drag_item.tscn")
 const CUSTOMER_ACTOR_SCENE: PackedScene = preload("res://scenes/customer_slot.tscn")
-const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
+const PRODUCT_ATLAS: Texture2D = preload("res://assets/store/products/kwenta_generic_products.png")
 const PORTRAIT_ATLAS: Texture2D = preload("res://assets/characters/shared/customer_portraits_v2.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
@@ -30,7 +30,7 @@ const DAY_BRIEFING = preload("res://scripts/day_briefing.gd")
 const BRIEFING_CARD = preload("res://scripts/briefing_card.gd")
 const NOTEBOOK_SCROLL = preload("res://scripts/notebook_scroll.gd")
 const SUPPLIER_NOTEBOOK_ICON = preload("res://scripts/supplier_notebook_icon.gd")
-const NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
+const NOTEBOOK_ACTION_BUTTON_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/ui/sukli/sized/ibigay_button.png")
 const PAUSE_MENU = preload("res://scripts/pause_menu.gd")
 const OPTION5_SUKI = preload("res://scripts/option5_suki.gd")
 const HUD_ICON = preload("res://scripts/hud_icon.gd")
@@ -706,7 +706,7 @@ func _build_utility_drawer() -> void:
 	utility_drawer.name = "UtilityDrawer"
 	utility_drawer.size = Vector2(330, 385)
 	utility_drawer.z_index = 57
-	var panel_texture := load("res://assets/sprites/ui/utility_menu/wood_panel.png") as Texture2D
+	var panel_texture := load("res://assets/ui/utility_menu/wood_panel.png") as Texture2D
 	if panel_texture != null:
 		var panel_style := StyleBoxTexture.new()
 		panel_style.texture = panel_texture
@@ -751,7 +751,7 @@ func _build_utility_drawer() -> void:
 	_refresh_utility_drawer()
 
 func _utility_icon(index: int) -> Texture2D:
-	var sheet := load("res://assets/sprites/ui/utility_menu/icons.png") as Texture2D
+	var sheet := load("res://assets/ui/utility_menu/icons.png") as Texture2D
 	if sheet == null:
 		return null
 	var atlas := AtlasTexture.new()
@@ -824,7 +824,7 @@ func _hud_scale() -> float:
 
 func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: float = 8.0) -> StyleBoxTexture:
 	var frame := StyleBoxTexture.new()
-	frame.texture = load("res://assets/sprites/ui/hud_v5/" + sprite_name) as Texture2D
+	frame.texture = load("res://assets/ui/hud_v5/" + sprite_name) as Texture2D
 	frame.texture_margin_left = 30.0
 	frame.texture_margin_right = 30.0
 	frame.texture_margin_top = 22.0
@@ -838,7 +838,7 @@ func _option5_frame(sprite_name: String, content_x: float = 13.0, content_y: flo
 func _option5_icon(sprite_name: String, icon_size: float) -> TextureRect:
 	var icon := TextureRect.new()
 	icon.name = "Icon_" + sprite_name.get_basename()
-	icon.texture = load("res://assets/sprites/ui/hud_v5/" + sprite_name) as Texture2D
+	icon.texture = load("res://assets/ui/hud_v5/" + sprite_name) as Texture2D
 	icon.custom_minimum_size = Vector2(icon_size, icon_size)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1768,7 +1768,7 @@ func _show_daily_goal_achievement() -> void:
 	notice.add_child(row)
 	var medal := TextureRect.new()
 	medal.name = "AchievementMedal"
-	medal.texture = load("res://assets/sprites/ui/daily_medals/day_%d.png" % campaign.day) as Texture2D
+	medal.texture = load("res://assets/ui/daily_medals/day_%d.png" % campaign.day) as Texture2D
 	medal.custom_minimum_size = Vector2(84, 84)
 	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

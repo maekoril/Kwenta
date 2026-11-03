@@ -1,7 +1,7 @@
 class_name NotebookSummary
 extends VBoxContainer
 
-const ACTION_TAG_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/sprites/ui/sukli/sized/wooden_tag.png")
+const ACTION_TAG_BACKGROUND_TEXTURE: Texture2D = preload("res://assets/ui/sukli/sized/wooden_tag.png")
 
 # Turns the page's body text into a visual hierarchy, without main.gd building anything new.
 # It reads the same string main.gd already sets, for example:

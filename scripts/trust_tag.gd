@@ -55,7 +55,7 @@ func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds
 		sb.content_margin_top = 25.0
 		sb.content_margin_bottom = 10.0
 	else:
-		sb = KwentaStyle.hud_frame("res://assets/sprites/ui/hud/suki_panel.png", 22.0, 16.0)   # cream HUD board
+		sb = KwentaStyle.hud_frame("res://assets/ui/hud/suki_panel.png", 22.0, 16.0)   # cream HUD board
 	body.add_theme_stylebox_override("panel", sb)
 	add_child(body)
 
