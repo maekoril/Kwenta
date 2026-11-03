@@ -182,6 +182,13 @@ func finish_drag(accepted: bool) -> void:
 func is_drag_active() -> bool:
 	return _drag_active or is_instance_valid(_drag_preview)
 
+func cancel_drag() -> void:
+	if not is_drag_active(): return
+	# Story popups can consume the release event. Clear our custom drag as
+	# well as its shared owner so the shelf remains usable after the popup.
+	finish_drag(true)
+	product_drag_ended.emit()
+
 func get_drag_preview_texture() -> Texture2D:
 	return _item_icon
 

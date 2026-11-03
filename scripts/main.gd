@@ -1686,6 +1686,23 @@ func _rebuild_product_shelf() -> void:
 	if atmosphere != null:
 		atmosphere.set_product_shadows(shadow_rects)
 
+func _sync_product_pickup_rects() -> void:
+	if not is_instance_valid(store_layer_renderer): return
+	var config := StoreConfig.load_config("res://data/store_config.json")
+	var shadow_rects: Array[Rect2] = []
+	for entry in StoreConfig.get_stocked_entries(config, campaign.day, campaign.purchased_store_groups):
+		var item: Control = product_items_by_id.get(str(entry.get("game_product_id", "")))
+		if not is_instance_valid(item): continue
+		var store_id := str(entry.get("id", ""))
+		var slot := store_layer_renderer.get_slot_rect(store_id)
+		var display_rect := store_layer_renderer.get_product_display_rect(store_id)
+		item.position = slot.position
+		item.size = slot.size
+		item.set("_drag_preview_size", display_rect.size)
+		shadow_rects.append(display_rect)
+	if atmosphere != null:
+		atmosphere.set_product_shadows(shadow_rects)
+
 func _on_customers_changed() -> void:
 	_rebuild_customer_slots()
 	_sync_cash_tray()
@@ -2983,6 +3000,8 @@ func _set_shop_input_blocked(blocked: bool) -> void:
 		if not _blocked_input_nodes.is_empty():
 			return
 		get_viewport().gui_cancel_drag()
+		for item in product_items_by_id.values():
+			if is_instance_valid(item): item.call("cancel_drag")
 		for layer in [customer_layer, product_layer, cash_tray, store_layer_renderer]:
 			if layer != null:
 				_block_input_in(layer, true)
@@ -3263,6 +3282,9 @@ func _build_store_layer_renderer() -> void:
 	store_layer_renderer = STORE_LAYER_RENDERER.new()
 	store_layer_renderer.z_index = 0
 	add_child(store_layer_renderer)
+	# The renderer rescales its slots on resize; update the invisible pickup
+	# controls afterwards without rebuilding them or interrupting active drags.
+	store_layer_renderer.resized.connect(func(): _sync_product_pickup_rects.call_deferred())
 	store_layer_renderer.configure(campaign.day, campaign.cash, campaign.purchased_store_groups)
 	store_layer_renderer.purchase_requested.connect(_on_store_purchase_requested)
 	store_layer_renderer.purchase_denied.connect(_on_store_purchase_denied)
