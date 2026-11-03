@@ -61,6 +61,13 @@ func _ready() -> void:
 	column.add_child(heading)
 	var description := KwentaStyle.make_label("Starts a separate test; leaves the current run. Your save is safe.", 22, KwentaStyle.INK_MUTED)
 	column.add_child(description)
+	var board_button := Button.new()
+	board_button.name = "DebugCampaignBoardButton"
+	board_button.text = "CAMPAIGN BOARD · PREVIEW ALL DAYS"
+	board_button.custom_minimum_size.y = 65
+	KwentaStyle.style_button(board_button, KwentaStyle.GOLD, 24)
+	board_button.pressed.connect(_open_campaign_board)
+	column.add_child(board_button)
 	day_select = _add_select(column, "DAY", ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7"])
 	day_select.select(2)
 	previous_select = _add_select(column, "DAY 1 CHOICE", ["Stayed at store", "Played with friends"])
@@ -123,6 +130,27 @@ func _ready() -> void:
 	day_select.item_selected.connect(func(_index): _remember_options())
 	scene_select.item_selected.connect(func(_index): _remember_options())
 	skip_tutorials.toggled.connect(func(_pressed): _remember_options())
+	get_viewport().size_changed.connect(_layout_panel)
+	_layout_panel()
+
+func _layout_panel() -> void:
+	var viewport_size := get_viewport().get_visible_rect().size
+	panel.size = Vector2(minf(790, viewport_size.x - 60), minf(920, viewport_size.y - 160))
+	panel.position = (viewport_size - panel.size) * 0.5
+
+func _open_campaign_board() -> void:
+	if has_node("CampaignBoard"):
+		return
+	panel.hide()
+	opener.hide()
+	var board := preload("res://scripts/campaign_board.gd").new()
+	board.debug_preview = true
+	board.process_mode = Node.PROCESS_MODE_ALWAYS
+	board.tree_exited.connect(func():
+		panel.show()
+		opener.visible = controls_visible
+	)
+	add_child(board)
 
 func _remember_options() -> void:
 	var values := {
@@ -266,6 +294,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _toggle() -> void:
+	if has_node("CampaignBoard"):
+		return
 	if panel.visible:
 		panel.visible = false
 		get_tree().paused = _paused_before

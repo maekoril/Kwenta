@@ -142,6 +142,7 @@ var shift_start_trust: Dictionary = {}
 var displayed_cash: int = -1
 var story_beats: Array[Dictionary] = []
 var story_beat_index: int = 0
+var story_transition_active := false
 var story_after_action: String = ""
 var pending_story_choices: Array[Dictionary] = []
 const DEBUG_SKIP_BONUS_CASH := 1000  # e.g. 500 to have money for shelf purchases after skipping
@@ -1614,6 +1615,8 @@ func _on_bubble_choice(index: int) -> void:
 	_select_story_choice(current_choice_data, current_choice_ids[index])
 
 func _on_bubble_advanced() -> void:
+	if story_transition_active:
+		return
 	if (showing_pre_shift_briefing and story_after_action != "supplier_delivery_done") or story_after_action.is_empty():
 		return
 	if story_events != null and story_events.is_active():
@@ -2040,6 +2043,8 @@ func _show_shift_summary() -> void:
 	_show_story_beats(story.get_day_outro_beats(campaign.day), pending_shift_summary_title, "day_choices")
 
 func _on_summary_button_pressed() -> void:
+	if story_transition_active:
+		return
 	if story_complete:
 		_restart_story()
 		return
@@ -2282,6 +2287,9 @@ func _show_current_story_beat() -> void:
 		story_events.present_outro_visitor(str(beat["story_visitor"]))
 		await story_events.story_visitor_tapped
 	if str(beat.get("cutscene", "")) == "day7_time_card":
+		story_transition_active = true
+		_set_shop_input_blocked(true)
+		pause_menu.set_available(false)
 		bubble.close()
 		prologue_fade.modulate.a = 0.0
 		prologue_fade.visible = true
@@ -2296,10 +2304,16 @@ func _show_current_story_beat() -> void:
 		title_fade.tween_property(day7_time_label, "modulate:a", 0.0, 0.6)
 		await title_fade.finished
 		day7_time_label.visible = false
+		story_transition_active = false
 		story_beat_index += 1
 		_show_current_story_beat()
 		return
 	if str(beat.get("cutscene", "")) == "day7_walk":
+		story_transition_active = true
+		# The silent montage hides the dialogue's input shield. Disable the
+		# underlying shop through the ending, including any drag already held.
+		_set_shop_input_blocked(true)
+		pause_menu.set_available(false)
 		bubble.close()
 		_show_gallery_illustration("res://assets/story/day7_classroom_seated.png", false)
 		var classroom_fade := create_tween()
@@ -2313,6 +2327,7 @@ func _show_current_story_beat() -> void:
 		await get_tree().create_timer(0.65).timeout
 		_show_gallery_illustration("res://assets/story/day7_classroom_turn.png", false)
 		await get_tree().create_timer(0.65).timeout
+		story_transition_active = false
 	elif str(beat.get("cutscene", "")) == "day7_classmates":
 		_show_gallery_illustration("res://assets/story/day7_classmates_listening.png")
 	elif str(beat.get("cutscene", "")) == "day7_tonyo_face":
@@ -2497,8 +2512,10 @@ func _clear_story_choice_buttons() -> void:
 		child.queue_free()
 
 func _finish_story_day() -> void:
-	if campaign.day == 7 and not pending_shift_summary_text.is_empty():
-		_show_pending_shift_summary()
+	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
+		pending_shift_summary_text = ""
+		pending_shift_summary_title = ""
+		_advance_story_day()
 		return
 	if not pending_shift_summary_text.is_empty():
 		var entry := story.write_diary_entry(campaign.day)
@@ -2528,14 +2545,31 @@ func _show_pending_shift_summary() -> void:
 
 func _advance_story_day() -> void:
 	if campaign.day >= CAMPAIGN_CONFIG.campaign_day_count:
+		if story_complete:
+			return
 		story_complete = true
+		if not debug_session:
+			checkpoint_ready = CAMPAIGN_SAVE.write_progress(campaign, story, completed_tutorials)
+			if not checkpoint_ready:
+				_show_save_warning()
 		bubble.close()
-		summary_backdrop.visible = true
+		summary_backdrop.visible = false
 		summary_panel.visible = false
-		briefing_card.show_summary("KWENTA · WAKAS", "SALAMAT SA PAGLALARO
-Kumpleto na ang kuwento ni Tonyo. Maaari mo itong balikan at pumili ng ibang mga sagot.", size)
-		briefing_card._diary_button.visible = false
-		briefing_card._button.text = "REPLAY STORY"
+		briefing_card.hide_briefing()
+		if pause_menu != null:
+			pause_menu.set_available(false)
+		if audio != null:
+			audio.set_dialogue("")
+			audio.set_ambience("")
+			audio.stop_alert()
+		var ending := preload("res://scripts/ending_transition.gd").new()
+		ending.credits_requested.connect(func():
+			var credits := preload("res://scripts/credits.gd").new()
+			credits.closed.connect(func(): get_tree().change_scene_to_file("res://scenes/main_menu.tscn"))
+			credits.campaign_board_requested.connect(_open_completed_campaign_board)
+			add_child(credits)
+		)
+		add_child(ending)
 		return
 	campaign.advance_day()
 	new_purchase_groups_today.clear()
@@ -2551,6 +2585,19 @@ Kumpleto na ang kuwento ni Tonyo. Maaari mo itong balikan at pumili ng ibang mga
 	_present_day_intro()
 	if pause_menu != null:
 		pause_menu.set_available(true)
+
+func _open_completed_campaign_board() -> void:
+	if has_node("CampaignBoard"):
+		return
+	if audio != null:
+		audio.set_music("")
+	var board := preload("res://scripts/campaign_board.gd").new()
+	board.debug_preview = debug_session
+	board.tree_exited.connect(func():
+		if not is_queued_for_deletion() and is_inside_tree():
+			get_tree().change_scene_to_file.call_deferred("res://scenes/main_menu.tscn")
+	)
+	add_child(board)
 
 func _restart_story() -> void:
 	for actor in customer_actors.values():
