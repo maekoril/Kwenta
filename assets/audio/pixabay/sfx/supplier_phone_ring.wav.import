@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://7bgrsoc51ot1"
-path="res://.godot/imported/supplier_phone_ring.wav-d46a6dd60056f18febe9e0ce2fe465fc.sample"
+path="res://.godot/imported/supplier_phone_ring.wav-9549a95e22384f68f830e5867d17d76d.sample"
 
 [deps]
 
 source_file="res://assets/audio/pixabay/sfx/supplier_phone_ring.wav"
-dest_files=["res://.godot/imported/supplier_phone_ring.wav-d46a6dd60056f18febe9e0ce2fe465fc.sample"]
+dest_files=["res://.godot/imported/supplier_phone_ring.wav-9549a95e22384f68f830e5867d17d76d.sample"]
 
 [params]
 
