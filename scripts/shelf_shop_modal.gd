@@ -6,7 +6,7 @@ signal closed
 
 const BUY_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/ibigay_button.png")
 const NEED_BUTTON_TEXTURE := preload("res://assets/sprites/ui/sukli/sized/linisin_button.png")
-const DELIVERY_PORTRAIT := preload("res://assets/sprites/ui/shop/supplier_delivery.png")
+const DELIVERY_PORTRAIT := preload("res://assets/characters/supplier_ben/supplier_delivery.png")
 
 const PANEL_SIZE := Vector2(1510, 850)
 const PANEL_POSITION := Vector2(205, 104)

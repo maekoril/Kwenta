@@ -62,7 +62,7 @@ func _init() -> void:
 	add_child(role_label)
 
 func setup(character_id: String, display_name: String, role: String, _atlas: Texture2D) -> void:
-	portrait.texture = load("res://assets/characters/kalaro/%s_peeking.png" % character_id) as Texture2D
+	portrait.texture = load("res://assets/characters/%s/%s_peeking.png" % [character_id, character_id]) as Texture2D
 	tooltip_text = "%s · %s" % [display_name, role]
 	role_label.text = role
 

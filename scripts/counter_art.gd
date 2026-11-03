@@ -7,18 +7,18 @@ const CAMPAIGN := preload("res://data/story/summer_campaign.tres")
 
 const DISPLAY_TINT := Color.WHITE
 const NEW_NEIGHBORS := ["ate_tess", "kuya_joel", "lola_pilar", "rafi", "ate_celia", "mang_nestor"]
-const NEW_NEIGHBOR_ATLAS := preload("res://assets/sprites/customers/new_neighbors_atlas.png")
+const NEW_NEIGHBOR_ATLAS := preload("res://assets/characters/shared/new_neighbors_atlas.png")
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
 const NEIGHBOR_PORTRAITS := {
-	"neighbor_lina": preload("res://assets/sprites/customers/neighbor_lina.png"),
-	"neighbor_rosa": preload("res://assets/sprites/customers/neighbor_rosa.png"),
-	"neighbor_nico": preload("res://assets/sprites/customers/neighbor_nico.png"),
-	"neighbor_ramon": preload("res://assets/sprites/customers/neighbor_ramon.png"),
-	"neighbor_lina_impatient": preload("res://assets/sprites/customers/neighbor_lina_impatient.png"),
-	"neighbor_rosa_impatient": preload("res://assets/sprites/customers/neighbor_rosa_impatient.png"),
-	"neighbor_nico_impatient": preload("res://assets/sprites/customers/neighbor_nico_impatient.png"),
-	"neighbor_ramon_impatient": preload("res://assets/sprites/customers/neighbor_ramon_impatient.png"),
+	"neighbor_lina": preload("res://assets/characters/lina/neighbor_lina.png"),
+	"neighbor_rosa": preload("res://assets/characters/rosa/neighbor_rosa.png"),
+	"neighbor_nico": preload("res://assets/characters/nico/neighbor_nico.png"),
+	"neighbor_ramon": preload("res://assets/characters/ramon/neighbor_ramon.png"),
+	"neighbor_lina_impatient": preload("res://assets/characters/lina/neighbor_lina_impatient.png"),
+	"neighbor_rosa_impatient": preload("res://assets/characters/rosa/neighbor_rosa_impatient.png"),
+	"neighbor_nico_impatient": preload("res://assets/characters/nico/neighbor_nico_impatient.png"),
+	"neighbor_ramon_impatient": preload("res://assets/characters/ramon/neighbor_ramon_impatient.png"),
 }
 
 const CUSTOMER_REGIONS := {
@@ -79,11 +79,11 @@ static func product_fixture_texture(product_id: String) -> Texture2D:
 	return product_display_texture(product_id)
 
 const CASUAL_PORTRAIT_PATHS := {
-	"paolo": "res://assets/characters/schoolkids/paolo_casual.png",
-	"bea": "res://assets/characters/schoolkids/bea_casual.png",
-	"classmate_1": "res://assets/characters/schoolkids/classmate_1_casual.png",
-	"classmate_2": "res://assets/characters/schoolkids/classmate_2_casual.png",
-	"classmate_3": "res://assets/characters/schoolkids/classmate_3_casual.png",
+	"paolo": "res://assets/characters/paolo/paolo_casual.png",
+	"bea": "res://assets/characters/bea/bea_casual.png",
+	"classmate_1": "res://assets/characters/classmate_1/classmate_1_casual.png",
+	"classmate_2": "res://assets/characters/classmate_2/classmate_2_casual.png",
+	"classmate_3": "res://assets/characters/classmate_3/classmate_3_casual.png",
 }
 
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:

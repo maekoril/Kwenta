@@ -30,7 +30,7 @@ Per product:
 - Zones: `res://assets/sprites/scene/zone_fridge_1920x1080.png`, `res://assets/sprites/scene/zone_rack_1920x1080.png`; navigation arrows in `res://assets/sprites/ui/arrow_*_96x96.png`
 
 ## Other folders
-- `res://assets/sprites/scene/` main-view layers; `res://assets/sprites/customers/` 192x336 busts; `res://assets/sprites/props/` cash box, calculator, coins, bills, label plate
+- `res://assets/sprites/scene/` main-view layers; `res://assets/characters/` character busts and shared atlases; `res://assets/sprites/props/` cash box, calculator, coins, bills, label plate
 - `res://assets/sprites/ui/` 9-slice bubble/panel/button (72x72, margin 12), patience bar frame + fills, icons, mom portrait
 - `preview/` composed from the real files: main view, both zones, and a sheet of all 20 single items
 

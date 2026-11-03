@@ -2,9 +2,9 @@ extends Control
 
 # Illustrated examples only; this control never modifies the running shift.
 const HELPERS := {
-	"mikay": preload("res://assets/characters/kalaro/mikay_peeking.png"),
-	"jun_jun": preload("res://assets/characters/kalaro/jun_jun_peeking.png"),
-	"bogs": preload("res://assets/characters/kalaro/bogs_peeking.png"),
+	"mikay": preload("res://assets/characters/mikay/mikay_peeking.png"),
+	"jun_jun": preload("res://assets/characters/jun_jun/jun_jun_peeking.png"),
+	"bogs": preload("res://assets/characters/bogs/bogs_peeking.png"),
 }
 const ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
 var helper := "mikay"

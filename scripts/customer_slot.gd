@@ -5,7 +5,7 @@ signal payment_tapped(customer_id: String)
 signal became_impatient(customer_id: String)
 signal calmed_down(customer_id: String)
 
-const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
+const PORTRAIT_ATLAS: Texture2D = preload("res://assets/characters/shared/customer_portraits_v2.png")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const ORDER_BUBBLE_ICON = preload("res://scripts/order_bubble_icon.gd")

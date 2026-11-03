@@ -220,7 +220,7 @@ Files:
 - `assets/store/kwenta_layer_pack/` — storefront art and slot layout.
 - `assets/sprites/ui/sukli/sized/` — cash art, tags, notebook buttons, progress art.
 - `assets/sprites/ui/shop/` — shop panel/icon art.
-- `assets/sprites/customer_portraits_v2.png` — portraits.
+- `assets/characters/shared/customer_portraits_v2.png` — portraits.
 
 ---
 

@@ -19,7 +19,7 @@ const DayBriefingScript = preload("res://scripts/day_briefing.gd")
 const NotebookScrollScript = preload("res://scripts/notebook_scroll.gd")
 const NotebookSummaryScript = preload("res://scripts/notebook_summary.gd")
 const ProductAtlas = preload("res://assets/sprites/kwenta_generic_products.png")
-const CustomerPortraitAtlas = preload("res://assets/sprites/customer_portraits_v2.png")
+const CustomerPortraitAtlas = preload("res://assets/characters/shared/customer_portraits_v2.png")
 
 var failures: int = 0
 var shift_completion_count: int = 0

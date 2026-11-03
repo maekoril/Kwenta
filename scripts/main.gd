@@ -6,7 +6,7 @@ const CAMPAIGN_CONFIG: CampaignConfig = preload("res://data/story/summer_campaig
 const PRODUCT_DRAG_ITEM_SCENE: PackedScene = preload("res://scenes/product_drag_item.tscn")
 const CUSTOMER_ACTOR_SCENE: PackedScene = preload("res://scenes/customer_slot.tscn")
 const PRODUCT_ATLAS: Texture2D = preload("res://assets/sprites/kwenta_generic_products.png")
-const PORTRAIT_ATLAS: Texture2D = preload("res://assets/sprites/customer_portraits_v2.png")
+const PORTRAIT_ATLAS: Texture2D = preload("res://assets/characters/shared/customer_portraits_v2.png")
 const COUNTER_ART = preload("res://scripts/counter_art.gd")
 const STOREFRONT_LAYOUT = preload("res://scripts/storefront_layout.gd")
 const STORE_LAYER_RENDERER = preload("res://scripts/store_layer_renderer.gd")
@@ -2383,7 +2383,7 @@ func _show_current_story_beat() -> void:
 	summary_panel.visible = false
 	var portrait_tex: Texture2D = null
 	if not portrait_id.is_empty():
-		portrait_tex = load("res://assets/sprites/ui/shop/supplier_delivery.png") as Texture2D if portrait_id == "supplier_ben" else COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
+		portrait_tex = load("res://assets/characters/supplier_ben/supplier_delivery.png") as Texture2D if portrait_id == "supplier_ben" else COUNTER_ART.customer_portrait(portrait_id, PORTRAIT_ATLAS)
 	bubble.show_beat(speaker, text, portrait_tex, portrait_id)
 
 func _complete_story_beats() -> void:
