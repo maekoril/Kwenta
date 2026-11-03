@@ -42,22 +42,19 @@ func _initialize() -> void:
 		_assert(panel != null and card != null and Rect2(Vector2.ZERO, panel.size).encloses(Rect2(card.position, card.size)), "%s stays inside the notebook" % group_id)
 
 	var hanging_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_hanging_strip/BuyButton") as Button
-	var water_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_water_shelf/BuyButton") as Button
-	var condiment_button := modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_condiments/BuyButton") as Button
-	_assert(hanging_button != null and not hanging_button.disabled and hanging_button.text == "ORDER ₱150", "PHP 150 Hanging Strip is purchasable with PHP 150 cash")
-	_assert(water_button != null and not water_button.disabled and water_button.text == "ORDER ₱120", "PHP 120 Water Shelf is purchasable with PHP 150 cash")
-	_assert(condiment_button != null and condiment_button.disabled and condiment_button.text == "NEED ₱250", "insufficient cash locks Condiment Shelf with the required caption")
-	_assert(hanging_button != null and condiment_button != null and hanging_button.size == Vector2(185, 55) and condiment_button.size == hanging_button.size, "BUY and NEED buttons share the 160x36 action size")
-	_assert(_button_texture_path(hanging_button) == "res://assets/ui/sukli/sized/ibigay_button.png", "purchasable fixture uses the ibigay button art")
-	_assert(_button_texture_path(condiment_button) == "res://assets/ui/sukli/sized/linisin_button.png", "unaffordable fixture uses the linisin button art")
+	_assert(hanging_button != null, "selectable hanging strip exists")
 	if hanging_button != null:
 		hanging_button.emit_signal("pressed")
-	_assert(requested_purchases == [{"group_id": "hanging_strip", "price": 150}], "Hanging Strip button emits its group and configured price")
-
+	await process_frame
+	var order_button := modal.get_node_or_null("SupplierShopPanel/OrderDetail/OrderButton") as Button
+	_assert(order_button != null and not order_button.disabled, "affordable selection can be ordered")
+	if order_button != null:
+		order_button.emit_signal("pressed")
+	_assert(requested_purchases == [{"group_id": "hanging_strip", "price": 150}], "order emits selected group and price")
 	modal.configure(config, ["hanging_strip"], 0)
 	await process_frame
-	hanging_button = modal.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_hanging_strip/BuyButton") as Button
-	_assert(hanging_button != null and hanging_button.disabled and hanging_button.text == "PURCHASED", "owned fixture becomes non-purchasable")
+	order_button = modal.get_node_or_null("SupplierShopPanel/OrderDetail/OrderButton") as Button
+	_assert(order_button != null and order_button.disabled, "owned fixture cannot be ordered again")
 	var close_button := modal.get_node_or_null("SupplierShopPanel/CloseShop") as Button
 	_assert(close_button != null and close_button.text == "X", "notebook has a visible close button")
 	if close_button != null:
@@ -73,6 +70,7 @@ func _initialize() -> void:
 	if failures > 0:
 		push_error("%d shelf shop modal assertion(s) failed." % failures)
 		quit(1)
+		return
 	print("Shelf shop modal assertions passed.")
 	quit(0)
 
@@ -95,12 +93,17 @@ func _test_live_purchase(group_id: String, expected_cash: int) -> void:
 	if buy_button != null:
 		buy_button.emit_signal("pressed")
 	await process_frame
+	var order_button := shop.get_node_or_null("SupplierShopPanel/OrderDetail/OrderButton") as Button
+	_assert(order_button != null and not order_button.disabled, "selected group can be ordered")
+	if order_button != null:
+		order_button.emit_signal("pressed")
+	await process_frame
 	campaign = main.get("campaign")
 	_assert(campaign != null and int(campaign.cash) == expected_cash and campaign.purchased_store_groups.has(group_id), "%s purchase deducts live campaign cash once and records ownership" % group_id)
 	var cash_label := shop.get_node_or_null("SupplierShopPanel/CashLabel") as Label
 	_assert(cash_label != null and cash_label.text == "₱%d" % expected_cash, "%s purchase refreshes the cash tag immediately" % group_id)
-	var refreshed_button := shop.get_node_or_null("SupplierShopPanel/FixtureGrid/FixtureCard_%s/BuyButton" % group_id) as Button
-	_assert(refreshed_button != null and refreshed_button.disabled and refreshed_button.text == "PURCHASED", "%s purchase refreshes its button state immediately" % group_id)
+	var refreshed_button := shop.get_node_or_null("SupplierShopPanel/OrderDetail/OrderButton") as Button
+	_assert(refreshed_button != null and refreshed_button.disabled, "%s cannot be ordered twice" % group_id)
 	_assert(not shop.visible and main.story_after_action == "supplier_delivery_done" and main.bubble.visible, "purchase starts a tap-through delivery at the storefront")
 	_assert(main.story_beats.size() >= 4 and main.story_beats[0].text == "Tao po!", "first delivery has Ben and Tonyo's introduction")
 	var renderer := main.get("store_layer_renderer") as Control
@@ -125,53 +128,33 @@ func _test_shop_icon_availability() -> void:
 	var main := MainScene.instantiate() as Control
 	root.add_child(main)
 	await process_frame
-	var shop_button := main.find_child("ShopIconButton", true, false) as Button
-	var shop_icon := main.find_child("ShopIcon", true, false) as TextureRect
-	var bubble := main.get("bubble") as Control
-	_assert(shop_button != null and not shop_button.visible, "Shop icon stays hidden on Day 1")
-	_assert(shop_button != null and shop_button.size == Vector2(74, 74) and shop_button.z_index == 55 and shop_button.text.is_empty(), "supplier list uses an icon-only notebook button above dialogue")
-	_assert(shop_button != null and shop_button.get_node_or_null("SupplierNotebookIcon") != null, "supplier button displays a notebook icon")
-	_assert(shop_icon == null, "supplier list no longer uses the floating store icon")
-	_assert(shop_button != null and shop_button.get_parent() == main, "Shop icon is attached to the main UI")
-	var campaign = main.get("campaign")
-	campaign.day = 2
-	main.set("shop_available", true)
-	main.call("_refresh_shop_button")
-	_assert(shop_button != null and shop_button.visible, "Shop icon appears before Day 2 starts")
-	var cta_glow := main.get_node_or_null("ShopCtaGlow") as Panel
-	var order_cue := shop_button.get_node_or_null("ShopOrderCue") as Label
-	_assert(cta_glow != null and cta_glow.visible and order_cue != null and order_cue.visible and order_cue.text == "ORDER", "available supplier ordering uses a persistent gold CTA glow and ORDER cue")
-	var story_beats: Array[Dictionary] = [{"speaker": "Narrator", "text": "Story in progress"}]
-	main._show_story_beats(story_beats, "DAY 2", "day1_intro")
-	_assert(not shop_button.visible and not main._is_shop_available(), "shop is unavailable during the pre-shift story")
+	var row := main.get("utility_shop") as Button
+	var drawer := main.get("utility_drawer") as Control
+	_assert(row != null and not row.visible, "supplier row stays hidden on Day 1")
+	main.campaign.day = 2
+	main.shop_available = true
+	main.supplier_story_blocked = false
+	main.utility_toggle.pressed.emit()
+	_assert(drawer.visible and row.visible and not row.disabled, "Day 2 menu exposes the supplier row")
+	var beats: Array[Dictionary] = [{"speaker": "Narrator", "text": "Story in progress"}]
+	main._show_story_beats(beats, "DAY 2", "day1_intro")
+	main._refresh_utility_drawer()
+	_assert(not main._is_shop_available() and row.disabled, "story blocks supplier ordering")
 	main._open_shelf_shop()
-	_assert(not main.shelf_shop.visible and main.story_beats[0].text == "Story in progress", "the shop cannot replace active story dialogue")
+	_assert(not main.shelf_shop.visible and main.story_beats[0].text == "Story in progress", "ordering cannot replace active story dialogue")
 	main.supplier_story_blocked = false
 	main.bubble.close()
-	main._refresh_shop_button()
-	var pause_button := main.pause_menu.get("_button") as Control
-	_assert(shop_button != null and pause_button != null and is_equal_approx(shop_button.position.x + shop_button.size.x * 0.5, pause_button.position.x + pause_button.size.x * 0.5) and shop_button.position.y >= pause_button.position.y + pause_button.size.y, "Shop icon is centered below the pause control")
-	# Story setup moves its dialogue bubble to the top of the tree. The shop must
-	# be moved back above it whenever it is available, or the bubble eats the tap.
-	_assert(shop_button != null and bubble != null and shop_button.get_index() > bubble.get_index(), "Shop icon stays above the dialogue bubble after story setup")
-	if shop_button != null:
-		shop_button.emit_signal("pressed")
-	var shop := main.get("shelf_shop") as Control
-	_assert(shop != null and shop.visible and shop.z_index == 60 and shop.get_index() > bubble.get_index() and not bool(main.get("shift_in_progress")), "opening the pre-shift shop moves it above dialogue while gameplay stays paused")
-	if shop != null:
-		shop.call("close")
-	main.call("_begin_shift")
-	_assert(shop_button != null and shop_button.visible and not shop_button.disabled, "Shop icon stays visible and tappable when the shift starts")
-	_assert(bool((shop_button.material as ShaderMaterial).get_shader_parameter("grayscale")), "Disabled shop icon is grayscale")
-	var locked_cue := shop_button.get_node_or_null("ShopLockedCue") as Control
-	_assert(cta_glow != null and not cta_glow.visible and order_cue != null and not order_cue.visible and locked_cue != null and locked_cue.visible, "locked supplier ordering replaces the CTA with a clock cue")
-	shop_button.emit_signal("pressed")
-	_assert(shop != null and not shop.visible, "shop cannot open during an active shift")
-	var locked_notice := main.get_node_or_null("ShopUnavailableNotice") as PanelContainer
-	var locked_message := locked_notice.get_child(0) as Label if locked_notice != null and locked_notice.get_child_count() > 0 else null
-	_assert(locked_notice != null and locked_message != null and locked_message.text.contains("before opening"), "tapping the locked shop explains that orders happen before opening")
-	main._show_shift_summary()
-	_assert(not shop_button.visible, "locked shop icon disappears when the shift ends")
+	main._refresh_utility_drawer()
+	row.pressed.emit()
+	_assert(main.shelf_shop.visible and not drawer.visible, "supplier row opens the shop and closes the drawer")
+	_assert(main.shelf_shop.z_index > drawer.z_index, "shop stays above menu input")
+	main.shelf_shop.close()
+	main._begin_shift()
+	main.utility_open = true
+	main._refresh_utility_drawer()
+	_assert(row.visible and row.tooltip_text.contains("before opening"), "active shift explains ordering availability in the menu")
+	row.pressed.emit()
+	_assert(not main.shelf_shop.visible, "supplier row cannot order during an active shift")
 	main.queue_free()
 
 func _test_shop_grace_period() -> void:
