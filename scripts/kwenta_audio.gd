@@ -18,10 +18,20 @@ var _music_player: AudioStreamPlayer
 var _dialogue_player: AudioStreamPlayer
 var _alert_player: AudioStreamPlayer
 var _ambient_cue_player: AudioStreamPlayer
+var _ui_cue_player: AudioStreamPlayer
+var _fireworks_player: AudioStreamPlayer
+var _fireworks_timer: Timer
 var _random_ambience_timer: Timer
 var _alert_wanted := false
 
 const DEFAULT_CUE_PATHS := {
+	"explosion": "res://assets/audio/pixabay/sfx/explosion.wav",
+	"fireworks": "res://assets/audio/pixabay/sfx/fireworks.wav",
+	"coin_pickup": "res://assets/audio/pixabay/sfx/coin_pickup.mp3",
+	"achievement_unlocked": "res://assets/audio/pixabay/sfx/achievement_unlocked.wav",
+	"level_complete": "res://assets/audio/pixabay/sfx/level_complete.wav",
+	"game_over": "res://assets/audio/pixabay/sfx/game_over.wav",
+	"button_click": "res://assets/audio/pixabay/sfx/button.wav",
 	"pickup": "res://assets/audio/pixabay/sfx/pick_up.mp3",
 	"correct": "res://assets/audio/pixabay/sfx/correct_item.wav",
 	"reject": "res://assets/audio/pixabay/sfx/wrong_item.mp3",
@@ -43,6 +53,7 @@ const DEFAULT_MUSIC_PATHS := {
 
 const MUSIC_VOLUME_DB := {
 	"main_menu": -10.0,
+	"intense": -8.0,
 }
 
 const CONVERSATION_PENTATONIC := [-8, -5, -3, 0, 2, 4, 7]
@@ -52,7 +63,7 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	# Release active playback when the owning scene leaves, including at shutdown.
-	for player in [_cue_player, _ambience_player, _music_player, _dialogue_player, _alert_player, _ambient_cue_player]:
+	for player in [_cue_player, _ambience_player, _music_player, _dialogue_player, _alert_player, _ambient_cue_player, _ui_cue_player, _fireworks_player]:
 		if is_instance_valid(player):
 			player.stop()
 
@@ -243,11 +254,55 @@ func play_persistent_cue(cue_name: String) -> bool:
 	player.name = "PersistentCuePlayer"
 	player.stream = stream
 	player.bus = "SFX"
-	player.volume_db = -7.0
+	player.volume_db = 0.0 if cue_name == "explosion" else -7.0
 	get_tree().root.add_child(player)
 	player.finished.connect(player.queue_free)
 	player.play()
 	return true
+
+func play_fireworks() -> void:
+	var stream := cue_streams.get("fireworks") as AudioStream
+	if stream == null or not is_inside_tree():
+		return
+	if is_instance_valid(_fireworks_player) and _fireworks_player.playing:
+		return
+	stream = stream.duplicate() as AudioStream
+	if stream is AudioStreamWAV and stream.loop_end <= stream.loop_begin:
+		stream.loop_begin = 0
+		stream.loop_end = int(stream.get_length() * stream.mix_rate)
+	_set_stream_looping(stream, true)
+	if not is_instance_valid(_fireworks_player):
+		_fireworks_player = AudioStreamPlayer.new()
+		_fireworks_player.bus = "SFX"
+		_fireworks_player.volume_db = 0.0
+		add_child(_fireworks_player)
+		_fireworks_timer = Timer.new()
+		_fireworks_timer.one_shot = true
+		_fireworks_timer.timeout.connect(stop_fireworks)
+		add_child(_fireworks_timer)
+	_fireworks_player.stream = stream
+	_fireworks_player.play()
+	_fireworks_timer.start(10.0)
+
+func stop_fireworks() -> void:
+	if is_instance_valid(_fireworks_player):
+		_fireworks_player.stop()
+	if is_instance_valid(_fireworks_timer):
+		_fireworks_timer.stop()
+
+func play_ui_cue(cue_name: String) -> void:
+	var stream := cue_streams.get(cue_name) as AudioStream
+	if stream == null or not is_inside_tree():
+		return
+	if not is_instance_valid(_ui_cue_player):
+		_ui_cue_player = AudioStreamPlayer.new()
+		_ui_cue_player.bus = "SFX"
+		_ui_cue_player.volume_db = -7.0
+		_ui_cue_player.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(_ui_cue_player)
+	last_played_cue = cue_name
+	_ui_cue_player.stream = stream
+	_ui_cue_player.play()
 
 func set_dialogue(cue_name: String) -> bool:
 	if cue_name.is_empty():
