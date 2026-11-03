@@ -3,10 +3,10 @@ extends Control
 
 const BASE := Vector2(1672.0, 941.0)
 const CONFIG := preload("res://scripts/store_config.gd")
-const EMPTY_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_empty.png")
-const FRONT_BACKGROUND := preload("res://assets/store/kwenta_layer_pack/bg_front.png")
+const EMPTY_BACKGROUND := preload("res://assets/store/backgrounds/bg_empty.png")
+const FRONT_BACKGROUND := preload("res://assets/store/backgrounds/bg_front.png")
 const WINDOW_RAIN := preload("res://scripts/window_rain.gd")
-const SUNBEAMS := preload("res://assets/store/kwenta_layer_pack/sunbeams_overlay.png")
+const SUNBEAMS := preload("res://assets/store/effects/sunbeams_overlay.png")
 const FULL_BACKGROUND_SILL_RECT := Rect2(0.0, 377.0, 1672.0, 68.0)
 const WINDOW_RAIN_BOUNDS := Rect2(294.0, 90.0, 1072.0, 292.0)
 const SILL_CROSSFADE_SHADER := """
@@ -120,7 +120,7 @@ func get_product_display_rect(id: String) -> Rect2:
 
 func _load_slots() -> void:
 	slots.clear()
-	var f := FileAccess.open("res://assets/store/kwenta_layer_pack/slots.json", FileAccess.READ)
+	var f := FileAccess.open("res://assets/store/layout/slots.json", FileAccess.READ)
 	if f == null: return
 	var j := JSON.new(); if j.parse(f.get_as_text()) != OK: return
 	var s := size / BASE

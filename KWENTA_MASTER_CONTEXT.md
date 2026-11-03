@@ -217,7 +217,7 @@ Files:
 
 ### Assets
 
-- `assets/store/kwenta_layer_pack/` — storefront art and slot layout.
+- `assets/store/` — storefront backgrounds, product layers, effects, props, layout, and references.
 - `assets/sprites/ui/sukli/sized/` — cash art, tags, notebook buttons, progress art.
 - `assets/sprites/ui/shop/` — shop panel/icon art.
 - `assets/characters/shared/customer_portraits_v2.png` — portraits.

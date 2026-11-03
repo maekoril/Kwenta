@@ -1,3 +1,0 @@
-Generated with the built-in imagegen tool.
-Asset: assets/store/fiesta_lampara.png
-Prompt: Create one isolated lit vintage Filipino kerosene hurricane lamp / lampara game sprite on transparent background. Hand-painted storybook 2D game art with dark ink contours, warm brown brass aged metal base, curved side supports, clear glass chimney and small warm golden flame. Front view with very slight top-down perspective so base ellipse visible, upright full object, handle arched above cap. Compact rustic believable proportions, no text, no ground or background, no cast glow outside object, no extra items. Object occupies nearly full canvas height, centered. Save usable PNG asset for game.

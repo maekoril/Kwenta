@@ -1,6 +1,6 @@
 extends Control
 
-const LAMP = preload("res://assets/store/fiesta_lampara.png")
+const LAMP = preload("res://assets/store/props/fiesta_lampara.png")
 const LAMP_RECT := Rect2(190, 302, 120, 180)
 const FLAME_POSITION := Vector2(250, 407)
 

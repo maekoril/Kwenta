@@ -11,7 +11,7 @@ func _run_tests() -> void:
 	var main_scene := load("res://scenes/main.tscn").instantiate() as Control
 	root.add_child(main_scene)
 	await process_frame
-	_assert(ResourceLoader.exists("res://assets/store/kwenta_layer_pack/bg_empty.png"), "layered-store base background is available")
+	_assert(ResourceLoader.exists("res://assets/store/backgrounds/bg_empty.png"), "layered-store base background is available")
 	_assert(main_scene.get_node_or_null("CoolerFixture") == null and main_scene.get_node_or_null("CoolerFront") == null, "empty cooler artwork is removed from the bottom-left shelf")
 	var product_layer: Control = main_scene.get("product_layer")
 	_assert(product_layer != null, "main scene exposes the product display layer")
