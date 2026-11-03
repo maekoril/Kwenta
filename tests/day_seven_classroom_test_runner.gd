@@ -8,6 +8,10 @@ func run() -> void:
 	var main = current_scene
 	assert(main.prologue_fade.visible and main.day7_time_label.visible)
 	assert(main.day7_time_label.text == "Kinabukasan...")
+	var title_index: int = main.story_beat_index
+	main.bubble.advanced.emit()
+	main._on_summary_button_pressed()
+	assert(main.story_beat_index == title_index)
 	await create_timer(3.0).timeout
 	assert(main.prologue_fade.visible and main.prologue_fade.modulate.a > 0.99)
 	assert(main.bubble._text.text.contains("Palakpakan"))
@@ -19,12 +23,10 @@ func run() -> void:
 	for i in range(60):
 		if main.story_illustration.visible and main.story_illustration.texture != null:
 			seen.append(main.story_illustration.texture.resource_path.get_file())
-		if main.briefing_card.visible: break
+		if main.story_complete: break
 		main.bubble.advanced.emit()
 		await process_frame
-	assert(main.story_complete and main.briefing_card.visible)
-	assert(main.briefing_card._title.text == "KWENTA" and main.briefing_card._subtitle.text == "WAKAS")
-	assert(main.briefing_card._button.text == "REPLAY STORY")
+	assert(main.story_complete and main.has_node("EndingTransition"))
 	assert(seen.has("day7_classmates_listening.png"))
 	assert(seen.has("day7_tonyo_presenting.png"))
 	assert(seen.has("day7_tonyo_miniature.png"))

@@ -69,23 +69,47 @@ func _build_menu() -> void:
 	background.stretch_mode = TextureRect.STRETCH_SCALE
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_canvas.add_child(background)
-	var has_save := not CAMPAIGN_SAVE.load_progress().is_empty()
-	var play := _menu_button("StartButton", "NEW GAME", Vector2(725, 450 if has_save else 500))
+	var progress := CAMPAIGN_SAVE.load_progress()
+	var has_save := not progress.is_empty()
+	var campaign_finished := bool(progress.get("completed", false))
+	var play := _menu_button("StartButton", "NEW GAME", Vector2(725, 435 if has_save else 450))
 	play.pressed.connect(func(): _select_menu_item(play, _request_new_game))
 	if has_save:
-		var resume := _menu_button("ContinueButton", "CONTINUE", Vector2(740, 550))
+		var resume := _menu_button("ContinueButton", "CONTINUE", Vector2(740, 525))
 		resume.pressed.connect(func(): _select_menu_item(resume, _continue_game))
-	var settings_button := _menu_button("SettingsButton", "SETTINGS", Vector2(755 if has_save else 748, 650 if has_save else 630))
+	var next_row := 615.0 if has_save else 550.0
+	if campaign_finished:
+		var board_button := _menu_button("CampaignBoardButton", "CAMPAIGN BOARD", Vector2(748, next_row))
+		board_button.add_theme_font_size_override("font_size", 53)
+		board_button.pressed.connect(func(): _select_menu_item(board_button, _open_campaign_board))
+		next_row += 90.0
+	var settings_button := _menu_button("SettingsButton", "SETTINGS", Vector2(755, next_row))
 	settings_button.pressed.connect(func(): _select_menu_item(settings_button, settings_menu.open))
-	var quit_button := _menu_button("QuitButton", "QUIT", Vector2(770, 750 if has_save else 760))
+	var credits_button := _menu_button("CreditsButton", "CREDITS", Vector2(765, next_row + 90))
+	credits_button.pressed.connect(func(): _select_menu_item(credits_button, _open_credits))
+	var quit_button := _menu_button("QuitButton", "QUIT", Vector2(780, next_row + 180))
 	quit_button.pressed.connect(func(): _select_menu_item(quit_button, get_tree().quit))
+
+func _open_credits() -> void:
+	var credits := preload("res://scripts/credits.gd").new()
+	credits.campaign_board_available = bool(CAMPAIGN_SAVE.load_progress().get("completed", false))
+	credits.campaign_board_requested.connect(_open_campaign_board)
+	add_child(credits)
+
+func _open_campaign_board() -> void:
+	if not bool(CAMPAIGN_SAVE.load_progress().get("completed", false)):
+		return
+	menu_audio.set_music("")
+	var board := preload("res://scripts/campaign_board.gd").new()
+	board.tree_exited.connect(func(): menu_audio.set_music("main_menu"))
+	add_child(board)
 
 func _menu_button(node_name: String, caption: String, at: Vector2) -> Button:
 	var button := Button.new()
 	button.name = node_name
 	button.text = caption
 	button.position = at
-	button.size = Vector2(470, 118)
+	button.size = Vector2(470, 88)
 	button.rotation = -0.095
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.focus_mode = Control.FOCUS_ALL
