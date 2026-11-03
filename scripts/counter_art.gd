@@ -71,13 +71,6 @@ static func product_single_texture(product_id: String) -> Texture2D:
 	var product := _find_product(product_id)
 	return product.single_unit_texture if product != null else null
 
-static func product_display_texture(product_id: String) -> Texture2D:
-	var product := _find_product(product_id)
-	return product.stacked_texture if product != null else null
-
-static func product_fixture_texture(product_id: String) -> Texture2D:
-	return product_display_texture(product_id)
-
 const CASUAL_PORTRAIT_PATHS := {
 	"paolo": "res://assets/characters/paolo/paolo_casual.png",
 	"bea": "res://assets/characters/bea/bea_casual.png",

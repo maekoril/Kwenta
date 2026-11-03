@@ -82,15 +82,6 @@ func _draw_hanging_sachet_strip() -> void:
 	draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
 	draw_texture_rect(strip_texture, sprite_rect, false, CounterArt.get_product_display_tint())
 
-func _draw_combined_display(combined_product_id: String) -> void:
-	var combined_texture: Texture2D = CounterArt.product_fixture_texture(combined_product_id)
-	if combined_texture == null:
-		return
-	var fitted := CounterArt.fit_texture_rect(Vector2(combined_texture.get_size()), size)
-	var sprite_rect := Rect2(fitted.position, fitted.size)
-	draw_colored_polygon(CounterArt.get_display_shadow_polygon(sprite_rect), CounterArt.get_display_shadow_color())
-	draw_texture_rect(combined_texture, sprite_rect, false, CounterArt.get_product_display_tint())
-
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton

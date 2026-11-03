@@ -77,16 +77,10 @@ func _test_visual_identity_contract() -> void:
 	for product_resource in CampaignConfig.product_catalog:
 		var product: ProductData = product_resource
 		var assigned_single: Texture2D = product.get("single_unit_texture") as Texture2D
-		var assigned_stacked: Texture2D = product.get("stacked_texture") as Texture2D
 		_assert(assigned_single != null, "%s assigns a single-unit Texture2D in product data" % product.id)
-		_assert(assigned_stacked != null, "%s assigns a stacked Texture2D in product data" % product.id)
-		_assert(_texture_png_path(assigned_single).begins_with("res://assets/products/"), "%s single unit comes from the product PNG pipeline" % product.id)
-		_assert(_texture_png_path(assigned_stacked).begins_with("res://assets/products/"), "%s stacked display comes from the product PNG pipeline" % product.id)
+		_assert(_texture_png_path(assigned_single).begins_with("res://assets/store/products/single/"), "%s single unit comes from the product PNG pipeline" % product.id)
 		var single := CounterArt.product_single_texture(product.id)
-		var stacked := CounterArt.product_display_texture(product.id)
 		_assert(single == assigned_single, "%s drag previews resolve its assigned single-unit PNG texture" % product.id)
-		_assert(stacked == assigned_stacked, "%s shelf displays resolve its assigned stacked PNG texture" % product.id)
-		_assert(single != stacked, "%s keeps distinct single and stacked texture assets" % product.id)
 	var counter_art_source := FileAccess.get_file_as_string("res://scripts/counter_art.gd")
 	_assert(not counter_art_source.contains("ImageTexture.create_from_image"), "counter art does not generate ImageTextures at runtime")
 	_assert(not counter_art_source.contains("Image.create"), "counter art does not use procedural Image drawing")
@@ -102,16 +96,12 @@ func _test_stack_and_single_unit_rendering_contract() -> void:
 	for product_id in EXPECTED_PRODUCTS:
 		var icon := CounterArt.product_icon(product_id, ProductAtlas)
 		var single := CounterArt.product_single_texture(product_id)
-		var display := CounterArt.product_display_texture(product_id)
 		_assert(icon != null, "%s has a single-unit order bubble icon" % product_id)
 		_assert(single != null, "%s has a single-unit drag texture" % product_id)
-		_assert(display != null, "%s has a stacked storefront texture" % product_id)
-		if StorefrontLayout.is_hanging_rail_product(product_id) and single != null and display != null:
-			_assert(single.get_size().y < display.get_size().y, "%s keeps a smaller single packet separate from its stacked rail display" % product_id)
 	var item := ProductDragItemScene.instantiate() as Control
 	var product: ProductData = CampaignConfig.product_catalog[0]
 	var single_texture := CounterArt.product_single_texture(product.id)
-	item.call("configure", product, single_texture, true, StorefrontLayout.get_product_display_size(product.id), false, CounterArt.product_display_texture(product.id))
+	item.call("configure", product, single_texture, true, StorefrontLayout.get_product_display_size(product.id), false, single_texture)
 	root.add_child(item)
 	await process_frame
 	_assert(item.has_method("get_drag_preview_texture"), "shelf items expose their single-unit drag preview texture")

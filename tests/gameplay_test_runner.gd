@@ -353,9 +353,7 @@ func _test_counter_sprite_atlases_cover_the_campaign_catalog() -> void:
 		var icon: Texture2D = CounterArtScript.product_icon(product.id, ProductAtlas)
 		_assert(icon != null, "counter art exists for %s" % product.id)
 		if icon != null:
-			_assert(icon.resource_path.begins_with("res://assets/products/"), "counter art uses the authored PNG pipeline for %s" % product.id)
-		var display: Texture2D = CounterArtScript.product_display_texture(product.id)
-		_assert(display != null and display.resource_path.begins_with("res://assets/products/"), "stacked storefront art exists for %s" % product.id)
+			_assert(icon.resource_path.begins_with("res://assets/store/products/single/"), "counter art uses the single-item PNG for %s" % product.id)
 	var represented_customers := ["aling_nena", "mang_berting", "bea", "paolo", "kuya_dodong", "jun_jun"]
 	for customer_id in represented_customers:
 		var portrait: AtlasTexture = CounterArtScript.customer_portrait(customer_id, CustomerPortraitAtlas)
@@ -402,8 +400,6 @@ func _test_product_display_sizes_follow_the_reference() -> void:
 	for product_id in ["coffee_sachet", "juice_sachet", "iced_tea_sachet", "shampoo_sachet", "toothpaste_sachet", "laundry_sachet"]:
 		var rail: Rect2 = StorefrontLayoutScript.get_storefront_zone(StorefrontLayoutScript.get_product_layout_zone(product_id))
 		_assert(rail.encloses(StorefrontLayoutScript.get_product_slot(product_id)), "%s hangs inside its assigned rail" % product_id)
-		var strip: Texture2D = CounterArtScript.product_display_texture(product_id)
-		_assert(strip != null and strip.get_size().y > strip.get_size().x * 2.0, "%s is a tightly stacked vertical sachet strip" % product_id)
 	_assert(StorefrontLayoutScript.get_storefront_zone("shelf_row_a").encloses(StorefrontLayoutScript.get_product_slot("candy")), "Max Yellow packs sit on the right shelf plank")
 	_assert(StorefrontLayoutScript.get_storefront_zone("shelf_row_b").encloses(StorefrontLayoutScript.get_product_slot("soft_drink")), "Cola-Coca stock sits inside the lower shelf zone")
 	for product_id in ["biscuits", "canned_sardines", "bottled_water"]:

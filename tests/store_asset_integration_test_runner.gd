@@ -15,12 +15,10 @@ func _run_tests() -> void:
 	_assert(main_scene.get_node_or_null("CoolerFixture") == null and main_scene.get_node_or_null("CoolerFront") == null, "empty cooler artwork is removed from the bottom-left shelf")
 	var product_layer: Control = main_scene.get("product_layer")
 	_assert(product_layer != null, "main scene exposes the product display layer")
-	for product_id in ["coffee_sachet", "juice_sachet", "iced_tea_sachet", "shampoo_sachet", "toothpaste_sachet", "laundry_sachet"]:
-		var strip: Texture2D = COUNTER_ART.product_display_texture(product_id)
-		_assert(strip != null and strip.resource_path.begins_with("res://assets/products/sachets/") and strip.get_size().y > strip.get_size().x * 2.0, "%s uses a tall authored PNG sachet strip" % product_id)
-	for product_id in ["chips", "biscuits", "bottled_water", "coffee_sachet", "juice_sachet", "iced_tea_sachet", "shampoo_sachet", "toothpaste_sachet", "laundry_sachet", "canned_sardines", "bread", "rice"]:
-		var grouped_texture: Texture2D = COUNTER_ART.product_display_texture(product_id)
-		_assert(grouped_texture != null, "%s grouped display sprite loads" % product_id)
+	var config := StoreConfig.load_config("res://data/store_config.json")
+	for entry in config.products.values():
+		var path := str(entry.get("texture_path", ""))
+		_assert(path.begins_with("res://assets/store/products/shelves/") and ResourceLoader.exists(path), "%s shelf layer loads" % path)
 	for product_id in ["instant_noodles", "eggs", "soy_sauce", "vinegar", "fish_sauce"]:
 		var single_texture: Texture2D = COUNTER_ART.product_single_texture(product_id)
 		_assert(single_texture != null, "%s single-item drag sprite loads" % product_id)
@@ -34,7 +32,7 @@ func _run_tests() -> void:
 		var preview_size: Vector2 = noodles.call("_get_drag_preview_size")
 		_assert(store_size.x > preview_size.x and store_size.y > preview_size.y, "in-store grouped noodle art renders larger than its single-item drag preview")
 		_assert(single_texture != null, "dragging noodles uses the single-item Nissin sprite")
-		_assert(display_texture != null and display_texture.resource_path.begins_with("res://assets/products/shelf_goods/"), "shelf stock uses the authored Noodz PNG")
+		_assert(display_texture == single_texture, "pickup uses the single-item texture")
 	if failures > 0:
 		push_error("%d store asset integration assertion(s) failed." % failures)
 		quit(1)
