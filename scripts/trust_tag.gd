@@ -80,7 +80,7 @@ func setup(initial_value: float, width: float, sway_degrees: float, sway_seconds
 
 	var title_color: Color = KwentaStyle.INK_MUTED if hanging else KwentaStyle.INK
 	var value_color: Color = KwentaStyle.INK
-	_title = KwentaStyle.make_label("SUKI METER", 18 if hanging else 23, title_color)
+	_title = KwentaStyle.make_label("TIWALA NG BARANGAY", 18 if hanging else 23, title_color)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.add_child(_title)
 

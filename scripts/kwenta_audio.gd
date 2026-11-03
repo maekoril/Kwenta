@@ -38,7 +38,7 @@ const DEFAULT_MUSIC_PATHS := {
 	"normal": "res://assets/audio/pixabay/music/normal_store_days.mp3",
 	"rain": "res://assets/audio/pixabay/music/rainy_day.mp3",
 	"intense": "res://assets/audio/pixabay/music/intense_music.mp3",
-	"main_menu": "res://assets/audio/pixabay/music/main_menu.ogg",
+	"main_menu": "res://assets/audio/pixabay/music/calm_nature_ambience.mp3",
 }
 
 const MUSIC_VOLUME_DB := {
@@ -49,6 +49,12 @@ const CONVERSATION_PENTATONIC := [-8, -5, -3, 0, 2, 4, 7]
 
 func _ready() -> void:
 	_ensure_players()
+
+func _exit_tree() -> void:
+	# Release active playback when the owning scene leaves, including at shutdown.
+	for player in [_cue_player, _ambience_player, _music_player, _dialogue_player, _alert_player, _ambient_cue_player]:
+		if is_instance_valid(player):
+			player.stop()
 
 func register_cue(cue_name: String, stream: AudioStream) -> void:
 	if cue_name.is_empty() or stream == null:
@@ -127,6 +133,9 @@ func _queue_ambience_playback(cue_name: String) -> void:
 		call_deferred("_play_selected_ambience", cue_name)
 
 func _play_selected_ambience(cue_name: String) -> void:
+	# A queued request may outlive the scene that scheduled it.
+	if not is_inside_tree() or is_queued_for_deletion() or not is_instance_valid(_ambience_player) or not _ambience_player.is_inside_tree() or _ambience_player.is_queued_for_deletion():
+		return
 	if current_ambience == cue_name and _ambience_player != null:
 		_ambience_player.play()
 
@@ -206,6 +215,9 @@ func _queue_music_playback(track_name: String) -> void:
 		call_deferred("_play_selected_music", track_name)
 
 func _play_selected_music(track_name: String) -> void:
+	# A queued request may outlive the scene that scheduled it.
+	if not is_inside_tree() or is_queued_for_deletion() or not is_instance_valid(_music_player) or not _music_player.is_inside_tree() or _music_player.is_queued_for_deletion():
+		return
 	if current_music == track_name and _music_player != null:
 		_music_player.play()
 

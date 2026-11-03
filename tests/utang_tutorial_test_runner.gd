@@ -46,7 +46,8 @@ func run() -> void:
 			assert(main.campaign.debts.back().items == expected_items)
 		await process_frame
 		await process_frame
-		assert(main.shift.frozen and not main.utang_tutorial_message.is_empty())
+		assert(not main.shift.frozen and main.utang_tutorial_message.is_empty())
+		assert(main.tutorial_hint.visible and main.tutorial_hint.text.contains("Puwedeng"))
 		main.utility_toggle.pressed.emit()
 		main._refresh_utility_drawer()
 		assert(not main.utility_utang.disabled)
@@ -60,15 +61,17 @@ func run() -> void:
 	var opening = current_scene
 	if opening.store_sign_tween != null and opening.store_sign_tween.is_valid(): opening.store_sign_tween.kill()
 	opening._after_opening_sign()
-	assert(opening.tutorial_step == opening.TutorialStep.DAY4_UTANG_MENU)
+	assert(opening.tutorial_step == opening.TutorialStep.NONE and not opening.shift.frozen)
+	assert(opening.tutorial_hint.visible and opening.tutorial_hint.text.contains("Puwedeng"))
 	assert(not opening.story_events.is_active() and opening.shift.active_customers.is_empty())
 	opening.utility_toggle.pressed.emit()
 	await create_timer(0.1).timeout
-	assert(opening.tutorial_step == opening.TutorialStep.DAY4_UTANG_ROW)
+	assert(not opening.shift.frozen and not opening.utility_utang.disabled)
 	opening.utility_utang.pressed.emit()
 	assert(opening.utang_ledger.visible)
 	opening.utang_close.pressed.emit()
 	opening.shift.story_queue.clear()
+	opening.campaign.debts.clear()
 	# An ordinary customer remains serviceable while the first borrower waits.
 	opening.shift.credit_requested_today = true
 	opening.shift._spawn_customer()
@@ -112,7 +115,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	assert(main.campaign.cash == before + 107)
-	assert(main.shift.frozen and not main.utang_tutorial_message.is_empty())
+	assert(main.utang_tutorial_message.is_empty())
 	main.utility_toggle.pressed.emit()
 	main._refresh_utility_drawer()
 	assert(not main.utility_utang.disabled)

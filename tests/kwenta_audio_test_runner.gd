@@ -19,6 +19,7 @@ func _initialize() -> void:
 	_test_project_defines_audio_buses()
 	_test_new_runtime_audio_assets_resolve()
 	_test_default_cues_resolve()
+	await _test_deferred_playback_after_scene_exit()
 	if failures > 0:
 		push_error("%d audio assertion(s) failed." % failures)
 		quit(1)
@@ -179,8 +180,9 @@ func _test_project_defines_audio_buses() -> void:
 	_assert(AudioServer.get_bus_index("Ambience") >= 0, "Ambience bus is available before scene startup")
 
 func _test_new_runtime_audio_assets_resolve() -> void:
+	var menu_stream := load("res://assets/audio/pixabay/music/calm_nature_ambience.mp3") as AudioStream
+	_assert(menu_stream is AudioStreamMP3, "Godot imports main menu music")
 	for resource_path in [
-		"res://assets/audio/pixabay/music/main_menu.ogg",
 		"res://assets/audio/pixabay/ambience/rain.ogg",
 		"res://assets/audio/pixabay/ambience/normal_day.ogg",
 	]:
@@ -213,3 +215,25 @@ func _assert(condition: bool, message: String) -> void:
 		return
 	failures += 1
 	push_error("FAIL: %s" % message)
+
+func _test_deferred_playback_after_scene_exit() -> void:
+	var audio = load(AUDIO_SCRIPT_PATH).new()
+	root.add_child(audio)
+	await process_frame
+	audio.register_default_music()
+	audio.register_default_cues()
+	audio.set_music("normal")
+	audio.set_ambience("rain")
+	root.remove_child(audio)
+	# Flush the requests queued before removal: neither may play off-tree.
+	await process_frame
+	_assert(not audio._music_player.playing, "detached music player stays stopped")
+	_assert(not audio._ambience_player.playing, "detached ambience player stays stopped")
+	root.add_child(audio)
+	audio.set_music("normal")
+	audio.set_ambience("rain")
+	await process_frame
+	_assert(audio._music_player.playing, "active scene can still start music")
+	_assert(audio._ambience_player.playing, "active scene can still start ambience")
+	audio.queue_free()
+	await process_frame

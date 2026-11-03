@@ -419,7 +419,7 @@ func _build_actions(canvas: Control) -> void:
 	_give_button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_give_button.pressed.connect(_on_give_pressed)
 	actions.add_child(_give_button)
-	var clear_button := _art_button("LINISIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 8, 8)
+	var clear_button := _art_button("ULITIN", int(22.0 * _unit), LINISIN_BUTTON_TEXTURE, 8, 8)
 	clear_button.name = "ClearChangeButton"
 	clear_button.custom_minimum_size = Vector2(0.0, _unit * 66.0)
 	clear_button.pressed.connect(_clear_pile)

@@ -17,6 +17,10 @@ boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/show_image=false
 config/icon="uid://b37o3ye8oqtg8"
 
+[audio]
+
+default_bus_layout="res://default_bus_layout.tres"
+
 [display]
 
 window/size/viewport_width=1920
@@ -29,10 +33,6 @@ window/stretch/aspect="expand"
 [physics]
 
 3d/physics_engine="Jolt Physics"
-
-[audio]
-
-default_bus_layout="res://default_bus_layout.tres"
 
 [rendering]
 

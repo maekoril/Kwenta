@@ -6,6 +6,8 @@ extends RefCounted
 const CAMPAIGN := preload("res://data/story/summer_campaign.tres")
 
 const DISPLAY_TINT := Color.WHITE
+const NEW_NEIGHBORS := ["ate_tess", "kuya_joel", "lola_pilar", "rafi", "ate_celia", "mang_nestor"]
+const NEW_NEIGHBOR_ATLAS := preload("res://assets/sprites/customers/new_neighbors_atlas.png")
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
 const NEIGHBOR_PORTRAITS := {
@@ -85,6 +87,13 @@ const CASUAL_PORTRAIT_PATHS := {
 }
 
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:
+	var new_index := NEW_NEIGHBORS.find(customer_id)
+	if new_index >= 0:
+		var portrait := AtlasTexture.new()
+		portrait.atlas = NEW_NEIGHBOR_ATLAS
+		var cell := NEW_NEIGHBOR_ATLAS.get_size() / Vector2(3, 2)
+		portrait.region = Rect2(Vector2(new_index % 3, new_index / 3) * cell, cell)
+		return portrait
 	var casual_id := customer_id
 	for suffix in ["_happy", "_sad", "_impatient"]:
 		if casual_id.ends_with(suffix): casual_id = casual_id.trim_suffix(suffix)

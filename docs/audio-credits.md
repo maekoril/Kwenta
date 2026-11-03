@@ -14,7 +14,7 @@ The active audio pass uses the user-provided Pixabay downloads in `assets/audio/
 | Continuous Day 4 rain ambience | `assets/audio/pixabay/ambience/rain.ogg` (converted from supplied WAV) |
 | Random normal-day ambience (Days 1–3, 5, and 7) | `assets/audio/pixabay/ambience/normal_day.ogg` (converted from supplied WAV) |
 | Normal store music | `assets/audio/pixabay/music/normal_store_days.mp3` |
-| Main menu music | `assets/audio/pixabay/music/main_menu.ogg` (converted from supplied WAV) |
+| Main menu music | `assets/audio/pixabay/music/calm_nature_ambience.mp3` (Calm Nature Ambience by zehendrew; supplied MP3) |
 | Rain-day music | `assets/audio/pixabay/music/rainy_day.mp3` |
 | Day 6 fiesta music, continuing through the brownout | `assets/audio/pixabay/music/intense_music.mp3` |
 

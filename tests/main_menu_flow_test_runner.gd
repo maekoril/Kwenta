@@ -14,7 +14,7 @@ func run() -> void:
 	assert(menu != null and menu.find_child("NotebookDesk", true, false).texture != null)
 	assert(menu.menu_audio.current_music == "main_menu")
 	var music_player := menu.menu_audio.get_node_or_null("MusicPlayer") as AudioStreamPlayer
-	assert(music_player != null and music_player.stream.resource_path == "res://assets/audio/pixabay/music/main_menu.ogg")
+	assert(music_player != null and music_player.stream.resource_path == "res://assets/audio/pixabay/music/calm_nature_ambience.mp3")
 	assert(music_player != null and is_equal_approx(music_player.volume_db, -10.0))
 	assert(music_player != null and music_player.playing)
 	assert(menu.menu_audio.has_cue("menu_start"))
@@ -62,5 +62,8 @@ func run() -> void:
 	await process_frame
 	assert(not paused and current_scene.get_script().resource_path == "res://scripts/main_menu.gd")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_PATH))
+	current_scene.queue_free()
+	await process_frame
+	await create_timer(0.1).timeout
 	print("Main menu, prologue, and pause return passed")
 	quit()

@@ -2,6 +2,9 @@ class_name CampaignState
 extends RefCounted
 
 var paid_purchases: Dictionary = {}
+var completed_customers: Dictionary = {}
+var purchase_counts: Dictionary = {}
+const ESTABLISHED_SUKI := ["neighbor_rosa", "aling_nena", "mang_berting"]
 var debts: Array = []
 
 var config: CampaignConfig
@@ -71,10 +74,16 @@ func set_stocked_product_ids(product_ids: Array[String]) -> void:
 			stocked_product_ids.append(product_id)
 
 func to_dict() -> Dictionary:
-	return {"paid_purchases": paid_purchases.duplicate(true), "debts": debts.duplicate(true), "day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust, "customer_trust": customer_trust.duplicate(true), "unlocked_product_ids": unlocked_product_ids.duplicate(), "purchased_upgrade_ids": purchased_upgrade_ids.duplicate(), "upgrade_investment": upgrade_investment, "product_price_bonuses": product_price_bonuses.duplicate(true)}
+	return {"paid_purchases": paid_purchases.duplicate(true), "completed_customers": completed_customers.duplicate(true), "purchase_counts": purchase_counts.duplicate(true), "debts": debts.duplicate(true), "day": day, "cash": cash, "purchased_store_groups": purchased_store_groups.duplicate(), "barangay_trust": barangay_trust, "customer_trust": customer_trust.duplicate(true), "unlocked_product_ids": unlocked_product_ids.duplicate(), "purchased_upgrade_ids": purchased_upgrade_ids.duplicate(), "upgrade_investment": upgrade_investment, "product_price_bonuses": product_price_bonuses.duplicate(true)}
 
 func from_dict(data: Dictionary) -> void:
 	paid_purchases = data.get("paid_purchases", {}).duplicate(true)
+	completed_customers = data.get("completed_customers", {}).duplicate(true)
+	for id in paid_purchases:
+		if int(paid_purchases[id]) > 0: completed_customers[id] = true
+	purchase_counts = data.get("purchase_counts", {}).duplicate(true)
+	for id in completed_customers:
+		if not purchase_counts.has(id): purchase_counts[id] = 1
 	debts = data.get("debts", []).duplicate(true)
 	add_debt("rosa_old", "neighbor_rosa", 320, 0, 0, {}, true)
 	day = clampi(int(data.get("day", day)), 1, config.campaign_day_count)
@@ -157,6 +166,15 @@ func advance_day() -> void:
 func record_purchase(customer_id: String, amount: int) -> void:
 	paid_purchases[customer_id] = int(paid_purchases.get(customer_id, 0)) + maxi(0, amount)
 
+func record_completed_sale(customer_id: String) -> void:
+	# One completed visit counts once, regardless of product types or quantities.
+	if customer_id.is_empty(): return
+	completed_customers[customer_id] = true
+	purchase_counts[customer_id] = int(purchase_counts.get(customer_id, 0)) + 1
+
+func is_suki(customer_id: String) -> bool:
+	return customer_id in ESTABLISHED_SUKI or int(purchase_counts.get(customer_id, 0)) >= 5
+
 func has_debt(customer_id: String) -> bool:
 	for debt in debts:
 		if debt.customer == customer_id and int(debt.balance) > 0:
@@ -164,11 +182,7 @@ func has_debt(customer_id: String) -> bool:
 	return false
 
 func credit_rate(customer_id: String) -> float:
-	var spent := int(paid_purchases.get(customer_id, 0))
-	if spent >= 150: return 0.015
-	if spent >= 100: return 0.03
-	if spent >= 50: return 0.05
-	return 0.07
+	return 0.03 if is_suki(customer_id) else 0.07
 
 func add_debt(id: String, customer_id: String, principal: int, interest: int, due: int, items: Dictionary = {}, scripted: bool = false) -> void:
 	for debt in debts:

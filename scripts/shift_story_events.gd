@@ -474,7 +474,7 @@ func _show_story_visitor(visitor: String) -> void:
 		var overlay := STORY_TUTORIAL_OVERLAY.new()
 		overlay.name = "RepaymentVisitorTutorial"
 		root.add_child(overlay)
-		overlay.show_step("This symbol means the customer is here to pay their debt. Tap them to receive the payment.", button.get_global_rect().merge(mark.get_global_rect()), "DEBT PAYMENT")
+		overlay.show_step("May magbabayad ng utang. I-tap ang customer.", button.get_global_rect().merge(mark.get_global_rect()), "BAYAD-UTANG")
 
 func _on_story_visitor_tapped() -> void:
 	if _mode == "repayment_visitor":
@@ -655,7 +655,7 @@ func _next_beat() -> void:
 	if beat.has("show_prop"):
 		_utang_ledger_visible = str(beat["show_prop"]) == "utang_ledger"
 		_paolo_note_visible = str(beat["show_prop"]) == "paolo_debt_note"
-		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter", "alfa_save_corner", "paolo_coins", "umbrella_handoff"]:
+		if str(beat["show_prop"]) in ["lina_walking_away", "friends_shelter", "alfa_save_corner", "paolo_coins", "umbrella_handoff", "rosa_payment", "fiesta_powerline"]:
 			_scene_illustration_visible = true
 		elif str(beat["show_prop"]) == "hide_scene_illustration":
 			_scene_illustration_visible = false
@@ -700,6 +700,7 @@ func _resolve_scene_choice(index: int) -> void:
 			partial_repayment_completed.emit()
 		if bool(choice.get("record_sale", false)):
 			shift.campaign_state.record_purchase(str(event.get("visitor", "")), amount)
+			shift.campaign_state.record_completed_sale(str(event.get("visitor", "")))
 			shift.shift_earnings += amount
 			shift.customers_served += 1
 			shift.customer_served.emit(str(event.get("visitor", "")), 1)

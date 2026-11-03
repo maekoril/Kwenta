@@ -111,9 +111,14 @@ func _select_menu_item(button: Button, action: Callable) -> void:
 	_selection_in_progress = true
 	var brush = button.get_node("BrushStroke")
 	brush.progress = 0.0
+	brush.modulate.a = 1.0
 	var animation := create_tween()
-	animation.tween_property(brush, "progress", 1.0, 0.24).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	animation.tween_interval(0.08)
+	# A short contact, quick sweep, and lighter lift give the stroke hand motion.
+	animation.tween_property(brush, "progress", 0.14, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	animation.tween_property(brush, "progress", 0.86, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	animation.tween_property(brush, "progress", 1.0, 0.06).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	animation.tween_interval(0.04)
+	animation.tween_property(brush, "modulate:a", 0.0, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await animation.finished
 	brush.progress = 0.0
 	_selection_in_progress = false

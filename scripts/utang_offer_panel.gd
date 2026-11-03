@@ -41,7 +41,7 @@ func present(customer: CustomerState, state: CampaignState, products: Dictionary
 	heading.add_child(KwentaStyle.make_label("PAUTANG", 26, KwentaStyle.INK_MUTED))
 	var names := {"neighbor_lina": "Aling Lina", "neighbor_rosa": "Lola Rosa", "neighbor_nico": "Nico", "neighbor_ramon": "Mang Ramon", "jun_jun": "Jun-jun"}
 	var customer_name := str(names.get(customer.customer_id, customer.customer_id.capitalize()))
-	heading.add_child(KwentaStyle.make_label(customer_name, 44, KwentaStyle.INK))
+	heading.add_child(KwentaStyle.make_label(customer_name, 44, Color("8b5b12") if state.is_suki(customer.customer_id) else KwentaStyle.INK))
 	body.add_child(KwentaStyle.make_label("“Tonyo, puwedeng bukas ang bayad?”", 32, KwentaStyle.INK))
 	if state.day == 4:
 		body.add_child(KwentaStyle.make_label("Check the total and due date, then decide whether to lend.", 25, KwentaStyle.INK_MUTED))
@@ -89,7 +89,7 @@ func present(customer: CustomerState, state: CampaignState, products: Dictionary
 	KwentaStyle.style_button(details_button, KwentaStyle.PAPER, 28)
 	details_button.focus_mode = Control.FOCUS_ALL
 	body.add_child(details_button)
-	details = KwentaStyle.make_label("Paninda ₱%d + dagdag ₱%d\n%s%% dagdag · ni-round sa piso · ₱%d na ang nabili" % [int(offer.principal), int(offer.interest), str(state.credit_rate(customer.customer_id) * 100.0), int(state.paid_purchases.get(customer.customer_id, 0))], 27, KwentaStyle.INK_MUTED)
+	details = KwentaStyle.make_label("Paninda ₱%d + dagdag ₱%d\n%s%% dagdag · %s · ni-round sa piso" % [int(offer.principal), int(offer.interest), str(state.credit_rate(customer.customer_id) * 100.0), "suki" if state.is_suki(customer.customer_id) else "regular rate"], 27, KwentaStyle.INK_MUTED)
 	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	details.hide()
 	body.add_child(details)

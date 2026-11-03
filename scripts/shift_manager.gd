@@ -38,6 +38,7 @@ var products_by_id: Dictionary
 var rng: RandomNumberGenerator
 var active_customers: Array[CustomerState] = []
 var recent_customer_ids: Array[String] = []
+var served_suki_today: Dictionary = {}
 var elapsed_seconds: float = 0.0
 var spawn_elapsed: float = 0.0
 var current_spawn_delay: float = 0.0
@@ -121,6 +122,7 @@ func start_shift(spawn_initial_customer: bool = true) -> void:
 	pending_credit_customer = null
 	active_customers.clear()
 	recent_customer_ids.clear()
+	served_suki_today.clear()
 	elapsed_seconds = 0.0
 	spawn_elapsed = 0.0
 	current_spawn_delay = _next_spawn_delay()
@@ -485,6 +487,11 @@ func finish_shift() -> void:
 	shift_completed.emit()
 
 func _finish_sale(customer: CustomerState, net_cash: int) -> void:
+	if not customer.active:
+		return
+	if customer.is_suki:
+		served_suki_today[customer.customer_id] = true
+	campaign_state.record_completed_sale(customer.customer_id)
 	var product_types := 0
 	for quantity in customer.order.delivered.values():
 		if int(quantity) > 0:
@@ -563,6 +570,7 @@ func _spawn_customer() -> void:
 
 	var patience_seconds: float = patience_seconds_override if patience_seconds_override > 0.0 else campaign_state.get_customer_patience_seconds()
 	var customer := CustomerState.new(id, order, patience_seconds, campaign_state.get_customer_trust(id))
+	customer.is_suki = campaign_state.day >= 5 and campaign_state.is_suki(id)
 	customer.tutorial_protected = campaign_state.day == 2 and id == "aling_nena" and not story_entry.is_empty()
 	customer.story_arrival_pending = (customer.tutorial_protected or bool(story_entry.get("story_visitor", false))) and not story_entry.get("arrival_beats", []).is_empty()
 	customer.story_after_sale = story_entry.get("after_sale", {})
@@ -625,6 +633,18 @@ func _choose_customer_id() -> String:
 			ids.append(candidate)
 	if ids.is_empty():
 		return ""
+	if campaign_state.day == 5:
+		var goal_candidates: Array[String] = []
+		for id in ids:
+			if campaign_state.is_suki(id) and not served_suki_today.has(id):
+				goal_candidates.append(id)
+		if not goal_candidates.is_empty():
+			ids = goal_candidates
+		elif served_suki_today.size() < 3:
+			var uncounted: Array[String] = []
+			for id in ids:
+				if not served_suki_today.has(id): uncounted.append(id)
+			if not uncounted.is_empty(): ids = uncounted
 	var fresh_ids: Array[String] = []
 	for id in ids:
 		if not recent_customer_ids.has(id):

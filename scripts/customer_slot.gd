@@ -284,6 +284,7 @@ func _refresh_name_tag() -> void:
 			font_size -= 1
 			text_width = font.get_string_size(tag_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	name_label.add_theme_font_size_override("font_size", font_size)
+	name_label.add_theme_color_override("font_color", Color("ffe17d") if customer.is_suki else Color.WHITE)
 	name_label.text = tag_text
 
 func _minimum_readable_bubble_width() -> float:
@@ -293,7 +294,8 @@ func _minimum_readable_bubble_width() -> float:
 	var font := name_label.get_theme_font("font")
 	if font == null:
 		return minimum_width
-	var name_width := font.get_string_size(_display_name(customer.customer_id), HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_TAG_MIN_FONT_SIZE).x
+	var label_text := _display_name(customer.customer_id)
+	var name_width := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_TAG_MIN_FONT_SIZE).x
 	return maxf(minimum_width, name_width + ORDER_BUBBLE_PADDING * 2.0)
 func set_drag_hovered(hovered: bool) -> void:
 	if _drag_hover_active == hovered or not is_instance_valid(portrait_container):
@@ -400,6 +402,8 @@ func _draw() -> void:
 
 func _display_name(customer_id: String) -> String:
 	var names := {
+		"ate_tess": "Ate Tess", "kuya_joel": "Kuya Joel", "lola_pilar": "Lola Pilar",
+		"rafi": "Rafi", "ate_celia": "Ate Celia", "mang_nestor": "Mang Nestor",
 		"aleng_mila": "Mila", "kuya_ben": "Ben", "ate_liza": "Liza",
 		"jun": "Jun", "manong_tomas": "Tomas", "nina": "Nina",
 		"aling_nena": "Aling Nena", "mang_berting": "Mang Berting",

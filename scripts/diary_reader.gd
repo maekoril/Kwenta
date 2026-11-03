@@ -4,7 +4,7 @@ const UNEARNED = preload("res://shaders/unearned_medal.gdshader")
 const GOAL = preload("res://scripts/daily_goal.gd")
 const HANDWRITING = preload("res://assets/fonts/Caveat.ttf")
 const BOOK_SIZE := Vector2(1400, 850)
-const MEDAL_NAMES := ["Unang Benta", "Tamang Sukli", "Maayos na Order", "Tag-ulan", "Suki", "Fiesta", "Mga Suki"]
+const MEDAL_NAMES := ["Unang Benta", "Tamang Sukli", "Maayos na Order", "Tag-ulan", "Suki", "Fiesta", "Isang Linggong Tagumpay"]
 var story
 var days: Array[int] = []
 var page_index := 0
@@ -30,6 +30,7 @@ var collection_count: Label
 var gallery: Control
 var page_turn: Control
 var page_turn_tween: Tween
+var bookmark: Dictionary = {}
 
 func _ready() -> void:
 	name = "DiaryReader"
@@ -50,7 +51,9 @@ func _ready() -> void:
 		section_buttons.append(button)
 	heading = _label(book, "KUWADERNO NI TONYO", Vector2(72, 95), Vector2(1150, 42), 30)
 	heading.add_theme_color_override("font_color", KwentaStyle.PAPER)
-	var close_button := _button("ISARA ×", Vector2(1175, 85), Vector2(155, 56))
+	var close_button := _button("×", Vector2(1268, 85), Vector2(62, 56))
+	close_button.tooltip_text = "Isara"
+	close_button.add_theme_font_size_override("font_size", 34)
 	close_button.pressed.connect(close)
 	for i in range(7):
 		var tab := _button("%d" % (i + 1), Vector2(1340, 175 + i * 79), Vector2(55, 65))
@@ -68,7 +71,6 @@ func _ready() -> void:
 	collection_page = Control.new()
 	book.add_child(collection_page)
 	_label(collection_page, "BAWAT TAGUMPAY, MAY KWENTO", Vector2(768, 171), Vector2(490, 34), 22)
-	_label(collection_page, "Piliin ang isang medalya o gamitin ang day tabs para balikan ang bawat araw.", Vector2(768, 226), Vector2(490, 125), 31, true)
 	_label(collection_page, "MUNTING TAGUMPAY", Vector2(100, 171), Vector2(510, 34), 22)
 	collection_count = _label(collection_page, "", Vector2(100, 215), Vector2(510, 40), 30, true)
 	for i in range(7):
@@ -84,6 +86,7 @@ func _ready() -> void:
 		button.pressed.connect(func(): _select_day(i + 1))
 		collection_page.add_child(button)
 		collection_buttons.append(button)
+		button.add_child(preload("res://scripts/notebook_selection.gd").new())
 	medal_title = _label(book, "", Vector2(768, 370), Vector2(490, 44), 33, true)
 	medal = TextureRect.new()
 	medal.position = Vector2(925, 430)
@@ -95,9 +98,14 @@ func _ready() -> void:
 	gallery = preload("res://scripts/notebook_gallery.gd").new()
 	book.add_child(gallery)
 	gallery.hide()
-	previous_button = _button("< NAKARAAN", Vector2(85, 763), Vector2(240, 60))
+	gallery.page_requested.connect(_turn_picture)
+	previous_button = _button("←", Vector2(85, 763), Vector2(76, 60))
+	previous_button.tooltip_text = "Nakaraang pahina"
+	previous_button.add_theme_font_size_override("font_size", 36)
 	previous_button.pressed.connect(func(): _flip(-1))
-	next_button = _button("SUSUNOD >", Vector2(1085, 763), Vector2(240, 60))
+	next_button = _button("→", Vector2(1249, 763), Vector2(76, 60))
+	next_button.tooltip_text = "Susunod na pahina"
+	next_button.add_theme_font_size_override("font_size", 36)
 	next_button.pressed.connect(func(): _flip(1))
 	page_number = _label(book, "", Vector2(490, 775), Vector2(420, 40), 22)
 	page_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -134,7 +142,12 @@ func _layout() -> void:
 
 func _draw_book() -> void:
 	book.draw_style_box(KwentaStyle.box(Color("795035"), Color("38271c"), 0, 0, 15, 5, 10), Rect2(35, 57, 1310, 785))
+	# Fine cover stitching and stacked paper edges.
+	for x in range(52, 1332, 15):
+		book.draw_line(Vector2(x, 832), Vector2(x + 7, 832), Color("bd9163", 0.55), 1.0)
 	for x in [65, 711]:
+		for edge in range(4):
+			book.draw_style_box(KwentaStyle.box(Color("e4cfaa"), Color("b99a73"), 0, 0, 3, 1, 0), Rect2(x + 2 + edge, 151 + edge * 2, 615, 595))
 		# Layered page edges and a warm inset make the spread feel like paper.
 		book.draw_rect(Rect2(x + 5, 149, 615, 595), Color("8a6542", 0.16))
 		book.draw_style_box(KwentaStyle.box(Color("fff1d3"), Color("c5a681"), 0, 0, 3, 2, 0), Rect2(x, 145, 615, 595))
@@ -143,6 +156,9 @@ func _draw_book() -> void:
 		book.draw_line(Vector2(x + 32, 160), Vector2(x + 32, 722), Color("ce8881", 0.5), 2)
 		book.draw_line(Vector2(x + 40, 207), Vector2(x + 580, 207), Color("b59266", 0.55), 2)
 		book.draw_circle(Vector2(x + 581, 180), 4, Color("b58a52", 0.65))
+	for shade in range(16):
+		book.draw_rect(Rect2(664 + shade, 146, 1, 593), Color(0.28, 0.17, 0.08, float(shade) / 130.0))
+		book.draw_rect(Rect2(711 + shade, 146, 1, 593), Color(0.28, 0.17, 0.08, float(16 - shade) / 130.0))
 	book.draw_rect(Rect2(680, 145, 31, 595), Color("b89973"))
 	book.draw_rect(Rect2(669, 151, 10, 583), Color("8c6d4d", 0.14))
 	book.draw_rect(Rect2(711, 151, 10, 583), Color("8c6d4d", 0.14))
@@ -157,6 +173,9 @@ func _draw_book() -> void:
 func open(progress) -> void:
 	_stop_page_turn()
 	gallery.viewer.hide()
+	if story != progress:
+		bookmark.clear()
+		gallery.remembered_pictures.clear()
 	story = progress
 	days.clear()
 	if story != null:
@@ -165,11 +184,16 @@ func open(progress) -> void:
 				days.append(day)
 	page_index = maxi(days.size() - 1, 0)
 	medal_day = days[page_index] if not days.is_empty() else 1
-	section = 0
+	section = int(bookmark.get("section", 0))
+	if not bookmark.is_empty():
+		medal_day = clampi(int(bookmark.get("day", medal_day)), 1, 7)
+		if days.has(medal_day):
+			page_index = days.find(medal_day)
 	_refresh()
 	visible = true
 
 func close() -> void:
+	bookmark = {"section": section, "day": days[page_index] if section == 0 and not days.is_empty() else medal_day}
 	_stop_page_turn()
 	gallery.viewer.hide()
 	visible = false
@@ -185,6 +209,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("ui_cancel"):
 		go_back()
+	elif gallery.viewer.visible:
+		return
 	elif event.is_action_pressed("ui_left"):
 		_flip(-1)
 	elif event.is_action_pressed("ui_right"):
@@ -204,15 +230,31 @@ func _select_section(value: int) -> void:
 	_refresh()
 
 func _select_day(day: int) -> void:
-	_stop_page_turn()
+	var old_day: int = days[page_index] if section == 0 and not days.is_empty() else medal_day
+	if day == old_day: return
+	_capture_page()
 	if section == 0:
 		if not days.has(day):
 			return
 		page_index = days.find(day)
 	medal_day = day
 	_refresh()
+	if section != 1:
+		_animate_page_turn(1 if day > old_day else -1)
+
+func _turn_picture(index: int) -> void:
+	if index == gallery.selected: return
+	_stop_page_turn()
+	gallery.selected = index
+	gallery._refresh()
+
+func _capture_page() -> void:
+	_stop_page_turn()
+	if section != 1:
+		page_turn.capture(book)
 
 func _flip(direction: int) -> void:
+	_capture_page()
 	var old_day := (page_index if section == 0 else medal_day)
 	if section == 0:
 		page_index = clampi(page_index + direction, 0, maxi(days.size() - 1, 0))
@@ -221,10 +263,8 @@ func _flip(direction: int) -> void:
 	var new_day := (page_index if section == 0 else medal_day)
 	if old_day == new_day: return
 	_refresh()
-	if section == 0:
+	if section != 1:
 		_animate_page_turn(direction)
-	else:
-		_stop_page_turn()
 
 func _stop_page_turn() -> void:
 	if page_turn_tween != null and page_turn_tween.is_valid(): page_turn_tween.kill()
@@ -237,7 +277,7 @@ func _animate_page_turn(direction: int) -> void:
 	page_turn.progress = 0.0
 	page_turn.show()
 	page_turn_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
-	page_turn_tween.tween_property(page_turn, "progress", 1.0, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	page_turn_tween.tween_property(page_turn, "progress", 1.0, 0.65).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	page_turn_tween.tween_callback(page_turn.hide)
 
 func _result(day: int) -> String:
@@ -248,9 +288,14 @@ func _refresh() -> void:
 	story_page.visible = section == 0
 	collection_page.visible = section == 1
 	gallery.visible = section == 2
+	previous_button.visible = section != 1
+	next_button.visible = section != 1
 	medal.visible = section != 2
 	medal_title.visible = section != 2
 	goal_label.visible = section != 2
+	medal_title.position.y = 236 if section == 1 else 370
+	medal.position.y = 306 if section == 1 else 430
+	goal_label.position.y = 506 if section == 1 else 620
 	if section == 2:
 		gallery.show_day(story, day)
 	heading.text = "KUWADERNO NI TONYO  /  %s  /  DAY %d" % [["MGA KWENTO", "MGA MEDALYA", "MGA LARAWAN"][section], day]
@@ -267,6 +312,7 @@ func _refresh() -> void:
 		collection_buttons[i].icon = icon
 		collection_buttons[i].text = "???" if result.is_empty() else "ARAW %d%s" % [i + 1, " · ✓" if result == "earned" else "\nHINDI NAKAMIT"]
 		KwentaStyle.style_button(collection_buttons[i], KwentaStyle.GOLD if day == i + 1 else Color("efe0be"), 18)
+		collection_buttons[i].get_node("SelectionOutline").visible = day == i + 1
 		collection_buttons[i].material = null
 		if result == "missed":
 			var grayscale := ShaderMaterial.new()

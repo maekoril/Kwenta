@@ -23,7 +23,9 @@ func run() -> void:
 	assert(visits.is_empty()) # Scripted, future and paid debts do not create a visitor.
 	var shift := ShiftManager.new(state, products, rng)
 	state.record_purchase("neighbor_lina", 150)
-	assert(is_equal_approx(state.credit_rate("neighbor_lina"), 0.015))
+	assert(is_equal_approx(state.credit_rate("neighbor_lina"), 0.07))
+	for i in range(5): state.record_completed_sale("neighbor_lina")
+	assert(is_equal_approx(state.credit_rate("neighbor_lina"), 0.03))
 	assert(is_equal_approx(state.credit_rate("new"), 0.07))
 	var customer := CustomerState.new("neighbor_lina", OrderState.new(), 100)
 	customer.instance_id = "test"
@@ -141,6 +143,10 @@ func run() -> void:
 	main.campaign.day = 4
 	main.utang_ledger.show_records(main.campaign, false, false)
 	assert(main.utang_ledger.records.any(func(row): return row[1] == "Lola Rosa"))
+	assert(main.utang_ledger.records.any(func(row): return row[1] == "Lola Rosa" and row[0] == "Hulugan"))
+	main.utang_ledger.show_records(main.campaign, true, false)
+	assert(main.utang_ledger.records.any(func(row): return row[1] == "Paolo" and row[0] == "01/29"))
+	assert(main.utang_ledger._due_date(9) == "02/01")
 	main.campaign.day = 3
 	main.utang_ledger.show_records(main.campaign, false, false)
 	assert(not main.utang_ledger.records.any(func(row): return row[1] == "Lola Rosa"))

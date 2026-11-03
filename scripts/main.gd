@@ -213,7 +213,7 @@ var supplier_delivery_was_tutorial := false
 var supplier_story_blocked := false
 var new_purchase_groups_today: Array[String] = []
 
-enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES, DAY2_SHOP_MENU, DAY4_UTANG_MENU, DAY4_UTANG_ROW }
+enum TutorialStep { NONE, DAY1_HUD, DAY1_PRODUCT, DAY1_CUSTOMER, DAY1_CLOSING, DAY2_SHOP, DAY2_CUSTOMER, DAY2_MONEY, DAY2_GIVE, DAY2_RULES, DAY2_SHOP_MENU, DAY4_UTANG_MENU, DAY4_UTANG_ROW, DAY5_SUKI }
 func _ready() -> void:
 	AUDIO_SETTINGS.initialize()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -895,7 +895,11 @@ func _refresh_daily_goal_hud() -> void:
 	goal_panel.tooltip_text = daily_goal.title + ' - ' + daily_goal.progress_text()
 	goal_count_label.text = daily_goal.progress_text()
 	goal_progress.max_value = maxf(1.0, float(daily_goal.target))
-	if daily_goal.is_no_timeout_goal():
+	if daily_goal.type == DAILY_GOAL.Type.BARANGAY_TRUST:
+		goal_count_label.text = "%d / 60" % floori(campaign.barangay_trust)
+		goal_progress.value = minf(campaign.barangay_trust, 60.0)
+		goal_progress_fill.bg_color = Color("4caa56") if campaign.barangay_trust >= 60.0 else Color("d94536")
+	elif daily_goal.is_no_timeout_goal():
 		goal_progress.value = 0.0 if daily_goal.timed_out else float(daily_goal.target)
 		goal_progress_fill.bg_color = Color("d94536") if daily_goal.timed_out else Color("f5b83d")
 	else:
@@ -1728,7 +1732,12 @@ func _on_customer_served(_customer_id: String, product_types: int) -> void:
 	if daily_goal == null:
 		return
 	var was_complete: bool = daily_goal.is_complete()
-	daily_goal.record_customer_served(product_types)
+	var is_suki := false
+	for customer in shift.active_customers:
+		if customer.customer_id == _customer_id and customer.is_suki:
+			is_suki = true
+			break
+	daily_goal.record_customer_served(product_types, _customer_id, is_suki)
 	_refresh_daily_goal_hud()
 	if not was_complete and daily_goal.is_complete():
 		_show_daily_goal_achievement()
@@ -1821,6 +1830,8 @@ func _rebuild_customer_slots() -> void:
 			customer_layer.add_child(actor)
 			actor.call("set_facing_right", from_right)
 			customer_actors[customer.instance_id] = actor
+			if campaign.day == 5 and customer.is_suki and not bool(completed_tutorials.get("day5_suki", false)):
+				_show_suki_intro.call_deferred(customer.instance_id)
 			var entrance := create_tween()
 			entrance.set_parallel(true)
 			entrance.tween_property(actor, "position:x", target_x, 0.58).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -1829,6 +1840,20 @@ func _rebuild_customer_slots() -> void:
 			actor.call("set_customer", customer, products_by_id)
 			if not is_equal_approx(actor.position.x, target_x):
 				create_tween().tween_property(actor, "position:x", target_x, 0.22)
+
+func _show_suki_intro(instance_id: String) -> void:
+	await get_tree().create_timer(0.7).timeout
+	var actor: Control = customer_actors.get(instance_id)
+	while is_instance_valid(actor) and shift.is_running and not bool(completed_tutorials.get("day5_suki", false)) and (shift.frozen or tutorial_step != TutorialStep.NONE or story_events.is_active()):
+		await get_tree().create_timer(0.5).timeout
+		actor = customer_actors.get(instance_id)
+	if not is_instance_valid(actor) or not shift.is_running or bool(completed_tutorials.get("day5_suki", false)): return
+	var name_tag: Control = actor.get("name_tag")
+	if not is_instance_valid(name_tag): return
+	_remember_tutorial("day5_suki")
+	shift.frozen = true
+	tutorial_step = TutorialStep.DAY5_SUKI
+	tutorial_overlay.show_info_step("Ginto ang pangalan ng mga suki.", _tutorial_rect_for(name_tag), "SUKI", true)
 
 func _on_product_dropped(customer_id: String, product_id: String) -> void:
 	var source: Control = product_items_by_id.get(product_id)
@@ -1981,7 +2006,7 @@ func _show_shift_summary() -> void:
 		debug_skip_button.visible = false
 	showing_shift_results = false
 	if daily_goal != null:
-		daily_goal.finalize(campaign.count_trusted_regulars())
+		daily_goal.finalize(campaign.count_trusted_regulars(), campaign.barangay_trust)
 		_refresh_daily_goal_hud()
 	var summary_text_value := "TODAY'S SALES\nBenta ngayon: ₱%d\nPera sa kaha: ₱%d\nCustomers served: %d\nCustomers na umalis: %d" % [shift.shift_earnings, campaign.cash, shift.customers_served, shift.customers_timed_out]
 	if campaign.day == 6 and shift.fiesta_route == "alone":
@@ -2062,7 +2087,7 @@ func _build_prologue_background() -> void:
 	day7_time_label = Label.new()
 	day7_time_label.name = "DaySevenTimeCard"
 	day7_time_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	day7_time_label.text = "Makalipas ang isang linggo..."
+	day7_time_label.text = "Kinabukasan..."
 	day7_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	day7_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	day7_time_label.add_theme_font_size_override("font_size", 48)
@@ -2084,7 +2109,7 @@ func _build_day_two_visuals() -> void:
 	story_illustration_previous = TextureRect.new()
 	story_illustration_previous.name = "PreviousStoryIllustration"
 	story_illustration_previous.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	story_illustration_previous.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	story_illustration_previous.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration_previous.z_index = 39
 	story_illustration_previous.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2095,20 +2120,21 @@ func _build_day_two_visuals() -> void:
 	story_illustration.texture = load("res://assets/story/day2_box_fall.png") as Texture2D
 	_update_story_illustration_fit()
 	story_illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	story_illustration.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	story_illustration.z_index = 39
 	story_illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	story_illustration.visible = false
 	add_child(story_illustration)
-	story_illustration.visibility_changed.connect(func(): illustration_backdrop.visible = story_illustration.visible)
+	var update_backdrop := func(): illustration_backdrop.visible = story_illustration.visible or story_illustration_previous.visible
+	story_illustration.visibility_changed.connect(update_backdrop)
+	story_illustration_previous.visibility_changed.connect(update_backdrop)
 	_update_story_illustration_fit()
 func _update_story_illustration_fit() -> void:
 	if story_illustration.texture == null:
 		return
-	# Story art always fills the viewport without distortion. At non-16:9 sizes,
-	# only the outer scenery is cropped; the centered composition stays intact.
-	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	# Preserve the entire illustration at every aspect ratio; the backdrop fills margins.
+	story_illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 
 func _is_paolo_debt_recorded() -> bool:
 	# Later-day saves and debug starts have already passed the Day 4 lesson.
@@ -2136,6 +2162,10 @@ func _show_story_prop(prop_name: String) -> void:
 		_show_gallery_illustration("res://assets/story/berting_counter_50.png")
 	elif prop_name == "umbrella_handoff":
 		_show_gallery_illustration("res://assets/story/day4_tonyo_lends_umbrella_stocked_tonyo.png")
+	elif prop_name == "fiesta_powerline":
+		_show_gallery_illustration("res://assets/story/day6_fiesta_powerline.png")
+	elif prop_name == "rosa_payment":
+		_show_gallery_illustration("res://assets/story/day5_rosa_payment.png")
 	elif prop_name == "paolo_coins":
 		_show_gallery_illustration("res://assets/story/day3_paolo_coins_casual.png")
 	elif prop_name == "lina_walking_away":
@@ -2293,6 +2323,8 @@ func _show_current_story_beat() -> void:
 		_show_gallery_illustration("res://assets/story/day7_tonyo_miniature.png")
 	elif str(beat.get("cutscene", "")) == "day4_alfa_save":
 		_show_gallery_illustration("res://assets/story/day4_alfa_save_corner.png")
+	elif str(beat.get("cutscene", "")) == "day6_fireworks":
+		_show_gallery_illustration("res://assets/story/day6_fiesta_fireworks.png")
 	elif str(beat.get("cutscene", "")) == "day5_wakes":
 		_show_gallery_illustration("res://assets/story/day5_tonyo_wakes.png")
 	elif str(beat.get("cutscene", "")) == "day5_phone":
@@ -2610,7 +2642,7 @@ func _begin_shift() -> void:
 		pause_menu.set_available(true)
 	if debug_skip_button != null:
 		debug_skip_button.visible = debug_controls_visible
-	shift_start_credit = {"debts": campaign.debts.duplicate(true), "paid": campaign.paid_purchases.duplicate(true)}
+	shift_start_credit = {"debts": campaign.debts.duplicate(true), "paid": campaign.paid_purchases.duplicate(true), "completed_customers": campaign.completed_customers.duplicate(true), "purchase_counts": campaign.purchase_counts.duplicate(true)}
 	shift_start_choices = story.choices.duplicate(true)
 	shift_start_cash = campaign.cash
 	shift_start_trust = campaign.customer_trust.duplicate(true)
@@ -2658,11 +2690,9 @@ func _after_opening_sign() -> void:
 	if campaign.day == 1 and not tutorial_delivery_seen:
 		_begin_day_one_drag_tutorial()
 	elif campaign.day == 4 and not bool(completed_tutorials.get("day4_utang", false)):
-		shift.frozen = true
-		utility_open = false
-		_refresh_utility_drawer()
-		_show_tutorial_spotlight(TutorialStep.DAY4_UTANG_MENU, "Tap the menu to find the utang notebook.", utility_toggle, "UTANG NOTEBOOK")
-	elif campaign.day >= 3:
+		_remember_tutorial("day4_utang")
+		_show_tutorial_hint("Puwedeng buksan ang UTANG LIST sa menu para tingnan ang mga utang.", 8.0)
+	elif campaign.day >= 3 and campaign.day != 5:
 		_show_tutorial_hint(str(DAY_FOCUS_HINTS.get(campaign.day, "")))
 
 func _start_opening_ambience() -> void:
@@ -2679,18 +2709,22 @@ func _begin_day_one_hud_tour() -> void:
 
 func _show_day_one_hud_tour_step() -> void:
 	var targets: Array[Control] = [goal_panel, day_label.get_parent().get_parent(), clock_label.get_parent().get_parent(), cash_label.get_parent().get_parent(), trust_tag]
-	var titles := ["DAILY GOAL  1 / 5", "DAY  2 / 5", "CLOCK  3 / 5", "CASH  4 / 5", "SUKI METER  5 / 5"]
+	var titles := ["DAILY GOAL  1 / 5", "DAY  2 / 5", "CLOCK  3 / 5", "CASH  4 / 5", "TIWALA NG BARANGAY  5 / 5"]
 	var messages := [
 		"This tracks your optional daily goal. Today, serve 3 customers for a reward.",
 		"The calendar shows which day of the story you are playing.",
 		"This is the in-game time. Today's shift ends at 12:00 PM.",
 		"This is your available money. Sales add to it, and shop purchases use it.",
-		"Earn +2 Suki for timely sales. Walkouts and overdue sukli lower it; if it reaches zero, the game ends."
+		"Tumataas ang tiwala kapag naasikaso ang customer. Bumababa ito kapag may umalis o nahuli ang sukli."
 	]
 	var target := targets[day_one_hud_tour_index]
 	tutorial_overlay.show_info_step(messages[day_one_hud_tour_index], _tutorial_rect_for(target), titles[day_one_hud_tour_index], day_one_hud_tour_index == targets.size() - 1)
 
 func _advance_day_one_hud_tour() -> void:
+	if tutorial_step == TutorialStep.DAY5_SUKI:
+		_clear_tutorial_spotlight()
+		shift.frozen = false
+		return
 	if fiesta_preview_step >= 0:
 		fiesta_preview_step += 1
 		if fiesta_preview_step >= 3:
@@ -2717,6 +2751,10 @@ func _advance_day_one_hud_tour() -> void:
 		_show_opening_sign()
 
 func _skip_day_one_tutorial() -> void:
+	if tutorial_step == TutorialStep.DAY5_SUKI:
+		_clear_tutorial_spotlight()
+		shift.frozen = false
+		return
 	if fiesta_preview_step >= 0:
 		_finish_fiesta_preview()
 		return
@@ -2875,21 +2913,17 @@ func _on_utang_tutorial_recorded(customer_id: String) -> void:
 func _on_utang_tutorial_repayment() -> void:
 	if campaign.day != 5 or bool(completed_tutorials.get("utang_repayment", false)): return
 	_remember_tutorial("utang_repayment")
-	_show_utang_tutorial_ledger.call_deferred("Payment received! The ledger now shows the debt as paid.")
 
 func _on_utang_tutorial_partial_repayment() -> void:
 	if campaign.day != 5 or bool(completed_tutorials.get("utang_repayment", false)): return
 	_remember_tutorial("utang_repayment")
-	_show_utang_tutorial_ledger.call_deferred("Lola Rosa paid ₱110. Her remaining balance is ₱210.")
 
-func _show_utang_tutorial_ledger(message: String) -> void:
+func _show_utang_tutorial_ledger(_message: String) -> void:
 	if not shift_in_progress or not shift.is_running: return
 	while story_events.is_active():
 		await story_events.popup_state_changed
-	shift.frozen = true
-	utang_tutorial_message = message
-	utility_toggle.modulate = Color(1.5, 1.3, 0.6)
-	_show_tutorial_hint("Open the menu, then tap UTANG LIST to check the ledger.", 60.0)
+	if shift_in_progress and shift.is_running:
+		_show_tutorial_hint("Puwedeng tingnan ang mga utang sa UTANG LIST.", 8.0)
 
 func _show_story_visitor_portrait(visitor: String, button: Button) -> void:
 	_hide_story_visitor_portrait()
@@ -3194,7 +3228,7 @@ func _refresh_day_two_sukli_spotlight(total: int) -> void:
 	if remaining < 0:
 		var clear_button := cash_tray.find_child("ClearChangeButton", true, false) as Control
 		if is_instance_valid(clear_button):
-			_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou gave too much. Tap LINISIN and try again." % equation, clear_button, "SUKLI · TRY AGAIN")
+			_show_tutorial_spotlight(TutorialStep.DAY2_MONEY, "%s\nYou gave too much. Tap ULITIN and try again." % equation, clear_button, "SUKLI · TRY AGAIN")
 		return
 	var next_value := _largest_change_denomination_at_most(remaining)
 	var coin := cash_tray.find_child("Denomination%d" % next_value, true, false) as Control
@@ -3447,6 +3481,8 @@ func _ui_offset() -> Vector2:
 func _on_barangay_trust_changed(new_value: float) -> void:
 	if is_instance_valid(trust_tag):
 		trust_tag.set_trust(new_value)
+	if daily_goal != null and daily_goal.type == DAILY_GOAL.Type.BARANGAY_TRUST:
+		_refresh_daily_goal_hud()
 
 func _build_game_over_screen() -> void:
 	game_over_screen = GAME_OVER_SCREEN.new()
@@ -3505,6 +3541,8 @@ func _retry_current_day() -> void:
 	
 	campaign.debts = shift_start_credit.get("debts", []).duplicate(true)
 	campaign.paid_purchases = shift_start_credit.get("paid", {}).duplicate(true)
+	campaign.completed_customers = shift_start_credit.get("completed_customers", {}).duplicate(true)
+	campaign.purchase_counts = shift_start_credit.get("purchase_counts", {}).duplicate(true)
 	story.choices = shift_start_choices.duplicate(true)
 	campaign.cash = shift_start_cash
 	campaign.customer_trust = shift_start_trust.duplicate(true)

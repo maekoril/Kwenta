@@ -66,6 +66,6 @@ func _change_lines(day: int) -> Array[String]:
 		2: return ["Ibigay ang tamang sukli pagkatapos bumili.", "Magsasara ng 5:00 PM"]
 		3: return ["Asikasuhin ang orders na may iba't ibang paninda.", "Magsasara ng 6:00 PM"]
 		4: return ["Mas mabilis mawalan ng pasensya ang customers ngayon.", "Magsasara ng 6:00 PM"]
-		5: return ["Alagaan ang mga suki kahit maraming bumibili.", "Magsasara ng 8:00 PM"]
+		5: return ["Alagaan ang mga suki ng tindahan.", "Magsasara ng 8:00 PM"]
 		6: return ["Fiesta rush! Mas maraming customers ang darating.", "Magsasara ng 10:00 PM"]
 		_: return ["Huling araw: hindi bababa ang customer trust.", "Magsasara ng 8:00 PM"]

@@ -10,6 +10,7 @@ var bill_total := 0
 
 var customer_id: String
 var instance_id: String = ""
+var is_suki := false
 var order: OrderState
 var patience_seconds: float
 var patience_remaining: float

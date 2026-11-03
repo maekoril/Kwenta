@@ -143,7 +143,7 @@ func _build() -> void:
 func present(portrait_tex: Texture2D, day: int) -> void:
 	_kill_tweens()
 	_portrait.texture = portrait_tex
-	_stat.text = "ARAW %d  ·  SUKI METER: 0" % day
+	_stat.text = "ARAW %d  ·  TIWALA NG BARANGAY: 0" % day
 	visible = true
 	_button.disabled = true
 

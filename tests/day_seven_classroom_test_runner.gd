@@ -7,7 +7,7 @@ func run() -> void:
 	await create_timer(1.2).timeout
 	var main = current_scene
 	assert(main.prologue_fade.visible and main.day7_time_label.visible)
-	assert(main.day7_time_label.text == "Makalipas ang isang linggo...")
+	assert(main.day7_time_label.text == "Kinabukasan...")
 	await create_timer(3.0).timeout
 	assert(main.prologue_fade.visible and main.prologue_fade.modulate.a > 0.99)
 	assert(main.bubble._text.text.contains("Palakpakan"))

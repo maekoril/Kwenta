@@ -200,18 +200,21 @@ func _test_daily_goals_are_optional_and_day_specific() -> void:
 	_assert(day_one.is_complete(), "customer-serving goal completes without changing campaign state")
 	var rain_day := DailyGoalScript.new(4)
 	rain_day.record_timeout()
-	rain_day.finalize(0)
-	_assert(not rain_day.is_complete(), "rain-day no-timeout goal fails without a gameplay penalty")
+	rain_day.finalize(0, 59.0)
+	_assert(not rain_day.is_complete(), "rain-day goal fails below 60 trust")
+	rain_day.finalize(0, 60.0)
+	_assert(rain_day.is_complete(), "rain-day goal succeeds at 60 trust")
 	var finale := DailyGoalScript.new(7)
-	finale.finalize(3)
-	_assert(finale.is_complete(), "Day 7 regular goal completes from trusted regulars")
+	_assert(not finale.is_complete(), "Day 7 goal waits until the shift is finished")
+	finale.finalize(0)
+	_assert(finale.is_complete(), "Day 7 goal completes when the shift is finished")
 
 func _test_day_briefing_explains_the_new_idea_and_goal() -> void:
 	var rain_briefing = DayBriefingScript.new(4, DailyGoalScript.new(4))
 	_assert(rain_briefing.heading == "DAY 4", "briefing names the current story day")
 	_assert(rain_briefing.change_lines.has("Mas mabilis mawalan ng pasensya ang customers ngayon."), "rain briefing names the day's new pressure")
 	_assert(rain_briefing.change_lines.has("Magsasara ng 6:00 PM"), "briefing names the day's closing time")
-	_assert(rain_briefing.goal_title == "Let no customer leave", "briefing carries the optional daily goal")
+	_assert(rain_briefing.goal_title == "Tapusin ang araw na may 60 Tiwala o higit pa", "briefing carries the optional daily goal")
 	_assert(rain_briefing.goal_reward == "Tag-ulan medal", "briefing carries the daily-goal reward")
 
 func _test_day_briefing_prioritizes_focus_and_configuration_unlocks() -> void:

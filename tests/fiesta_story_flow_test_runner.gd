@@ -14,6 +14,8 @@ func run() -> void:
 		assert(main.shift.frozen and main.shift.is_running)
 		var beats: Array = main.story.filter_story_beats(main.story_events._current.event.beats)
 		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("lampara")))
+		assert(beats[0].get("show_prop") == "fiesta_powerline" and beats[1].get("show_prop") == "hide_scene_illustration")
+		assert(main.story.choices.get("gallery_seen_day6_powerline", false))
 		assert(not beats.any(func(beat): return str(beat.get("text", "")).contains("flashlight")))
 		assert(not beats.any(func(beat): return beat.get("speaker") == "Aling Nena"))
 		assert(beats.any(func(beat): return str(beat.get("text", "")).contains("Ako na muna sa mga order")) == (route == "alone"))
@@ -43,6 +45,7 @@ func run() -> void:
 		assert(ramon.get("story_visitor") and ramon.get("wait_for_clear") and ramon.order.has("instant_noodles"))
 		var arrival: Array = main.story.filter_story_beats(ramon.arrival_beats)
 		assert(arrival.any(func(beat): return str(beat.get("text", "")).contains("Alfa-Save")))
+		assert(arrival.any(func(beat): return str(beat.get("text", "")).contains("linya sa poste")))
 		assert(arrival.any(func(beat): return str(beat.get("text", "")).contains("kaibigan")))
 		main.apply_environment(1)
 		assert(not main.fiesta_light_props.visible and not main.fiesta_emergency_light.visible)
@@ -107,5 +110,9 @@ func run() -> void:
 	assert(not main.shift.story_waiting_for_clear)
 	assert(main.shift.active_customers.size() == 1 and main.shift.active_customers[0].customer_id == "neighbor_ramon")
 	assert(main.shift.frozen and main.story_events._current.get("kind") == "customer_visitor")
+	current_scene.queue_free()
+	await process_frame
+	# Allow the audio mixer to release stopped MP3 playback before shutdown.
+	await create_timer(0.1).timeout
 	print("Fiesta brownout routes, resumption and Paolo branches passed")
 	quit()

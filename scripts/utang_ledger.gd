@@ -5,6 +5,7 @@ const HANDWRITING: Font = preload("res://assets/fonts/Caveat.ttf")
 const PAGE_SIZE := Vector2(1120, 520)
 const INK := Color("2b1a10")
 const RED := Color("b43a32")
+const FIRST_DAY_UNIX := 1706054400 # January 24, 2024, at midnight UTC.
 var records: Array = []
 var page: Control
 var show_paolo := false
@@ -60,14 +61,14 @@ func _draw_page() -> void:
 	page.draw_string(font, Vector2(110, 62), "KUWADERNO · UTANG", HORIZONTAL_ALIGNMENT_LEFT, -1, 28, INK)
 	page.draw_string(font, Vector2(140, 112), "SINGIL", HORIZONTAL_ALIGNMENT_LEFT, -1, 23, INK)
 	page.draw_string(font, Vector2(350, 112), "PANGALAN / TALA", HORIZONTAL_ALIGNMENT_LEFT, -1, 23, INK)
-	page.draw_string(font, Vector2(800, 112), "HALAGA", HORIZONTAL_ALIGNMENT_LEFT, -1, 23, INK)
+	page.draw_string(font, Vector2(800, 112), "NATITIRA", HORIZONTAL_ALIGNMENT_LEFT, -1, 23, INK)
 	var rows := [
-		["03/12", "Mang Lito", "₱45", true],
-		["03/18", "Mang Ramon", "₱80", true],
-		["03/25", "Lola Rosa", "₱%d" % rosa_balance, false],
+		["01/12", "Mang Lito", "₱0", true],
+		["01/18", "Mang Ramon", "₱0", true],
+		["Hulugan", "Lola Rosa", "₱%d" % rosa_balance, false],
 	]
 	if show_paolo:
-		rows.append(["Day 3", "Paolo", "₱3", false])
+		rows.append([_due_date(6), "Paolo", "₱3", false])
 	if not records.is_empty():
 		rows = records
 	for i in range(rows.size()):
@@ -78,7 +79,7 @@ func _draw_page() -> void:
 		page.draw_string(HANDWRITING, Vector2(800, y), str(row[2]), HORIZONTAL_ALIGNMENT_LEFT, -1, 32, INK)
 		if bool(row[3]):
 			page.draw_line(Vector2(135, y - 15), Vector2(930, y - 21), RED, 4.0, true)
-			page.draw_string(HANDWRITING, Vector2(948, y), "PD", HORIZONTAL_ALIGNMENT_LEFT, -1, 48, RED)
+			page.draw_string(HANDWRITING, Vector2(948, y), "BAYAD NA", HORIZONTAL_ALIGNMENT_LEFT, -1, 30, RED)
 
 func show_records(state: CampaignState, include_paolo: bool, rosa_paid: bool) -> void:
 	state.add_debt("rosa_old", "neighbor_rosa", 320, 0, 0, {}, true)
@@ -87,14 +88,20 @@ func show_records(state: CampaignState, include_paolo: bool, rosa_paid: bool) ->
 			if debt.id == "rosa_old": debt.balance = mini(int(debt.balance), 210)
 	if include_paolo:
 		state.add_debt("paolo_story", "paolo", 3, 0, 6, {}, true)
-	records = [["03/12", "Mang Lito", "₱45", true], ["03/18", "Mang Ramon", "₱80", true]]
+	records = [["01/12", "Mang Lito", "₱0", true], ["01/18", "Mang Ramon", "₱0", true]]
 	if state.day < 4: records.clear()
 	for debt in state.debts:
 		if state.day < 4 and debt.id == "rosa_old": continue
 		if debt.id == "paolo_story" and not include_paolo: continue
 		var name: String = str(debt.customer).replace("neighbor_", "").capitalize()
 		if debt.customer == "neighbor_rosa": name = "Lola Rosa"
-		var date := "Dati" if debt.id == "rosa_old" else "Day %d" % int(debt.due_day)
+		var date := "Hulugan" if debt.id == "rosa_old" else _due_date(int(debt.due_day))
 		records.append([date, name, "₱%d" % int(debt.balance), int(debt.balance) == 0])
 	if records.is_empty(): records.append(["", "Wala pang bagong utang", "", false])
 	show_note(include_paolo)
+
+func _due_date(day: int) -> String:
+	if day <= 0:
+		return "Walang petsa"
+	var date := Time.get_date_dict_from_unix_time(FIRST_DAY_UNIX + (day - 1) * 86400)
+	return "%02d/%02d" % [date.month, date.day]

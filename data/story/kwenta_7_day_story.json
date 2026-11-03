@@ -2089,7 +2089,8 @@
 						{
 							"speaker": "Lola Rosa",
 							"portrait": "neighbor_rosa",
-							"text": "May ₱110 muna ako rito, iho. Pakiabot na rin kay Cora, ha?"
+							"text": "May ₱110 muna ako rito, iho. Pakiabot na rin kay Cora, ha?",
+							"show_prop": "rosa_payment"
 						}
 					],
 					"before_sale": {
@@ -2106,7 +2107,8 @@
 										{
 											"speaker": "Tonyo",
 											"portrait": "tonyo",
-											"text": "Opo, Lola Rosa. Ibabawas ko po ’yung ₱110. Bale ₱210 na lang po ang natitira."
+											"text": "Opo, Lola Rosa. Ibabawas ko po ’yung ₱110. Bale ₱210 na lang po ang natitira.",
+														"show_prop": "hide_scene_illustration"
 										},
 										{
 											"speaker": "Lola Rosa",
@@ -2224,6 +2226,11 @@
 					"speaker": "Aling Cora",
 					"portrait": "aling_cora_smiling",
 					"text": "Asikasuhin mo lang nang maayos ang mga pumupunta sa atin. Iyon muna ang isipin mo."
+				},
+				{
+					"speaker": "Aling Cora",
+					"portrait": "aling_cora_smiling",
+					"text": "Alagaan mo rin ang mga suki natin, ha?"
 				},
 				{
 					"speaker": "Aling Cora",
@@ -2445,12 +2452,14 @@
 						{
 							"speaker": "Narrator",
 							"portrait": "",
-							"text": "Biglang kumurap ang mga ilaw, saka nagdilim ang tindahan."
+							"text": "May malakas na putok sa poste sa tapat. Kumislap ang linya, at biglang nagdilim ang tindahan at ang kalsada.",
+							"show_prop": "fiesta_powerline"
 						},
 						{
 							"speaker": "Tonyo",
 							"portrait": "tonyo_flustered",
-							"text": "Ay, brownout! May lampara sa kwarto ko. Kunin natin!"
+							"text": "Ay, brownout! May lampara sa kwarto ko. Kunin natin!",
+							"show_prop": "hide_scene_illustration"
 						},
 						{
 							"speaker": "Narrator",
@@ -2534,7 +2543,7 @@
 						{
 							"speaker": "Mang Ramon",
 							"portrait": "neighbor_ramon",
-							"text": "Tonyo! Ayos lang ba kayo rito? Ang dilim sa labas!"
+							"text": "Tonyo! Ayos lang ba kayo rito? Pumutok ang linya sa poste sa may kanto, kaya nawalan ng kuryente sa buong lugar."
 						},
 						{
 							"speaker": "Tonyo",
@@ -2783,9 +2792,36 @@
 				{
 					"speaker": "Tonyo",
 					"portrait": "tonyo",
-					"text": "Akala ko kaya ko lahat mag-isa. Buti bumalik sila noong nawalan ng ilaw.",
+					"text": "Ako ang nagbantay sa mga benta, pero buti bumalik kayo noong nawalan ng ilaw.",
 					"when_choice": "day6_help",
 					"when_value": "alone"
+				},
+				{
+					"speaker": "Narrator",
+					"portrait": "",
+					"text": "Mula sa bintana ng tindahan, sabay-sabay nilang natanaw ang mga paputok sa langit.",
+					"cutscene": "day6_fireworks"
+				},
+				{
+					"speaker": "Jun-jun",
+					"portrait": "jun_jun_tara",
+					"text": "Uy, tingnan n’yo! Paputok!"
+				},
+				{
+					"speaker": "Mikay",
+					"portrait": "mikay_smug",
+					"text": "Ang ganda! Kita pala natin dito!"
+				},
+				{
+					"speaker": "Bogs",
+					"portrait": "bogs_small_smile",
+					"text": "Ang liwanag."
+				},
+				{
+					"speaker": "Tonyo",
+					"portrait": "tonyo",
+					"text": "Buti naabutan natin. Salamat sa pagsama, guys.",
+					"cutscene": "end"
 				}
 			],
 			"choices": [],
@@ -3235,7 +3271,7 @@
 				{
 					"speaker": "Narrator",
 					"portrait": "",
-					"text": "Makalipas ang isang linggo...",
+					"text": "Kinabukasan...",
 					"cutscene": "day7_time_card"
 				},
 				{
