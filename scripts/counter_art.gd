@@ -8,6 +8,7 @@ const CAMPAIGN := preload("res://data/story/summer_campaign.tres")
 const DISPLAY_TINT := Color.WHITE
 const NEW_NEIGHBORS := ["ate_tess", "kuya_joel", "lola_pilar", "rafi", "ate_celia", "mang_nestor"]
 const NEW_NEIGHBOR_ATLAS := preload("res://assets/characters/shared/new_neighbors_atlas.png")
+const NEW_NEIGHBOR_IMPATIENT_ATLAS := preload("res://assets/characters/shared/new_neighbors_impatient.png")
 const DISPLAY_SHADOW_COLOR := Color(0.12, 0.07, 0.04, 0.22)
 
 const NEIGHBOR_PORTRAITS := {
@@ -80,11 +81,12 @@ const CASUAL_PORTRAIT_PATHS := {
 }
 
 static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) -> AtlasTexture:
-	var new_index := NEW_NEIGHBORS.find(customer_id)
+	var is_impatient := customer_id.ends_with("_impatient")
+	var new_index := NEW_NEIGHBORS.find(customer_id.trim_suffix("_impatient"))
 	if new_index >= 0:
 		var portrait := AtlasTexture.new()
-		portrait.atlas = NEW_NEIGHBOR_ATLAS
-		var cell := NEW_NEIGHBOR_ATLAS.get_size() / Vector2(3, 2)
+		portrait.atlas = NEW_NEIGHBOR_IMPATIENT_ATLAS if is_impatient else NEW_NEIGHBOR_ATLAS
+		var cell := portrait.atlas.get_size() / Vector2(3, 2)
 		portrait.region = Rect2(Vector2(new_index % 3, new_index / 3) * cell, cell)
 		return portrait
 	var casual_id := customer_id
@@ -123,7 +125,7 @@ static func customer_portrait(customer_id: String, portrait_atlas: Texture2D) ->
 # Sprite switching for impatient customers. A character has an impatient sprite when
 # CUSTOMER_REGIONS contains "<customer_id>_impatient" (e.g. "aling_nena_impatient").
 static func has_impatient_portrait(customer_id: String) -> bool:
-	return CUSTOMER_REGIONS.has(customer_id + "_impatient") or NEIGHBOR_PORTRAITS.has(customer_id + "_impatient")
+	return customer_id in NEW_NEIGHBORS or CUSTOMER_REGIONS.has(customer_id + "_impatient") or NEIGHBOR_PORTRAITS.has(customer_id + "_impatient")
 
 static func customer_mood_portrait(customer_id: String, portrait_atlas: Texture2D, impatient: bool) -> AtlasTexture:
 	if impatient and has_impatient_portrait(customer_id):

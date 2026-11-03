@@ -19,5 +19,20 @@ func run() -> void:
 		actor.refresh_patience()
 		assert((actor.portrait.texture as AtlasTexture).atlas == normal.atlas)
 		actor.queue_free()
+	for id in CounterArt.NEW_NEIGHBORS:
+		var actor = load("res://scenes/customer_slot.tscn").instantiate()
+		root.add_child(actor)
+		var customer := CustomerState.new(id, OrderState.new({"biscuits": 1}), 10.0)
+		actor.set_customer(customer, {})
+		var normal := actor.portrait.texture as AtlasTexture
+		customer.patience_remaining = 2.0
+		actor.refresh_patience()
+		var impatient := actor.portrait.texture as AtlasTexture
+		assert(impatient.atlas == CounterArt.NEW_NEIGHBOR_IMPATIENT_ATLAS)
+		assert(impatient.region == normal.region)
+		customer.patience_remaining = 10.0
+		actor.refresh_patience()
+		assert((actor.portrait.texture as AtlasTexture).atlas == normal.atlas)
+		actor.queue_free()
 	print("All neighbor impatience portraits switch and reset correctly")
 	quit()
