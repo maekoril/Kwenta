@@ -1,0 +1,1 @@
+Built-in imagegen edit of new_neighbors_atlas.png: change each of the six characters' facial expressions to visibly impatient, with furrowed eyebrows, concerned or slightly annoyed eyes, and closed frowning mouths. Preserve identity, age, hairstyle, glasses, clothes, pose, scale, position, style, transparent background and 3-by-2 layout. No text or extra objects.

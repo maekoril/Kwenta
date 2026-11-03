@@ -1,7 +1,8 @@
 extends Control
 ## Launch-only opening, drawn over the real menu so the final fade is seamless.
 
-const END_TIME := 5.5
+const DISCLAIMER_TIME := 4.5
+const END_TIME := 5.5 + DISCLAIMER_TIME
 const TEAM_LOGO: Texture2D = preload("res://assets/branding/team_uri_logo.png")
 const LIGHT := Color("fffaeb")
 var elapsed := 0.0
@@ -45,13 +46,25 @@ func _draw() -> void:
 	var width := size.x / fit
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE * fit)
 	var screen := Rect2(0, 0, width, 450)
-	if elapsed < 1.5:
+	if elapsed < DISCLAIMER_TIME:
 		draw_rect(screen, Color.BLACK)
-		var alpha := _ease(elapsed / 0.35) * (1.0 - _ease((elapsed - 1.05) / 0.4))
+		var alpha := _ease(elapsed / 0.4) * (1.0 - _ease((elapsed - 4.0) / 0.5))
+		var text_color := Color(0.96, 0.93, 0.86, alpha)
+		var font := ThemeDB.fallback_font
+		var text_width := minf(520.0, width * 0.85)
+		var font_size := 17
+		var disclaimer := "This is a work of fiction. Characters, names, and events are fictional. Any resemblance to actual persons, living or deceased, or actual events is purely coincidental."
+		_text_center("DISCLAIMER", Vector2(width * 0.5, 170), 21, text_color)
+		draw_multiline_string(font, Vector2((width - text_width) * 0.5, 210), disclaimer, HORIZONTAL_ALIGNMENT_CENTER, text_width, font_size, -1, text_color)
+		return
+	var intro_time := elapsed - DISCLAIMER_TIME
+	if intro_time < 1.5:
+		draw_rect(screen, Color.BLACK)
+		var alpha := _ease(intro_time / 0.35) * (1.0 - _ease((intro_time - 1.05) / 0.4))
 		draw_texture_rect(TEAM_LOGO, Rect2(width * 0.5 - 140, 65, 280, 280), false, Color(1, 1, 1, alpha))
 		_text_center("P R E S E N T S", Vector2(width * 0.5, 367), 15, Color(0.96, 0.93, 0.86, alpha))
 		return
-	var t := elapsed - 1.5
+	var t := intro_time - 1.5
 	if t >= 3.15:
 		draw_rect(screen, Color(LIGHT, 1.0 - _ease((t - 3.25) / 0.75)))
 		return
